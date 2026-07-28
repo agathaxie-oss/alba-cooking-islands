@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($b64 = Get-Content \"$env:TEMP\\\\shot1.b64\" -Raw -ErrorAction SilentlyContinue; \"placeholder\")",
+      "Bash(node --check js/viewer.js)",
+      "Bash(node --check js/modules.js)",
+      "PowerShell(Remove-Item \"$env:LOCALAPPDATA\\\\Temp\\\\claude\\\\C--Users-jaroslav-cerny-Documents-Claude-Projects-260728-3D-nerez\\\\0496697a-4e80-44f1-bb48-42bfc50aaf47\\\\scratchpad\\\\crop2.b64\" -Force -Confirm:$false)",
+      "Bash(ls -la \"C:\\\\Users\\\\jaroslav.cerny\\\\Documents\\\\Claude\\\\Projects\\\\260728 3D nerez\\\\\" | head -20)",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

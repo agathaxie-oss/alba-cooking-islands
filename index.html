@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Konfigurátor nerezových varných bloků</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <header class="sidebar-header">
+        <h1>Konfigurátor varných bloků</h1>
+        <p class="subtitle">3D vizualizace nerezových kuchyňských sestav</p>
+      </header>
+
+      <section class="panel-section">
+        <h2>Rozměry bloku</h2>
+        <div class="variant-toggle">
+          <label class="radio-label">
+            <input type="radio" name="variant" id="variant-single" value="single" checked />
+            Jednostranný blok (u zdi)
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="variant" id="variant-island" value="island" />
+            Oboustranný blok (ostrov)
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label for="input-length">Délka (mm)</label>
+          <input type="number" id="input-length" min="1200" max="6000" step="50" value="3200" />
+        </div>
+        <div class="field-row">
+          <label for="input-depth-a" id="depth-a-label">Hloubka (mm)</label>
+          <input type="number" id="input-depth-a" min="500" max="1200" step="10" value="850" />
+        </div>
+        <div class="field-row" id="depth-b-row" hidden>
+          <label for="input-depth-b">Hloubka strany B (mm)</label>
+          <input type="number" id="input-depth-b" min="500" max="1200" step="10" value="850" />
+        </div>
+        <div class="field-row">
+          <label for="input-height">Pracovní výška (mm)</label>
+          <input type="number" id="input-height" min="850" max="950" step="10" value="900" />
+        </div>
+
+        <dl class="dims">
+          <div class="dims-row"><dt>Celková délka</dt><dd><span id="dim-length">0</span> mm</dd></div>
+          <div class="dims-row"><dt>Celková hloubka</dt><dd><span id="dim-depth">0</span> mm <span id="dim-depth-breakdown" class="dims-note" hidden></span></dd></div>
+          <div class="dims-row"><dt>Pracovní výška</dt><dd><span id="dim-height">0</span> mm</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel-section">
+        <h2 id="side-a-title">Segmenty</h2>
+        <p id="capacity-hint-a" class="capacity-hint">Využito <span id="capacity-used-a">0</span> / <span id="capacity-total-a">0</span> mm</p>
+        <p id="empty-hint-a" class="empty-hint">Strana je prázdná — přidejte segment níže.</p>
+        <ul id="segment-list-a" class="module-list"></ul>
+        <h3 class="sub-heading">Přidat segment</h3>
+        <div id="add-buttons-a" class="add-buttons"></div>
+        <button type="button" id="add-neutral-btn-a" class="add-btn add-btn-highlight">+ Neutrální modul</button>
+        <button type="button" id="add-custom-btn-a" class="add-btn add-btn-highlight">+ Vlastní modul…</button>
+      </section>
+
+      <section class="panel-section" id="side-b-section" hidden>
+        <h2>Strana B</h2>
+        <p id="capacity-hint-b" class="capacity-hint">Využito <span id="capacity-used-b">0</span> / <span id="capacity-total-b">0</span> mm</p>
+        <p id="empty-hint-b" class="empty-hint">Strana je prázdná — přidejte segment níže.</p>
+        <ul id="segment-list-b" class="module-list"></ul>
+        <h3 class="sub-heading">Přidat segment</h3>
+        <div id="add-buttons-b" class="add-buttons"></div>
+        <button type="button" id="add-neutral-btn-b" class="add-btn add-btn-highlight">+ Neutrální modul</button>
+        <button type="button" id="add-custom-btn-b" class="add-btn add-btn-highlight">+ Vlastní modul…</button>
+      </section>
+
+      <section class="panel-section">
+        <h2>Napouštěcí ramena</h2>
+        <ul id="arm-list" class="arm-list"></ul>
+        <p id="arm-empty-hint" class="empty-hint">Žádná ramena — přidejte níže.</p>
+        <button type="button" id="add-arm-btn" class="action-btn">+ Přidat rameno</button>
+      </section>
+
+      <section class="panel-section">
+        <h2>Zobrazení</h2>
+        <div class="btn-row">
+          <button type="button" data-view="perspective" class="view-btn">Perspektiva</button>
+          <button type="button" data-view="front" class="view-btn">Čelní pohled</button>
+          <button type="button" data-view="top" class="view-btn">Shora</button>
+        </div>
+        <h3 class="sub-heading">Podlaha</h3>
+        <div class="btn-row">
+          <button type="button" data-env="light" class="env-btn">Světlá</button>
+          <button type="button" data-env="dark" class="env-btn">Tmavá</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h2>Export</h2>
+        <div class="btn-column">
+          <button type="button" id="export-png" class="action-btn">Stáhnout PNG</button>
+          <button type="button" id="save-config" class="action-btn">Uložit konfiguraci</button>
+          <button type="button" id="load-file-btn" class="action-btn">Načíst ze souboru…</button>
+          <button type="button" id="load-storage-btn" class="action-btn">Načíst uloženou sestavu</button>
+          <input type="file" id="load-file-input" accept="application/json" hidden />
+        </div>
+      </section>
+
+      <footer class="sidebar-footer">
+        <p>Levé tlačítko: výběr segmentu · Střední: rotace · Pravé: posun · Kolečko: zoom</p>
+      </footer>
+    </aside>
+
+    <main id="viewport">
+      <canvas id="three-canvas"></canvas>
+      <div id="selection-badge" class="selection-badge" hidden></div>
+    </main>
+  </div>
+
+  <!-- Overlay dialog pro vlastní modul -->
+  <div id="custom-dialog-overlay" class="dialog-overlay" hidden>
+    <div class="dialog-box">
+      <h2 id="custom-dialog-title">Vlastní modul</h2>
+
+      <label class="dialog-field">
+        Název
+        <input type="text" id="custom-name" placeholder="např. Regál na koření" />
+      </label>
+
+      <label class="dialog-field">
+        Minimální šířka (mm)
+        <input type="number" id="custom-min-width" min="100" max="1200" step="10" value="300" />
+      </label>
+
+      <label class="dialog-field">
+        Šířka (mm)
+        <input type="number" id="custom-width" min="300" max="1200" step="10" value="300" />
+        <input type="range" id="custom-width-slider" min="300" max="1200" step="10" value="300" />
+      </label>
+
+      <label class="dialog-field">
+        Bitmapa horní plochy (jpg/png)
+        <input type="file" id="custom-bitmap" accept="image/png,image/jpeg" />
+      </label>
+      <img id="custom-bitmap-preview" class="bitmap-preview" hidden alt="Náhled bitmapy" />
+
+      <label class="dialog-field">
+        Počet ovládacích prvků (0–8)
+        <input type="number" id="custom-controls-count" min="0" max="8" step="1" value="2" />
+        <input type="range" id="custom-controls-count-slider" min="0" max="8" step="1" value="2" />
+      </label>
+
+      <label class="dialog-field">
+        Druh ovládacích prvků
+        <select id="custom-controls-type"></select>
+      </label>
+
+      <p id="custom-dialog-error" class="dialog-error" hidden></p>
+
+      <div class="dialog-actions">
+        <button type="button" id="custom-dialog-cancel" class="action-btn">Zrušit</button>
+        <button type="button" id="custom-dialog-save" class="action-btn action-btn-primary">Uložit</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

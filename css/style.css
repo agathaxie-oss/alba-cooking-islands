@@ -1,0 +1,663 @@
+/* style.css — moderní tmavý boční panel + 3D viewport přes zbytek okna */
+
+:root {
+  --bg-panel: #1c1f24;
+  --bg-panel-alt: #24282e;
+  --bg-input: #2c3038;
+  --border: #343941;
+  --text-main: #eef1f4;
+  --text-muted: #9aa2ad;
+  --accent: #ff8c3a;
+  --accent-soft: rgba(255, 140, 58, 0.18);
+  --danger: #e0554f;
+  --radius: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+  color: var(--text-main);
+  background: var(--bg-panel-alt);
+}
+
+#app {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* --- boční panel --------------------------------------------------------- */
+
+#sidebar {
+  width: 320px;
+  min-width: 320px;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 20px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+#sidebar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.sidebar-header h1 {
+  font-size: 18px;
+  margin: 0 0 4px;
+  line-height: 1.25;
+}
+
+.subtitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.panel-section {
+  border-top: 1px solid var(--border);
+  padding: 14px 0;
+}
+
+.panel-section h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+
+.sub-heading {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 12px 0 8px;
+}
+
+/* --- varianta bloku -------------------------------------------------------- */
+
+.variant-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.radio-label:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.radio-label input {
+  accent-color: var(--accent);
+}
+
+/* --- vstupní pole rozměrů ---------------------------------------------------- */
+
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.field-row label {
+  color: var(--text-muted);
+}
+
+.field-row input[type="number"],
+.field-row select {
+  width: 110px;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+/* --- rozměry (výpis) --------------------------------------------------------- */
+
+.dims {
+  margin: 10px 0 0;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.dims-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.dims-row dt {
+  color: var(--text-muted);
+}
+
+.dims-row dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dims-note {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+/* --- kapacita ----------------------------------------------------------------- */
+
+.capacity-hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+}
+
+.capacity-hint.over {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* --- seznam modulů ----------------------------------------------------------- */
+
+.empty-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+.module-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.module-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.module-item:hover {
+  background: #33383f;
+}
+
+.module-item.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.module-item.overflow {
+  border-color: var(--danger);
+}
+
+.module-item.overflow .module-name,
+.module-item.overflow .module-width {
+  color: var(--danger);
+}
+
+.module-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.module-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  cursor: default;
+}
+
+.extra-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.extra-field input[type="number"],
+.extra-field select {
+  padding: 4px 6px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.extra-field input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.extra-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
+.module-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.module-name {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.module-width {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.module-controls {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.module-controls button {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: #343941;
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.module-controls button:hover:not(:disabled) {
+  background: #3c424b;
+}
+
+.module-controls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.module-controls .del-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+/* --- tlačítka pro přidání modulů ---------------------------------------------- */
+
+.add-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-btn {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.add-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.add-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.add-btn-highlight {
+  margin-top: 8px;
+  width: 100%;
+  border-color: #3a4a63;
+  background: #26303f;
+}
+
+/* --- pohledy / prostředí / export tlačítka ------------------------------------- */
+
+.btn-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.view-btn, .env-btn {
+  flex: 1 1 auto;
+  padding: 8px 6px;
+  font-size: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.view-btn:hover, .env-btn:hover {
+  border-color: var(--accent);
+}
+
+.env-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.action-btn {
+  padding: 10px 12px;
+  font-size: 13px;
+  background: #2e3a4d;
+  border: 1px solid #3a4a63;
+  border-radius: var(--radius);
+  color: var(--text-main);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #35455c;
+}
+
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#export-png {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1c1200;
+}
+
+#export-png:hover {
+  background: #ff9c56;
+}
+
+.action-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1c1200;
+}
+
+.action-btn-primary:hover {
+  background: #ff9c56;
+}
+
+/* --- napouštěcí ramena ---------------------------------------------------------- */
+
+.arm-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arm-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.arm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.arm-item .extra-field {
+  width: 100%;
+}
+
+.arm-item select {
+  padding: 6px 8px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-main);
+  font-size: 12.5px;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-row input[type="number"] {
+  width: 80px;
+  padding: 4px 6px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.range-row input[type="range"] {
+  flex: 1 1 auto;
+  accent-color: var(--accent);
+}
+
+.arm-item input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+/* --- dialog vlastního modulu ----------------------------------------------------- */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 14, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.dialog-overlay[hidden] {
+  display: none;
+}
+
+.dialog-box {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog-box h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.dialog-field input[type="text"],
+.dialog-field input[type="number"],
+.dialog-field select,
+.dialog-field input[type="file"] {
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.dialog-field input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.bitmap-preview {
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #000;
+}
+
+.dialog-error {
+  margin: 0;
+  padding: 8px 10px;
+  background: rgba(224, 85, 79, 0.15);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: 12.5px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-footer p {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --- 3D viewport --------------------------------------------------------------- */
+
+#viewport {
+  position: relative;
+  flex: 1 1 auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+#three-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.selection-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 8px 14px;
+  background: rgba(28, 31, 36, 0.85);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/* --- responzivní zúžení pro menší okna ------------------------------------------ */
+
+@media (max-width: 720px) {
+  #app {
+    flex-direction: column;
+  }
+  #sidebar {
+    width: 100%;
+    min-width: 0;
+    height: 45%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  #viewport {
+    height: 55%;
+  }
+}

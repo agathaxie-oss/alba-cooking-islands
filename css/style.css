@@ -68,6 +68,8 @@ body {
   /* MUSÍ být visible, ne hidden — jinak by se oříznula rozbalená nabídka
      jazyka (.lang-menu), která je position:absolute pod tlačítkem (ZMĚNA 11). */
   overflow-y: visible;
+  /* plynulé rolování na dotykových zařízeních (oprava zalamování na mobilu) */
+  -webkit-overflow-scrolling: touch;
 }
 
 .topbar-left, .topbar-center, .topbar-right {
@@ -112,6 +114,8 @@ body {
 .topbar-export {
   display: flex;
   gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 /* --- boční panel --------------------------------------------------------- */
@@ -148,6 +152,8 @@ body {
   position: relative;
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .lang-switcher-btn {
@@ -587,6 +593,14 @@ body {
   flex-wrap: wrap;
 }
 
+/* v horní liště se NESMÍ zalamovat (oprava vady — jinak se lišta láme do
+   více řádků) — omezeno selektorem na #topbar, ať to nerozbije .btn-row
+   použité jinde (boční panel, dialogy), kde je zalamování žádoucí. */
+#topbar .btn-row {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
 .btn-column {
   display: flex;
   flex-direction: column;
@@ -651,6 +665,8 @@ body {
   padding: 3px 6px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.14);
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .view-group .side-switch {
@@ -663,6 +679,8 @@ body {
 .side-switch {
   display: flex;
   gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .side-switch[hidden] {
@@ -1374,6 +1392,14 @@ body {
   }
   #viewport {
     height: 55%;
+  }
+
+  /* na úzkých obrazovkách ubrat, co není nutné, ať se v liště roluje co
+     nejméně — přepínač podlahy zůstává v DOM i obsluze (js/main.js), jen
+     se vizuálně schová */
+  .env-btn[data-env="light"],
+  .env-btn[data-env="dark"] {
+    display: none;
   }
 }
 

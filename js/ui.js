@@ -19,6 +19,7 @@ import {
   NEUTRAL_WIDTH_MIN,
   NEUTRAL_WIDTH_MAX,
   NEUTRAL_WIDTH_STEP,
+  DRAWERS_WIDTH_MM,
   CATALOG_WIDTH_MAX,
   CATALOG_WIDTH_STEP,
   SINK_VAT_WIDTH_MIN,
@@ -83,6 +84,100 @@ const FLAG_SVGS = {
   </svg>`,
 };
 
+// --- ikony palety prvků (krok 2 redesignu) — klíč = topFeature.type ------------
+// Společný styl kreseb: viewBox 0 0 24 24, obrysové tahy stroke-width 1.6,
+// kresba uvnitř plochy 3–21. Výjimky (plné tvary) mají vlastní fill/stroke.
+const PALETTE_ICON_ATTRS = 'viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" '
+  + 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+
+const PALETTE_ICONS = {
+  burners4: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <circle cx="9" cy="9" r="1.8" fill="currentColor" stroke="none"/>
+    <circle cx="15" cy="9" r="1.8" fill="currentColor" stroke="none"/>
+    <circle cx="9" cy="15" r="1.8" fill="currentColor" stroke="none"/>
+    <circle cx="15" cy="15" r="1.8" fill="currentColor" stroke="none"/>
+  </svg>`,
+  induction: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <circle cx="9" cy="9" r="2.4"/>
+    <circle cx="15" cy="9" r="2.4"/>
+    <circle cx="9" cy="15" r="2.4"/>
+    <circle cx="15" cy="15" r="2.4"/>
+  </svg>`,
+  ceramic4: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <circle cx="9" cy="9" r="2.4"/>
+    <circle cx="15" cy="9" r="2.4"/>
+    <circle cx="9" cy="15" r="2.4"/>
+    <circle cx="15" cy="15" r="2.4"/>
+    <path d="M4,12 H20"/>
+  </svg>`,
+  fryer1: `<svg ${PALETTE_ICON_ATTRS}>
+    <path d="M6,7 H18 L16,18 H8 Z"/>
+    <path d="M7,10 q2.5,-2 5,0 t5,0"/>
+  </svg>`,
+  fryer2: `<svg ${PALETTE_ICON_ATTRS}>
+    <path d="M5,7 H11 L10,18 H6 Z"/>
+    <path d="M13,7 H19 L18,18 H14 Z"/>
+  </svg>`,
+  grill: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="5" width="16" height="14" rx="2"/>
+    <path d="M9,7 V17 M12,7 V17 M15,7 V17"/>
+  </svg>`,
+  bainmarie: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="6" width="16" height="12" rx="2"/>
+    <path d="M4,10 H20 M12,10 V18"/>
+  </svg>`,
+  multipan: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="5" y="8" width="14" height="9" rx="2"/>
+    <path d="M5,10 H2"/>
+  </svg>`,
+  sink: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="8" width="16" height="11" rx="2"/>
+    <path d="M12,8 V4"/>
+    <path d="M12,4 q4,0 4,3"/>
+  </svg>`,
+  none: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+  </svg>`,
+  bitmap: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="5" width="16" height="14" rx="2"/>
+    <circle cx="9" cy="10" r="1.4" fill="currentColor" stroke="none"/>
+    <path d="M5,17 L11,12 L15,15 L19,11"/>
+  </svg>`,
+  neutral: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <path d="M4,9 H20"/>
+  </svg>`,
+  drawers: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <path d="M4,10 H20 M4,15 H20"/>
+    <path d="M10,7 H14 M10,12.5 H14 M10,17.5 H14"/>
+  </svg>`,
+  custom: `<svg ${PALETTE_ICON_ATTRS.replace('stroke-width="1.6"', 'stroke-width="1.6" stroke-dasharray="3 2.5"')}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <path d="M12,9 V15 M9,12 H15" stroke-dasharray="none"/>
+  </svg>`,
+};
+
+/**
+ * Vrátí HTML markup ikony pro klíč `key` (typicky `def.topFeature.type`,
+ * nebo `neutral`/`drawers`/`custom` pro tři zvláštní položky palety).
+ * Když klíč v mapě není, spadne na ikonu `none` — nikdy nepadá.
+ * Pro klíč `bitmap` s `def.imageDataURL` vrátí místo SVG <img> element
+ * (hodnota `src` se nastavuje přes DOM, ne skládáním řetězce).
+ */
+function paletteIconHTML(key, def) {
+  if (key === 'bitmap' && def && def.imageDataURL) {
+    const img = document.createElement('img');
+    img.src = def.imageDataURL;
+    img.alt = '';
+    return img.outerHTML;
+  }
+  return PALETTE_ICONS[key] || PALETTE_ICONS.none;
+}
+
 export function setupUI(callbacks) {
   const els = {
     inputLength: document.getElementById('input-length'),
@@ -125,23 +220,154 @@ export function setupUI(callbacks) {
       capacityHint: document.getElementById('capacity-hint-a'),
       segmentList: document.getElementById('segment-list-a'),
       emptyHint: document.getElementById('empty-hint-a'),
-      addButtons: document.getElementById('add-buttons-a'),
-      addNeutralBtn: document.getElementById('add-neutral-btn-a'),
-      addDrawersBtn: document.getElementById('add-drawers-btn-a'),
-      addCustomBtn: document.getElementById('add-custom-btn-a'),
-      catalogButtons: [],
     },
     B: {
       capacityHint: document.getElementById('capacity-hint-b'),
       segmentList: document.getElementById('segment-list-b'),
       emptyHint: document.getElementById('empty-hint-b'),
-      addButtons: document.getElementById('add-buttons-b'),
-      addNeutralBtn: document.getElementById('add-neutral-btn-b'),
-      addDrawersBtn: document.getElementById('add-drawers-btn-b'),
-      addCustomBtn: document.getElementById('add-custom-btn-b'),
-      catalogButtons: [],
     },
   };
+
+  // --- paleta prvků (krok 2 redesignu) — jedna sekce, cílová strana se bere
+  // ze stavu aplikace (viz renderPalette níže) --------------------------------
+  const paletteEls = {
+    section: document.getElementById('palette-section'),
+    badge: document.getElementById('palette-target-badge'),
+    search: document.getElementById('palette-search'),
+    list: document.getElementById('palette-list'),
+    empty: document.getElementById('palette-empty'),
+    editCatalogBtn: document.getElementById('palette-edit-catalog'),
+  };
+  let lastPaletteState = null; // naplní render(state)
+
+  const norm = (s) => (s || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  function paletteRow(key, def, name, widthText, onClick, disabled) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'palette-item';
+    btn.disabled = !!disabled;
+    btn.title = t('palette.addTitle', { name, width: widthText });
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'palette-icon';
+    iconSpan.innerHTML = paletteIconHTML(key, def);
+    btn.appendChild(iconSpan);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'palette-name';
+    nameSpan.textContent = name;
+    btn.appendChild(nameSpan);
+
+    const widthSpan = document.createElement('span');
+    widthSpan.className = 'palette-width';
+    widthSpan.textContent = widthText;
+    btn.appendChild(widthSpan);
+
+    btn.addEventListener('click', onClick);
+    li.appendChild(btn);
+    return li;
+  }
+
+  /** Překreslí jen obsah <ul id="palette-list"> podle aktuálního stavu
+   *  aplikace a hodnoty vyhledávacího pole. Vyhledávací pole samo se
+   *  nikdy nepřekresluje (uživatel by ztratil kurzor). */
+  function renderPaletteList() {
+    const state = lastPaletteState;
+    if (!state || !paletteEls.list) return;
+
+    const isIsland = state.variant === 'island';
+    const targetSide = isIsland ? state.currentSide : 'A';
+
+    paletteEls.badge.hidden = !isIsland;
+    if (isIsland) {
+      paletteEls.badge.textContent = t('palette.targetSide', { side: targetSide });
+      paletteEls.badge.title = t('palette.targetSideTitle', { side: targetSide });
+    }
+
+    const capacity = targetSide === 'B' ? state.capacityB : state.capacityA;
+    const hasRoom = capacity ? capacity.usedMM < capacity.capacityMM : false;
+
+    const query = norm(paletteEls.search ? paletteEls.search.value : '');
+    const catalogDefs = getCatalogVisible();
+    const matchedCatalog = catalogDefs.filter((def) => {
+      if (!query) return true;
+      const name = norm(getEntryDisplayName(def));
+      const code = norm(def.catalogCode);
+      return name.includes(query) || code.includes(query);
+    });
+
+    const specials = [
+      {
+        key: 'neutral',
+        name: t('palette.neutral'),
+        widthText: t('catalog.widthFrom', { mm: NEUTRAL_WIDTH_MIN }),
+        onClick: () => callbacks.onAddNeutral(targetSide),
+      },
+      {
+        key: 'drawers',
+        name: t('palette.drawers'),
+        widthText: t('catalog.widthExact', { mm: DRAWERS_WIDTH_MM }),
+        onClick: () => callbacks.onAddDrawers(targetSide),
+      },
+      {
+        key: 'custom',
+        name: t('palette.custom'),
+        widthText: '—',
+        onClick: () => callbacks.onOpenCustomNew(targetSide),
+      },
+    ];
+    const matchedSpecials = specials.filter((sp) => {
+      if (!query) return true;
+      return norm(sp.name).includes(query);
+    });
+
+    paletteEls.list.innerHTML = '';
+    matchedCatalog.forEach((def) => {
+      const name = getEntryDisplayName(def);
+      const widthText = def.widthAdjustable
+        ? t('catalog.widthFrom', { mm: def.minWidthMM })
+        : t('catalog.widthExact', { mm: def.widthMM });
+      const iconKey = (def.topFeature && def.topFeature.type) || 'none';
+      paletteEls.list.appendChild(paletteRow(
+        iconKey, def, name, widthText,
+        () => callbacks.onAddInstrument(targetSide, def.id),
+        !hasRoom,
+      ));
+    });
+
+    if (matchedCatalog.length > 0 && matchedSpecials.length > 0) {
+      const sep = document.createElement('li');
+      sep.className = 'palette-sep';
+      sep.setAttribute('aria-hidden', 'true');
+      paletteEls.list.appendChild(sep);
+    }
+
+    matchedSpecials.forEach((sp) => {
+      paletteEls.list.appendChild(paletteRow(
+        sp.key, null, sp.name, sp.widthText, () => sp.onClick(), !hasRoom,
+      ));
+    });
+
+    const nothingMatched = matchedCatalog.length === 0 && matchedSpecials.length === 0 && !!query;
+    const emptyCatalogCase = catalogDefs.length === 0 && !query;
+    if (nothingMatched) {
+      paletteEls.empty.hidden = false;
+      paletteEls.empty.textContent = t('palette.noResults');
+    } else if (emptyCatalogCase) {
+      paletteEls.empty.hidden = false;
+      paletteEls.empty.textContent = t('palette.emptyCatalog');
+    } else {
+      paletteEls.empty.hidden = true;
+    }
+  }
+
+  function renderPalette(state) {
+    lastPaletteState = state;
+    renderPaletteList();
+  }
 
   // --- přepínač jazyka: jedno tlačítko (vlaječka aktuálního jazyka + šipka)
   // a rozbalovací nabídka se všemi jazyky (ZMĚNA 11, §13 SPEC v4) — pořadí
@@ -291,33 +517,14 @@ export function setupUI(callbacks) {
     if (els.variantIsland.checked) callbacks.onVariantChange('island');
   });
 
-  // --- katalog přístrojů (jen visible=true) — tlačítka pro obě strany zvlášť ----
-  // Znovu se vykreslují při každém render() (ne jen jednou při startu), aby se
-  // katalog projevil hned i po importu JSON konfigurace s vlastními přístroji.
-  function rebuildCatalogButtons(side) {
-    const s = sides[side];
-    s.addButtons.innerHTML = '';
-    s.catalogButtons = [];
-    getCatalogVisible().forEach((def) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'add-btn';
-      const widthText = def.widthAdjustable
-        ? t('catalog.widthFrom', { mm: def.minWidthMM })
-        : t('catalog.widthExact', { mm: def.widthMM });
-      btn.textContent = t('catalog.addButtonLabel', { name: getEntryDisplayName(def), width: widthText });
-      btn.addEventListener('click', () => callbacks.onAddInstrument(side, def.id));
-      s.addButtons.appendChild(btn);
-      s.catalogButtons.push(btn);
-    });
+  // --- paleta prvků (krok 2 redesignu) — posluchače se registrují jednou zde,
+  // ne při každém vykreslení; překreslení seznamu viz renderPaletteList výše ----
+  if (paletteEls.search) {
+    paletteEls.search.addEventListener('input', () => renderPaletteList());
   }
-
-  sides.A.addNeutralBtn.addEventListener('click', () => callbacks.onAddNeutral('A'));
-  sides.A.addDrawersBtn.addEventListener('click', () => callbacks.onAddDrawers('A'));
-  sides.A.addCustomBtn.addEventListener('click', () => callbacks.onOpenCustomNew('A'));
-  sides.B.addNeutralBtn.addEventListener('click', () => callbacks.onAddNeutral('B'));
-  sides.B.addDrawersBtn.addEventListener('click', () => callbacks.onAddDrawers('B'));
-  sides.B.addCustomBtn.addEventListener('click', () => callbacks.onOpenCustomNew('B'));
+  if (paletteEls.editCatalogBtn) {
+    paletteEls.editCatalogBtn.addEventListener('click', () => callbacks.onOpenDeviceManager());
+  }
 
   // --- katalog přístrojů — Správce přístrojů (SPEC v3 §3.4) ---------------------
   els.deviceManagerBtn.addEventListener('click', () => callbacks.onOpenDeviceManager());
@@ -802,16 +1009,9 @@ export function setupUI(callbacks) {
   /** Vykreslí seznam segmentů + kapacitu jedné strany. */
   function renderSide(side, segments, capacity, state) {
     const s = sides[side];
-    rebuildCatalogButtons(side);
     const { usedMM, capacityMM } = capacity;
     s.capacityHint.textContent = t('capacity.hint', { used: usedMM, total: capacityMM });
     s.capacityHint.classList.toggle('over', usedMM > capacityMM);
-
-    const hasRoom = usedMM < capacityMM;
-    s.catalogButtons.forEach((btn) => { btn.disabled = !hasRoom; });
-    s.addNeutralBtn.disabled = !hasRoom;
-    s.addDrawersBtn.disabled = !hasRoom;
-    s.addCustomBtn.disabled = !hasRoom;
 
     s.segmentList.innerHTML = '';
     s.emptyHint.style.display = segments.length === 0 ? 'block' : 'none';
@@ -894,6 +1094,10 @@ export function setupUI(callbacks) {
     if (isIsland) {
       renderSide('B', state.segmentsB, state.capacityB, state);
     }
+
+    // paleta prvků (krok 2 redesignu) — čte kapacitu cílové strany ze state,
+    // proto se volá až po renderSide výše
+    renderPalette(state);
 
     // seznam ramen
     els.armList.innerHTML = '';

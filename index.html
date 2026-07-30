@@ -118,16 +118,26 @@
         </dl>
       </section>
 
+      <section class="panel-section" id="palette-section">
+        <div class="palette-head">
+          <h2 data-i18n="palette.sectionTitle">Add element</h2>
+          <span id="palette-target-badge" class="palette-badge" hidden></span>
+        </div>
+        <input type="search" id="palette-search" class="palette-search"
+               data-i18n-placeholder="palette.searchPlaceholder"
+               data-i18n-aria-label="palette.searchLabel"
+               placeholder="Search…" autocomplete="off" />
+        <ul id="palette-list" class="palette-list"></ul>
+        <p id="palette-empty" class="palette-empty" hidden></p>
+        <button type="button" id="palette-edit-catalog" class="palette-link"
+                data-i18n="palette.editCatalog">Edit catalog…</button>
+      </section>
+
       <section class="panel-section">
         <h2 id="side-a-title" data-i18n="side.segments">Segments</h2>
         <p id="capacity-hint-a" class="capacity-hint">Used 0 / 0 mm</p>
         <p id="empty-hint-a" class="empty-hint" data-i18n="side.emptyHint">This side is empty — add a segment below.</p>
         <ul id="segment-list-a" class="module-list"></ul>
-        <h3 class="sub-heading" data-i18n="side.addSegment">Add segment</h3>
-        <div id="add-buttons-a" class="add-buttons"></div>
-        <button type="button" id="add-neutral-btn-a" class="add-btn add-btn-highlight" data-i18n="side.addNeutral">+ Neutral module</button>
-        <button type="button" id="add-drawers-btn-a" class="add-btn add-btn-highlight" data-i18n="side.addDrawers">+ GN 1/1 drawers</button>
-        <button type="button" id="add-custom-btn-a" class="add-btn add-btn-highlight" data-i18n="side.addCustom">+ Custom module…</button>
       </section>
 
       <section class="panel-section" id="side-b-section" hidden>
@@ -135,11 +145,6 @@
         <p id="capacity-hint-b" class="capacity-hint">Used 0 / 0 mm</p>
         <p id="empty-hint-b" class="empty-hint" data-i18n="side.emptyHint">This side is empty — add a segment below.</p>
         <ul id="segment-list-b" class="module-list"></ul>
-        <h3 class="sub-heading" data-i18n="side.addSegment">Add segment</h3>
-        <div id="add-buttons-b" class="add-buttons"></div>
-        <button type="button" id="add-neutral-btn-b" class="add-btn add-btn-highlight" data-i18n="side.addNeutral">+ Neutral module</button>
-        <button type="button" id="add-drawers-btn-b" class="add-btn add-btn-highlight" data-i18n="side.addDrawers">+ GN 1/1 drawers</button>
-        <button type="button" id="add-custom-btn-b" class="add-btn add-btn-highlight" data-i18n="side.addCustom">+ Custom module…</button>
       </section>
 
       <section class="panel-section">

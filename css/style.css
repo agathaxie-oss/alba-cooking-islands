@@ -585,6 +585,173 @@ body {
   background: var(--accent-soft);
 }
 
+/* --- paleta prvků (krok 2 redesignu) ------------------------------------- */
+
+.palette-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* h2 uvnitř .palette-head nesmí mít spodní mezeru dvakrát */
+.palette-head h2 {
+  margin-bottom: 0;
+}
+
+.palette-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-dark);
+  color: #FFFFFF;
+  white-space: nowrap;
+}
+
+.palette-badge[hidden] {
+  display: none;
+}
+
+.palette-search {
+  width: 100%;
+  margin: 10px 0 8px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.palette-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.palette-sep {
+  height: 1px;
+  margin: 6px 2px;
+  background: var(--border);
+}
+
+.palette-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-main);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.palette-item:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.palette-item:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.palette-item:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.palette-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--text-muted);
+}
+
+.palette-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* obrázek u přístroje typu bitmap */
+.palette-icon img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: block;
+}
+
+.palette-item:hover:not(:disabled) .palette-icon {
+  color: var(--accent-dark);
+}
+
+/* KLÍČOVÉ pro budoucí panel 200 px — dlouhá jména se musí zkrátit,
+   ne rozbít mřížku */
+.palette-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-width {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.palette-empty {
+  margin: 8px 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.palette-empty[hidden] {
+  display: none;
+}
+
+.palette-link {
+  margin-top: 10px;
+  padding: 0;
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--accent-dark);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.palette-link:hover {
+  color: var(--accent-darker);
+}
+
 /* --- pohledy / prostředí / export tlačítka ------------------------------------- */
 
 .btn-row {

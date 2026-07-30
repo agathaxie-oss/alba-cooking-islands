@@ -133,45 +133,47 @@
                 data-i18n="palette.editCatalog">Edit catalog…</button>
       </section>
 
-      <section class="panel-section">
-        <h2 id="side-a-title" data-i18n="side.segments">Segments</h2>
-        <p id="capacity-hint-a" class="capacity-hint">Used 0 / 0 mm</p>
-        <p id="empty-hint-a" class="empty-hint" data-i18n="side.emptyHint">This side is empty — add a segment below.</p>
-        <ul id="segment-list-a" class="module-list"></ul>
-      </section>
-
-      <section class="panel-section" id="side-b-section" hidden>
-        <h2 data-i18n="side.sideB">Side B</h2>
-        <p id="capacity-hint-b" class="capacity-hint">Used 0 / 0 mm</p>
-        <p id="empty-hint-b" class="empty-hint" data-i18n="side.emptyHint">This side is empty — add a segment below.</p>
-        <ul id="segment-list-b" class="module-list"></ul>
-      </section>
-
-      <section class="panel-section">
-        <h2 data-i18n="arms.sectionTitle">Filling arms</h2>
-        <ul id="arm-list" class="arm-list"></ul>
-        <p id="arm-empty-hint" class="empty-hint" data-i18n="arms.emptyHint">No arms — add one below.</p>
-        <button type="button" id="add-arm-btn" class="action-btn" data-i18n="arms.addBtn">+ Add arm</button>
-      </section>
-
       <footer class="sidebar-footer">
         <p data-i18n="footer.controls">Left button: select segment · Middle: rotate · Right: pan · Wheel: zoom</p>
       </footer>
     </aside>
 
-    <main id="viewport">
-      <canvas id="three-canvas"></canvas>
-      <div id="selection-badge" class="selection-badge" hidden></div>
+    <div id="stage">
+      <main id="viewport">
+        <canvas id="three-canvas"></canvas>
+        <div id="selection-badge" class="selection-badge" hidden></div>
 
-      <!-- Půdorysné schéma (SVG) — překryv nad 3D viewportem, SPEC v3 §5 -->
-      <div id="floorplan-overlay" class="floorplan-overlay" hidden>
-        <div class="floorplan-toolbar">
-          <button type="button" id="report-print-btn" class="action-btn action-btn-primary" data-i18n="report.printBtn">Print / save as PDF</button>
-          <button type="button" id="floorplan-download-btn" class="action-btn" data-i18n="floorplan.download">Download floor plan (SVG)</button>
+        <!-- Půdorysné schéma (SVG) — překryv nad 3D viewportem, SPEC v3 §5 -->
+        <div id="floorplan-overlay" class="floorplan-overlay" hidden>
+          <div class="floorplan-toolbar">
+            <button type="button" id="report-print-btn" class="action-btn action-btn-primary" data-i18n="report.printBtn">Print / save as PDF</button>
+            <button type="button" id="floorplan-download-btn" class="action-btn" data-i18n="floorplan.download">Download floor plan (SVG)</button>
+          </div>
+          <div id="floorplan-svg-container" class="floorplan-svg-container"></div>
         </div>
-        <div id="floorplan-svg-container" class="floorplan-svg-container"></div>
-      </div>
-    </main>
+      </main>
+
+      <section id="assembly-strip" class="assembly-strip"
+               aria-label="Assembly" data-i18n-aria-label="side.segments">
+        <div class="strip-head">
+          <div id="strip-tabs" class="strip-tabs" role="tablist"></div>
+          <span id="strip-capacity" class="strip-capacity"></span>
+          <button type="button" id="strip-collapse" class="strip-collapse"
+                  aria-expanded="true"></button>
+        </div>
+
+        <div class="strip-body">
+          <ol id="strip-cards" class="strip-cards"></ol>
+          <p id="strip-empty" class="strip-empty" hidden></p>
+          <div id="strip-detail" class="strip-detail"></div>
+          <div id="strip-arms" class="strip-arms" hidden>
+            <ul id="arm-list" class="arm-list"></ul>
+            <p id="arm-empty-hint" class="empty-hint" data-i18n="arms.emptyHint">No arms — add one below.</p>
+            <button type="button" id="add-arm-btn" class="action-btn" data-i18n="arms.addBtn">+ Add arm</button>
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 
   <!-- Overlay dialog pro vlastní modul -->

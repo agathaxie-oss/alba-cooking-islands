@@ -121,8 +121,8 @@ body {
 /* --- boční panel --------------------------------------------------------- */
 
 #sidebar {
-  width: 320px;
-  min-width: 320px;
+  width: 240px;
+  min-width: 240px;
   height: 100%;
   overflow-y: auto;
   background: var(--bg-panel);
@@ -1296,6 +1296,257 @@ body {
   line-height: 1.5;
 }
 
+/* --- scéna = viewport + spodní pás sestavy (krok 3A) --------------------- */
+
+#stage {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* #viewport je nyní dítě #stage — musí se smrsknout, ne přetéct */
+#stage > #viewport {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+.assembly-strip {
+  flex: 0 0 auto;
+  max-height: 45%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.strip-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  height: 34px;
+  border-bottom: 1px solid var(--border);
+}
+
+.strip-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.strip-tab {
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.strip-tab:hover {
+  color: var(--accent-dark);
+}
+
+.strip-tab.active {
+  color: #FFFFFF;
+  background: var(--accent-dark);
+}
+
+.strip-capacity {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.strip-capacity.over {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.strip-collapse {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-main);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.strip-collapse:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.strip-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.assembly-strip.collapsed .strip-body {
+  display: none;
+}
+
+/* --- řada karet ---------------------------------------------------------- */
+
+.strip-cards {
+  flex: 0 0 auto;
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.strip-card {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px;
+  height: 66px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.strip-card:hover {
+  background: var(--bg-panel-alt);
+}
+
+.strip-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.strip-card.overflow {
+  border-color: var(--danger);
+}
+
+.strip-card.overflow .strip-card-name,
+.strip-card.overflow .strip-card-width {
+  color: var(--danger);
+}
+
+.strip-card-name {
+  font-size: 12px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strip-card-width {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.strip-card-controls {
+  display: flex;
+  gap: 3px;
+}
+
+.strip-card-controls button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-main);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.strip-card-controls button:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.strip-card-controls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.strip-card-controls .del-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.strip-empty {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* --- pruh s detailem ----------------------------------------------------- */
+
+.strip-detail {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 12px 10px;
+  border-top: 1px dashed var(--border);
+  overflow-y: auto;
+}
+
+/* ZÁVAZNÉ — mřížka se musí přelévat, ne držet pevný počet sloupců */
+.strip-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px 12px;
+  align-items: end;
+}
+
+.strip-detail-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.strip-arms {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 12px 10px;
+  border-top: 1px dashed var(--border);
+  overflow-y: auto;
+}
+
+#strip-detail[hidden], #strip-arms[hidden] {
+  display: none;
+}
+
+/* ramena v pásu — položky vedle sebe, ne pod sebou */
+.strip-arms .arm-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
 /* --- 3D viewport --------------------------------------------------------------- */
 
 #viewport {
@@ -1553,12 +1804,16 @@ body {
   #sidebar {
     width: 100%;
     min-width: 0;
-    height: 45%;
+    height: 40%;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
-  #viewport {
-    height: 55%;
+  /* #viewport už není přímé dítě #app — výšku řídí #stage */
+  #stage {
+    height: 60%;
+  }
+  .assembly-strip {
+    max-height: 55%;
   }
 
   /* na úzkých obrazovkách ubrat, co není nutné, ať se v liště roluje co
@@ -1586,11 +1841,11 @@ body {
      JEHO OSTATNÍ děti (3D plátno, odznak výběru) a #floorplan-overlay se
      naopak zbaví svého overlay-pozicování, ať nateče do normálního toku
      stránky přes celou její šířku. */
-  #topbar, #sidebar, .floorplan-toolbar, .dialog-overlay, #three-canvas, #selection-badge {
+  #topbar, #sidebar, #assembly-strip, .floorplan-toolbar, .dialog-overlay, #three-canvas, #selection-badge {
     display: none !important;
   }
 
-  #app, #viewport {
+  #app, #stage, #viewport {
     display: block;
     position: static;
     height: auto;

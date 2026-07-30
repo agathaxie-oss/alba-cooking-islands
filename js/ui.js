@@ -195,12 +195,19 @@ export function setupUI(callbacks) {
     dimDepthBreakdown: document.getElementById('dim-depth-breakdown'),
     dimHeight: document.getElementById('dim-height'),
 
-    sideBSection: document.getElementById('side-b-section'),
-    sideATitle: document.getElementById('side-a-title'),
-
     armList: document.getElementById('arm-list'),
     armEmptyHint: document.getElementById('arm-empty-hint'),
     addArmBtn: document.getElementById('add-arm-btn'),
+
+    // --- pás sestavy (krok 3A redesignu) --------------------------------------
+    assemblyStrip: document.getElementById('assembly-strip'),
+    stripTabs: document.getElementById('strip-tabs'),
+    stripCapacity: document.getElementById('strip-capacity'),
+    stripCollapse: document.getElementById('strip-collapse'),
+    stripCards: document.getElementById('strip-cards'),
+    stripEmpty: document.getElementById('strip-empty'),
+    stripDetail: document.getElementById('strip-detail'),
+    stripArms: document.getElementById('strip-arms'),
 
     viewButtons: Array.from(document.querySelectorAll('[data-view]')),
     sideSwitch: document.getElementById('side-switch'),
@@ -215,18 +222,15 @@ export function setupUI(callbacks) {
     loadStorageBtn: document.getElementById('load-storage-btn'),
   };
 
-  const sides = {
-    A: {
-      capacityHint: document.getElementById('capacity-hint-a'),
-      segmentList: document.getElementById('segment-list-a'),
-      emptyHint: document.getElementById('empty-hint-a'),
-    },
-    B: {
-      capacityHint: document.getElementById('capacity-hint-b'),
-      segmentList: document.getElementById('segment-list-b'),
-      emptyHint: document.getElementById('empty-hint-b'),
-    },
-  };
+  // --- pás sestavy (krok 3A redesignu) — stav záložky/srolování žije jen
+  // v této closure, nikam se neukládá; `prevCurrentSide`/`prevSelectedId`
+  // slouží k rozpoznání SKUTEČNÉ změny (viz §3.3 a §3.4 zadání) tak, aby se
+  // pás uživateli neposouval/nepřepínal při každém překreslení. ----------------
+  let activeTab = 'A'; // 'A' | 'B' | 'arms'
+  let collapsed = false;
+  let prevCurrentSide = null;
+  let prevSelectedId; // sentinel (undefined) — první render se nepočítá za "změnu"
+  let lastStripState = null;
 
   // --- paleta prvků (krok 2 redesignu) — jedna sekce, cílová strana se bere
   // ze stavu aplikace (viz renderPalette níže) --------------------------------
@@ -532,6 +536,16 @@ export function setupUI(callbacks) {
   // --- napouštěcí ramena ---------------------------------------------------------
   els.addArmBtn.addEventListener('click', () => callbacks.onAddArm());
 
+  // --- srolování pásu sestavy (krok 3A) — posluchač jen jednou, popisek/ikona
+  // a aria-expanded se dopočítávají v renderStripCollapseButton() při každém
+  // překreslení (viz §3.7 zadání) --------------------------------------------------
+  if (els.stripCollapse) {
+    els.stripCollapse.addEventListener('click', () => {
+      collapsed = !collapsed;
+      renderStripCollapseButton();
+    });
+  }
+
   // --- přednastavené pohledy -----------------------------------------------------
   els.viewButtons.forEach((btn) => {
     btn.addEventListener('click', () => callbacks.onViewChange(btn.dataset.view));
@@ -603,47 +617,48 @@ export function setupUI(callbacks) {
     extra.appendChild(finishLabel);
   }
 
-  // --- vykreslení jedné položky segmentu -------------------------------------------
-  function renderSegmentItem(seg, index, total, state, fitInfo) {
+  // --- vykreslení jedné karty segmentu v pásu (krok 3A) -----------------------------
+  // Šířka karty se odvozuje od šířky segmentu, aby řada karet četla jako půdorys
+  // (§3.4 zadání). Přetahování se v této části NEDĚLÁ — pořadí mění jen ◀ ▶.
+  function renderSegmentCard(seg, index, total, state, fitInfo) {
     const li = document.createElement('li');
-    li.className = 'module-item';
+    li.className = 'strip-card';
     if (seg.id === state.selectedId) li.classList.add('selected');
     if (!fitInfo.fits) li.classList.add('overflow');
     li.dataset.id = String(seg.id);
 
-    const row = document.createElement('div');
-    row.className = 'module-row';
+    const px = Math.round(Math.min(220, Math.max(88, getSegmentWidthMM(seg) / 6)));
+    li.style.width = px + 'px';
 
-    const info = document.createElement('div');
-    info.className = 'module-info';
     const nameSpan = document.createElement('span');
-    nameSpan.className = 'module-name';
+    nameSpan.className = 'strip-card-name';
     nameSpan.textContent = getSegmentLabel(seg);
+    li.appendChild(nameSpan);
+
     const widthSpan = document.createElement('span');
-    widthSpan.className = 'module-width';
+    widthSpan.className = 'strip-card-width';
     widthSpan.textContent = t('segment.width', { mm: getSegmentWidthMM(seg) }) + (fitInfo.fits ? '' : t('segment.overflowSuffix'));
-    info.appendChild(nameSpan);
-    info.appendChild(widthSpan);
+    li.appendChild(widthSpan);
 
     const controls = document.createElement('div');
-    controls.className = 'module-controls';
+    controls.className = 'strip-card-controls';
 
-    const upBtn = document.createElement('button');
-    upBtn.type = 'button';
-    upBtn.textContent = '↑';
-    upBtn.title = t('segment.moveLeft');
-    upBtn.disabled = index === 0;
-    upBtn.addEventListener('click', (ev) => {
+    const leftBtn = document.createElement('button');
+    leftBtn.type = 'button';
+    leftBtn.textContent = '◀';
+    leftBtn.title = t('segment.moveLeft');
+    leftBtn.disabled = index === 0;
+    leftBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       callbacks.onMoveSegment(seg.id, -1);
     });
 
-    const downBtn = document.createElement('button');
-    downBtn.type = 'button';
-    downBtn.textContent = '↓';
-    downBtn.title = t('segment.moveRight');
-    downBtn.disabled = index === total - 1;
-    downBtn.addEventListener('click', (ev) => {
+    const rightBtn = document.createElement('button');
+    rightBtn.type = 'button';
+    rightBtn.textContent = '▶';
+    rightBtn.title = t('segment.moveRight');
+    rightBtn.disabled = index === total - 1;
+    rightBtn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       callbacks.onMoveSegment(seg.id, 1);
     });
@@ -658,19 +673,26 @@ export function setupUI(callbacks) {
       callbacks.onRemoveSegment(seg.id);
     });
 
-    controls.appendChild(upBtn);
-    controls.appendChild(downBtn);
+    controls.appendChild(leftBtn);
+    controls.appendChild(rightBtn);
     controls.appendChild(delBtn);
+    li.appendChild(controls);
 
-    row.appendChild(info);
-    row.appendChild(controls);
-    row.addEventListener('click', () => callbacks.onSelectSegment(seg.id));
-    li.appendChild(row);
+    li.addEventListener('click', () => callbacks.onSelectSegment(seg.id));
 
-    // --- inline nastavení dle typu ------------------------------------------------
+    return li;
+  }
+
+  // --- vykreslení pruhu s detailem vybraného segmentu (krok 3A) ---------------------
+  // Beze změny logiky oproti dřívějšímu `renderSegmentItem` — jen kontejner má
+  // třídu `strip-detail-grid` místo `module-extra` (přeliv řeší CSS pásu, §3.6
+  // zadání) a border-top odpadá (řeší ho `.strip-detail` v CSS).
+  function renderSegmentDetail(seg) {
+    let extra = null;
+
     if (seg.type === NEUTRAL_TYPE) {
-      const extra = document.createElement('div');
-      extra.className = 'module-extra';
+      extra = document.createElement('div');
+      extra.className = 'strip-detail-grid';
 
       const widthLabel = document.createElement('label');
       widthLabel.className = 'extra-field';
@@ -733,13 +755,11 @@ export function setupUI(callbacks) {
       extra.appendChild(panelLabel);
 
       appendPlinthFinishFields(extra, seg);
-
-      li.appendChild(extra);
     } else if (seg.type === DRAWERS_TYPE) {
       // §Zásuvky GN 1/1 — šířka je vždy pevná (400 mm, žádné pole pro
       // šířku); s panelem je počet zásuvek vynuceně 2, jinak volba 2/3.
-      const extra = document.createElement('div');
-      extra.className = 'module-extra';
+      extra = document.createElement('div');
+      extra.className = 'strip-detail-grid';
 
       const panelLabel = document.createElement('label');
       panelLabel.className = 'extra-field extra-checkbox';
@@ -781,11 +801,9 @@ export function setupUI(callbacks) {
       extra.appendChild(countLabel);
 
       appendPlinthFinishFields(extra, seg);
-
-      li.appendChild(extra);
     } else if (seg.type === CUSTOM_TYPE) {
-      const extra = document.createElement('div');
-      extra.className = 'module-extra';
+      extra = document.createElement('div');
+      extra.className = 'strip-detail-grid';
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.className = 'action-btn';
@@ -797,16 +815,14 @@ export function setupUI(callbacks) {
       extra.appendChild(editBtn);
 
       appendPlinthFinishFields(extra, seg);
-
-      li.appendChild(extra);
     } else {
       // katalogový přístroj — šířka podestavby je vlastní instance (§7.4
       // SPEC v3); hloubka podestavby je od §11.1 SPEC v4 jednotná pro celou
       // stranu (odvozená z hloubky bloku), takže se tu už nenastavuje.
       const def = getCatalogEntry(seg.type);
       if (def) {
-        const extra = document.createElement('div');
-        extra.className = 'module-extra';
+        extra = document.createElement('div');
+        extra.className = 'strip-detail-grid';
 
         const isSink = def.topFeature && def.topFeature.type === 'sink';
         const minWidth = isSink && seg.vatWidthMM ? seg.vatWidthMM + SINK_WIDTH_MARGIN_MM : def.minWidthMM;
@@ -892,12 +908,10 @@ export function setupUI(callbacks) {
         }
 
         appendPlinthFinishFields(extra, seg);
-
-        li.appendChild(extra);
       }
     }
 
-    return li;
+    return extra;
   }
 
   // --- vykreslení jednoho ramene ----------------------------------------------------
@@ -1006,20 +1020,178 @@ export function setupUI(callbacks) {
     return li;
   }
 
-  /** Vykreslí seznam segmentů + kapacitu jedné strany. */
-  function renderSide(side, segments, capacity, state) {
-    const s = sides[side];
-    const { usedMM, capacityMM } = capacity;
-    s.capacityHint.textContent = t('capacity.hint', { used: usedMM, total: capacityMM });
-    s.capacityHint.classList.toggle('over', usedMM > capacityMM);
+  // --- pás sestavy (krok 3A redesignu) ----------------------------------------------
+  // renderStrip(state) nahrazuje dřívější dvojí renderSide('A'/'B', …) — viz §3.8
+  // zadání. Rozdělené na dílčí funkce (záložky / kapacita / karty / detail), ale
+  // volané vždy dohromady z jednoho místa, aby zůstal jasný pořadí kroků popsaný
+  // v §3.3 (nejdřív sladit activeTab se stavem, pak teprve kreslit).
 
-    s.segmentList.innerHTML = '';
-    s.emptyHint.style.display = segments.length === 0 ? 'block' : 'none';
+  /** Popisek + aria-expanded tlačítka srolování pásu (§3.7). Volá se jak po
+   *  kliknutí na tlačítko, tak při každém render(state) (např. kvůli jazyku). */
+  function renderStripCollapseButton() {
+    if (!els.stripCollapse || !els.assemblyStrip) return;
+    els.assemblyStrip.classList.toggle('collapsed', collapsed);
+    const label = t(collapsed ? 'strip.expand' : 'strip.collapse');
+    els.stripCollapse.title = label;
+    els.stripCollapse.setAttribute('aria-label', label);
+    els.stripCollapse.setAttribute('aria-expanded', String(!collapsed));
+    els.stripCollapse.textContent = collapsed ? '▴' : '▾';
+  }
+
+  /** Záložky pásu — sada podle varianty bloku (§3.3). Klik na 'A'/'B' je
+   *  tentýž přepínač strany jako v horní liště (callbacks.onSideChange);
+   *  klik na 'arms' mění jen activeTab, kameru nechává na pokoji. */
+  function renderStripTabs(isIsland) {
+    if (!els.stripTabs) return;
+    const tabs = isIsland
+      ? [
+        { key: 'A', label: t('side.sideA') },
+        { key: 'B', label: t('side.sideB') },
+        { key: 'arms', label: t('arms.sectionTitle') },
+      ]
+      : [
+        { key: 'A', label: t('side.segments') },
+        { key: 'arms', label: t('arms.sectionTitle') },
+      ];
+
+    els.stripTabs.innerHTML = '';
+    tabs.forEach(({ key, label }) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'strip-tab';
+      btn.setAttribute('role', 'tab');
+      const isActive = activeTab === key;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', String(isActive));
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        if (key === 'A' || key === 'B') {
+          activeTab = key;
+          callbacks.onSideChange(key); // jeden zdroj pravdy se stranou v horní liště
+        } else {
+          activeTab = 'arms';
+          if (lastStripState) renderStrip(lastStripState);
+        }
+      });
+      els.stripTabs.appendChild(btn);
+    });
+  }
+
+  /** Kapacitní hláška v hlavičce pásu — pro aktivní stranu, prázdná u záložky ramen. */
+  function renderStripCapacity(state) {
+    if (!els.stripCapacity) return;
+    if (activeTab === 'arms') {
+      els.stripCapacity.textContent = '';
+      els.stripCapacity.classList.remove('over');
+      return;
+    }
+    const capacity = activeTab === 'B' ? state.capacityB : state.capacityA;
+    const { usedMM, capacityMM } = capacity;
+    els.stripCapacity.textContent = t('capacity.hint', { used: usedMM, total: capacityMM });
+    els.stripCapacity.classList.toggle('over', usedMM > capacityMM);
+  }
+
+  /** Řada karet aktivní strany (§3.4). U záložky ramen je celá schovaná. Odrolování
+   *  vybrané karty do záběru se dělá jen při SKUTEČNÉ změně selectedId (§6 bod 6),
+   *  ne při každém překreslení — o to se stará volající renderStrip() přes `selectionChanged`. */
+  function renderStripCards(state, selectionChanged) {
+    if (!els.stripCards || !els.stripEmpty) return;
+
+    if (activeTab === 'arms') {
+      els.stripCards.hidden = true;
+      els.stripCards.innerHTML = '';
+      els.stripEmpty.hidden = true;
+      return;
+    }
+
+    els.stripCards.hidden = false;
+    const segments = activeTab === 'B' ? state.segmentsB : state.segmentsA;
+    const capacity = activeTab === 'B' ? state.capacityB : state.capacityA;
     const fitMap = new Map(capacity.results.map((r) => [r.id, r]));
+
+    els.stripCards.innerHTML = '';
+    els.stripEmpty.hidden = segments.length !== 0;
+    if (segments.length === 0) {
+      els.stripEmpty.textContent = t('side.emptyHint');
+    }
     segments.forEach((seg, index) => {
       const fitInfo = fitMap.get(seg.id) || { fits: true };
-      s.segmentList.appendChild(renderSegmentItem(seg, index, segments.length, state, fitInfo));
+      els.stripCards.appendChild(renderSegmentCard(seg, index, segments.length, state, fitInfo));
     });
+
+    if (selectionChanged && state.selectedId != null) {
+      const card = Array.from(els.stripCards.children)
+        .find((li) => li.dataset.id === String(state.selectedId));
+      if (card) card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }
+
+  /** Pruh s detailem (§3.5 pro záložku ramen, §3.6 pro vybraný segment).
+   *  Prvky ramen (#arm-list, #arm-empty-hint, #add-arm-btn) žijí trvale uvnitř
+   *  #strip-arms — NIKDY se nepřesouvají ani neodpojují z DOM (přesun by je na
+   *  chvíli vyřadil z `document`, takže by je `applyTranslations()` v main.js
+   *  po přepnutí jazyka nenašla, a `getElementById` by mezitím vracelo null).
+   *  Mezi záložkami se přepíná jen `hidden` na #strip-detail / #strip-arms. */
+  function renderStripDetail(state) {
+    if (!els.stripDetail || !els.stripArms) return;
+
+    if (activeTab === 'arms') {
+      els.stripArms.hidden = false;
+      els.stripDetail.hidden = true;
+      return;
+    }
+
+    els.stripArms.hidden = true;
+    els.stripDetail.hidden = false;
+
+    const segments = activeTab === 'B' ? state.segmentsB : state.segmentsA;
+    const seg = segments.find((s) => s.id === state.selectedId);
+    const grid = seg ? renderSegmentDetail(seg) : null;
+
+    els.stripDetail.innerHTML = '';
+    if (grid) {
+      els.stripDetail.appendChild(grid);
+    } else {
+      const hint = document.createElement('p');
+      hint.className = 'strip-detail-hint';
+      hint.textContent = t('strip.detailHint');
+      els.stripDetail.appendChild(hint);
+    }
+  }
+
+  /** Vykreslí celý pás sestavy — záložky, kapacitu, karty a detail (§3.3–§3.8). */
+  function renderStrip(state) {
+    lastStripState = state;
+    const isIsland = state.variant === 'island';
+
+    // rule §3.3 odst. 2 — přepínač strany v horní liště přepne i activeTab,
+    // a to i když byla zrovna otevřená záložka ramen.
+    if (prevCurrentSide !== null && state.currentSide !== prevCurrentSide) {
+      activeTab = state.currentSide;
+    }
+    prevCurrentSide = state.currentSide;
+
+    if (!isIsland && activeTab === 'B') activeTab = 'A';
+
+    // rule §3.3 odst. 3 — kliknutí do 3D scény (změna selectedId) otevře
+    // záložku strany, na které vybraný segment leží. NEVOLÁ onSideChange —
+    // kamera se nesmí hnout jen kvůli výběru (§6 bod 2).
+    const selectionChanged = state.selectedId !== prevSelectedId;
+    if (selectionChanged && state.selectedId != null) {
+      const inA = state.segmentsA.some((s) => s.id === state.selectedId);
+      const inB = isIsland && state.segmentsB.some((s) => s.id === state.selectedId);
+      if (inA) activeTab = 'A';
+      else if (inB) activeTab = 'B';
+    }
+    prevSelectedId = state.selectedId;
+
+    if (!isIsland && activeTab === 'B') activeTab = 'A'; // §3.3 poslední odstavec
+
+    renderStripTabs(isIsland);
+    renderStripCapacity(state);
+    renderStripCards(state, selectionChanged);
+    renderStripDetail(state);
+    renderStripCollapseButton();
   }
 
   /** Znovu vykreslí dynamické části panelu podle aktuálního stavu aplikace. */
@@ -1036,8 +1208,6 @@ export function setupUI(callbacks) {
 
     els.depthALabel.textContent = isIsland ? t('field.depthA') : t('field.depth');
     els.depthBRow.hidden = !isIsland;
-    els.sideBSection.hidden = !isIsland;
-    els.sideATitle.textContent = isIsland ? t('side.sideA') : t('side.segments');
 
     // aktivní tlačítko pohledu (§1A) — je-li otevřený tiskový dokument, žádný
     // pohled se nezvýrazňuje a aktivní vzhled má místo toho #floorplan-btn
@@ -1089,14 +1259,11 @@ export function setupUI(callbacks) {
       els.dimDepthBreakdown.hidden = true;
     }
 
-    // strana A vždy, strana B jen u ostrova
-    renderSide('A', state.segmentsA, state.capacityA, state);
-    if (isIsland) {
-      renderSide('B', state.segmentsB, state.capacityB, state);
-    }
+    // pás sestavy (krok 3A redesignu) — nahrazuje dřívější dvojí renderSide('A'/'B')
+    renderStrip(state);
 
     // paleta prvků (krok 2 redesignu) — čte kapacitu cílové strany ze state,
-    // proto se volá až po renderSide výše
+    // proto se volá až po renderStrip výše
     renderPalette(state);
 
     // seznam ramen

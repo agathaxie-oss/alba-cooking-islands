@@ -2,10 +2,8 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "static-server",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8741"],
-      "port": 8741
+      "name": "alba-konfigurator",
+      "url": "http://localhost:8000"
     }
   ]
 }

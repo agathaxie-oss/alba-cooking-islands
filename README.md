@@ -1,58 +1,89 @@
-# Konfigurátor nerezových varných bloků (v2)
+# Konfigurátor nerezových varných bloků ALBA (v3)
 
-Webová aplikace pro 3D modelování a vizualizaci modulárních nerezových varných bloků určených pro profesionální kuchyně. Verze 2 — přepracováno podle SPEC.md (viz sekce ZMĚNY) po reklamaci verze 1.
+Statická webová aplikace pro 3D konfiguraci a vizualizaci nerezových varných bloků ALBA určených pro profesionální kuchyně. Používá Three.js načtený z CDN, bez build kroku, bez závislostí na Node.js.
 
-## Spuštění aplikace
+## Spuštění
 
-Aplikace je čistě statická a nevyžaduje žádný build proces. Otevřete ji pomocí libovolného statického serveru:
+Aplikace je čistě statická a nevyžaduje build process. Spusťte ji na libovolném statickém serveru:
 
-### Python
 ```bash
-python -m http.server
+python -m http.server 8000
 ```
+
 Poté otevřete `http://localhost:8000` v prohlížeči.
 
-### VS Code Live Server
-Instalujte rozšíření "Live Server" a klikněte na "Go Live" v dolní liště.
+**Poznámky:**
+- Aplikace nefunguje přes `file://` (ES moduly vyžadují HTTP).
+- Vyžaduje připojení k internetu pro načtení Three.js z CDN.
+- Návod na nasazení viz [DEPLOY.md](DEPLOY.md).
 
-**Poznámka**: Aplikace vyžaduje připojení k internetu pro načtení Three.js z CDN (https://cdn.jsdelivr.net).
+## Funkce verze 3
 
-## Co je nové ve v2
+### Rozměry a geometrie
+- **Délka bloku**: 1200–6000 mm (zadaná délka = půdorys podestaveb).
+- **Hloubka**: volně zadatelná 500–1200 mm; u ostrovního bloku dvě nezávislé hloubky (strana A a B).
+- **Pracovní výška**: 850–950 mm.
+- **Pracovní deska** přesahuje podestavby o **15 mm** po celém obvodu.
+- **Boční krycí plechy** (20 mm) na obou koncích s logem ALBA.
 
-- **Zadatelné rozměry bloku** — délka (1200–6000 mm), hloubka (700/850/1000 mm), pracovní výška (850–950 mm). Hlídá se kapacita: „Využito X / Y mm“, segmenty nad rámec délky se zobrazí červeně a nerenderují.
-- **Nová stavba** — jedna průběžná pracovní deska přes celou délku bloku + podestavby pod ní (otevřená s policí / s dvířky / uzavřená u přístrojů).
-- **Přístrojové moduly** mají vždy čelní ovládací panel s prvky (knoflíky, kontrolka, displej dle typu).
-- **Neutrální modul** — zadatelná šířka 200–1200 mm, volba podestavby (otevřená/dvířka) a panelu (s/bez).
-- **Vlastní modul** — dialog s názvem, vynucenou minimální šířkou, nahráním bitmapy na horní plochu desky segmentu a ovládacími prvky (počet 0–8, druh knoflík/tlačítko/přepínač).
-- **Napouštěcí ramena** — nezávislý seznam prvků (chromový sloupek + otočné rameno), umístitelných kamkoliv na desku (pozice X, hrana přední/zadní, úhel natočení).
-- **Jasnější grafika** — ACES tone mapping, PCF soft stíny, obrysové hrany na hlavních tělesech, světlejší nerez, gradientní pozadí, automatické přerámování kamery po každé změně sestavy.
+### Typy bloků
+- **Jednostranný blok**: jeden řad segmentů s rameny u zadní hrany.
+- **Ostrovní blok**: dva nezávislé řady (strany A a B), každá se konfiguruje zvlášť.
+
+### Katalog přístrojů
+Sporák plynový, sklokeramika, fritéza, gril, vodní lázeň, multifunkční pánev, dřez (s volitelnými rozměry vany), indukce (zóna 400×400 mm, min. šířka podestavby 500 mm).
+
+### Moduly
+- **Neutrální modul**: volitelná šířka podestavby, výběr mezi otevřenou či s dvířky, volitelná police.
+- **Vlastní modul**: uživatelská bitmapa na desce, volitelný počet ovládacích prvků (0–8).
+- **Správce přístrojů**: vytváření, úprava, duplikování, mazání a skrývání přístrojů; katalog se ukládá do `localStorage`.
+
+### Napouštěcí ramena
+- **Jednostranný blok**: ramena u zadní hrany s nastavitelným odsazením od okraje (0–200 mm).
+- **Ostrovní blok**: ramena ve středu (mezi řadami) s nastavitelným posunem (−200 až +200 mm).
+
+### Vizualizace a export
+- **Půdorysné schéma s popisky**: očíslované pozice, názvy segmentů, rozměry, kóty, legenda; export do SVG.
+- **Pohledy**: perspektiva, čelní pohled, pohled shora, světlá/tmavá podlaha.
+- **Výběr segmentu**: kliknutím ve 3D scéně.
+- **Export**: PNG snímek, uložení/načtení konfigurace do JSON a do `localStorage`.
+
+### Vícejazyčnost
+Přepínání jazyka vlaječkami v záhlaví bočního panelu: 🇬🇧 angličtina (výchozí),
+🇩🇪 němčina, 🇵🇱 polština, 🇨🇿 čeština, 🇸🇰 slovenština. Bez uloženého nastavení
+se použije angličtina; zvolený jazyk se ukládá do `localStorage`
+(`alba-jazyk`) a přepnutí okamžitě překreslí celé UI — boční panel, dialogy
+(Správce přístrojů, vlastní modul), hlášky i půdorysné schéma — bez nutnosti
+reloadu stránky. Vestavěné přístroje se zobrazují pod názvem podle aktuálního
+jazyka, pokud je uživatel nepřejmenoval; přejmenované a vlastní přístroje se
+nepřekládají. Uložená konfigurace a katalog ukládají identifikátory, ne
+přeložené texty, takže překlad je nemůže rozbít. Slovníky a logika překladu
+jsou v `js/i18n.js`; přidání dalšího jazyka je otázka doplnění jednoho
+záznamu.
+
+## Ovládání myší
+
+- **Levé tlačítko**: Výběr segmentu.
+- **Střední tlačítko**: Rotace pohledu.
+- **Pravé tlačítko**: Posun scény.
+- **Kolečko**: Zoom.
 
 ## Struktura souborů
 
-`index.html`, `css/style.css`, `js/main.js` (bootstrap, stav, scéna), `js/materials.js` (materiály, prostředí, textury), `js/modules.js` (katalog přístrojů + geometrie segmentů + vlastní modul), `js/block.js` (průběžná deska + podestavby + kapacita + skládání), `js/arms.js` (napouštěcí ramena), `js/ui.js` (boční panel), `js/viewer.js` (kamera/ovládání/pohledy), `js/custom-dialog.js` (dialog vlastního modulu).
-
-## Katalog přístrojových modulů
-
-Pevná šířka, vždy s čelním ovládacím panelem.
-
-| Modul | Šířka | Ovládací panel |
-|-------|-------|----------------|
-| Sporák plynový | 800 mm | 4 knoflíky |
-| Sklokeramika | 800 mm | 4 knoflíky + displej |
-| Fritéza | 400 mm | 2 knoflíky + kontrolka |
-| Gril / grilovací deska | 800 mm | 2 knoflíky |
-| Vodní lázeň | 400 mm | 1 knoflík |
-| Multifunkční pánev | 800 mm | 1 knoflík |
-| Dřez | 800 mm | 1 knoflík (ventil) |
-
-## Ovládání
-
-### Myš a pohled
-- **Střední tlačítko / kolečko** — Rotace pohledu
-- **Scroll kolečka** — Zoom
-- **Pravé tlačítko + pohyb** — Posun scény
-- **Levé tlačítko** — Výběr segmentu ve 3D
-
-### Export
-- **Stáhnout PNG** — snímek aktuálního pohledu
-- **Uložit/načíst konfiguraci** — JSON (localStorage i soubor), včetně vlastních modulů (vč. bitmapy jako dataURL) a napouštěcích ramen
+| Soubor | Popis |
+|--------|-------|
+| `index.html` | Hlavní stránka. |
+| `css/style.css` | Styly UI. |
+| `js/main.js` | Bootstrap, globální stav a scéna. |
+| `js/materials.js` | Materiály, prostředí a textury. |
+| `js/modules.js` | Definice přístrojových segmentů. |
+| `js/catalog.js` | Katalog přístrojů a správa. |
+| `js/block.js` | Geometrie podestaveb a desky. |
+| `js/arms.js` | Napouštěcí ramena. |
+| `js/ui.js` | Boční panel a ovládání. |
+| `js/viewer.js` | Kamera, ovládání a pohledy. |
+| `js/custom-dialog.js` | Dialog pro vlastní modul. |
+| `js/device-manager.js` | Správce přístrojů. |
+| `js/floorplan.js` | Půdorysné schéma s popisky. |
+| `js/i18n.js` | Vícejazyčnost — slovníky (en/de/pl/cs/sk), `t()`, přepínání jazyka. |
+| `Logo-ALBA.jpg` | Logo ALBA na bočních krytích plechech. |

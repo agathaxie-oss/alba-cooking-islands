@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="cs">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Konfigurátor nerezových varných bloků</title>
+  <title>Stainless Steel Cooking Block Configurator</title>
   <link rel="stylesheet" href="css/style.css" />
   <script type="importmap">
     {
@@ -15,158 +15,342 @@
   </script>
 </head>
 <body>
+  <!-- Horní lišta — ovládání APLIKACE (pohledy, strana bloku, podlaha, půdorys,
+       export/import, správce přístrojů, jazyk). Prvky k použití (katalog) a
+       použité segmenty zůstávají v bočním panelu. -->
+  <header id="topbar">
+    <div class="topbar-left">
+      <img id="topbar-logo" src="img/logo-alba-white.svg" alt="" height="26" />
+      <h1 class="visually-hidden" data-i18n="app.heading">Cooking Block Configurator</h1>
+    </div>
+
+    <div class="topbar-center">
+      <div class="view-group">
+        <div class="btn-row" role="group" aria-label="View" data-i18n-aria-label="view.sectionTitle">
+          <button type="button" data-view="perspective" class="view-btn" title="Perspective" aria-label="Perspective" data-i18n-title="view.perspective" data-i18n-aria-label="view.perspective">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg>
+          </button>
+          <button type="button" data-view="front" class="view-btn" title="Front" aria-label="Front" data-i18n-title="view.front" data-i18n-aria-label="view.front">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10l8-6 8 6v10z"/><path d="M4 10h16"/></svg>
+          </button>
+          <button type="button" data-view="top" class="view-btn" title="Top" aria-label="Top" data-i18n-title="view.top" data-i18n-aria-label="view.top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 12h16"/></svg>
+          </button>
+        </div>
+        <div id="side-switch" class="side-switch" role="group" aria-label="Block side" data-i18n-aria-label="view.sideSwitch" hidden>
+          <button type="button" data-side="A" class="side-btn" title="Side A" aria-label="Side A" data-i18n-title="view.sideA" data-i18n-aria-label="view.sideA">A</button>
+          <button type="button" data-side="B" class="side-btn" title="Side B" aria-label="Side B" data-i18n-title="view.sideB" data-i18n-aria-label="view.sideB">B</button>
+        </div>
+      </div>
+      <button type="button" id="floorplan-btn" class="icon-btn" title="Floor plan with labels" aria-label="Floor plan with labels" data-i18n-title="view.floorplanBtn" data-i18n-aria-label="view.floorplanBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3z"/><path d="M3 10h6v9"/><path d="M14 5v6h7"/></svg>
+      </button>
+    </div>
+
+    <div class="topbar-right">
+      <div class="btn-row">
+        <button type="button" data-env="light" class="env-btn" title="Light" aria-label="Light" data-i18n-title="view.envLight" data-i18n-aria-label="view.envLight"></button>
+        <button type="button" data-env="dark" class="env-btn" title="Dark" aria-label="Dark" data-i18n-title="view.envDark" data-i18n-aria-label="view.envDark"></button>
+      </div>
+
+      <div class="topbar-export">
+        <button type="button" id="export-png" class="icon-btn" title="Download PNG" aria-label="Download PNG" data-i18n-title="export.png" data-i18n-aria-label="export.png">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v12H3z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </button>
+      </div>
+
+      <button type="button" id="device-manager-btn" class="icon-btn" title="Device manager…" aria-label="Device manager…" data-i18n-title="catalog.managerBtn" data-i18n-aria-label="catalog.managerBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.86-1.41-1.9-3.29-2.2.72a7.7 7.7 0 0 0-2.6-1.5L14.2 2h-4.4l-.42 2.02a7.7 7.7 0 0 0-2.6 1.5l-2.2-.72-1.9 3.29L4.54 10.5a7.6 7.6 0 0 0 0 3l-1.86 1.41 1.9 3.29 2.2-.72c.75.66 1.63 1.17 2.6 1.5L9.8 22h4.4l.42-2.02a7.7 7.7 0 0 0 2.6-1.5l2.2.72 1.9-3.29z"/></svg>
+      </button>
+
+      <div id="lang-switcher" class="lang-switcher"></div>
+    </div>
+  </header>
+
   <div id="app">
     <aside id="sidebar">
-      <header class="sidebar-header">
-        <h1>Konfigurátor varných bloků</h1>
-        <p class="subtitle">3D vizualizace nerezových kuchyňských sestav</p>
-      </header>
-
       <section class="panel-section">
-        <h2>Rozměry bloku</h2>
-        <div class="variant-toggle">
-          <label class="radio-label">
-            <input type="radio" name="variant" id="variant-single" value="single" checked />
-            Jednostranný blok (u zdi)
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="variant" id="variant-island" value="island" />
-            Oboustranný blok (ostrov)
-          </label>
-        </div>
-
-        <div class="field-row">
-          <label for="input-length">Délka (mm)</label>
-          <input type="number" id="input-length" min="1200" max="6000" step="50" value="3200" />
-        </div>
-        <div class="field-row">
-          <label for="input-depth-a" id="depth-a-label">Hloubka (mm)</label>
-          <input type="number" id="input-depth-a" min="500" max="1200" step="10" value="850" />
-        </div>
-        <div class="field-row" id="depth-b-row" hidden>
-          <label for="input-depth-b">Hloubka strany B (mm)</label>
-          <input type="number" id="input-depth-b" min="500" max="1200" step="10" value="850" />
-        </div>
-        <div class="field-row">
-          <label for="input-height">Pracovní výška (mm)</label>
-          <input type="number" id="input-height" min="850" max="950" step="10" value="900" />
-        </div>
-
-        <dl class="dims">
-          <div class="dims-row"><dt>Celková délka</dt><dd><span id="dim-length">0</span> mm</dd></div>
-          <div class="dims-row"><dt>Celková hloubka</dt><dd><span id="dim-depth">0</span> mm <span id="dim-depth-breakdown" class="dims-note" hidden></span></dd></div>
-          <div class="dims-row"><dt>Pracovní výška</dt><dd><span id="dim-height">0</span> mm</dd></div>
-        </dl>
-      </section>
-
-      <section class="panel-section">
-        <h2 id="side-a-title">Segmenty</h2>
-        <p id="capacity-hint-a" class="capacity-hint">Využito <span id="capacity-used-a">0</span> / <span id="capacity-total-a">0</span> mm</p>
-        <p id="empty-hint-a" class="empty-hint">Strana je prázdná — přidejte segment níže.</p>
-        <ul id="segment-list-a" class="module-list"></ul>
-        <h3 class="sub-heading">Přidat segment</h3>
-        <div id="add-buttons-a" class="add-buttons"></div>
-        <button type="button" id="add-neutral-btn-a" class="add-btn add-btn-highlight">+ Neutrální modul</button>
-        <button type="button" id="add-custom-btn-a" class="add-btn add-btn-highlight">+ Vlastní modul…</button>
-      </section>
-
-      <section class="panel-section" id="side-b-section" hidden>
-        <h2>Strana B</h2>
-        <p id="capacity-hint-b" class="capacity-hint">Využito <span id="capacity-used-b">0</span> / <span id="capacity-total-b">0</span> mm</p>
-        <p id="empty-hint-b" class="empty-hint">Strana je prázdná — přidejte segment níže.</p>
-        <ul id="segment-list-b" class="module-list"></ul>
-        <h3 class="sub-heading">Přidat segment</h3>
-        <div id="add-buttons-b" class="add-buttons"></div>
-        <button type="button" id="add-neutral-btn-b" class="add-btn add-btn-highlight">+ Neutrální modul</button>
-        <button type="button" id="add-custom-btn-b" class="add-btn add-btn-highlight">+ Vlastní modul…</button>
-      </section>
-
-      <section class="panel-section">
-        <h2>Napouštěcí ramena</h2>
-        <ul id="arm-list" class="arm-list"></ul>
-        <p id="arm-empty-hint" class="empty-hint">Žádná ramena — přidejte níže.</p>
-        <button type="button" id="add-arm-btn" class="action-btn">+ Přidat rameno</button>
-      </section>
-
-      <section class="panel-section">
-        <h2>Zobrazení</h2>
-        <div class="btn-row">
-          <button type="button" data-view="perspective" class="view-btn">Perspektiva</button>
-          <button type="button" data-view="front" class="view-btn">Čelní pohled</button>
-          <button type="button" data-view="top" class="view-btn">Shora</button>
-        </div>
-        <h3 class="sub-heading">Podlaha</h3>
-        <div class="btn-row">
-          <button type="button" data-env="light" class="env-btn">Světlá</button>
-          <button type="button" data-env="dark" class="env-btn">Tmavá</button>
-        </div>
-      </section>
-
-      <section class="panel-section">
-        <h2>Export</h2>
-        <div class="btn-column">
-          <button type="button" id="export-png" class="action-btn">Stáhnout PNG</button>
-          <button type="button" id="save-config" class="action-btn">Uložit konfiguraci</button>
-          <button type="button" id="load-file-btn" class="action-btn">Načíst ze souboru…</button>
-          <button type="button" id="load-storage-btn" class="action-btn">Načíst uloženou sestavu</button>
+        <h2 data-i18n="project.sectionTitle">Project</h2>
+        <div class="project-actions">
+          <button type="button" id="save-config" class="action-btn" data-i18n="export.saveConfig">Save configuration</button>
+          <button type="button" id="load-file-btn" class="action-btn" data-i18n="export.loadFile">Load from file…</button>
+          <button type="button" id="load-storage-btn" class="action-btn" data-i18n="export.loadStorage">Load saved assembly</button>
           <input type="file" id="load-file-input" accept="application/json" hidden />
         </div>
       </section>
 
+      <section class="panel-section">
+        <h2 data-i18n="dims.sectionTitle">Block dimensions</h2>
+        <div class="variant-toggle">
+          <label class="radio-label">
+            <input type="radio" name="variant" id="variant-single" value="single" checked />
+            <span data-i18n="variant.single">Single-sided block (against wall)</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="variant" id="variant-island" value="island" />
+            <span data-i18n="variant.island">Island block (two-sided)</span>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label for="input-length" data-i18n="field.length">Length (mm)</label>
+          <input type="number" id="input-length" min="1200" max="6000" step="50" value="3200" />
+        </div>
+        <div class="field-row">
+          <label for="input-depth-a" id="depth-a-label" data-i18n="field.depth">Depth (mm)</label>
+          <input type="number" id="input-depth-a" min="500" max="1200" step="10" value="850" />
+        </div>
+        <p id="depth-a-grow-note" class="field-note" hidden></p>
+        <div class="field-row" id="depth-b-row" hidden>
+          <label for="input-depth-b" data-i18n="field.depthB">Depth side B (mm)</label>
+          <input type="number" id="input-depth-b" min="500" max="1200" step="10" value="850" />
+        </div>
+        <p id="depth-b-grow-note" class="field-note" hidden></p>
+        <div class="field-row">
+          <label for="input-height" data-i18n="field.height">Work height (mm)</label>
+          <input type="number" id="input-height" min="850" max="950" step="10" value="900" />
+        </div>
+
+        <dl class="dims">
+          <div class="dims-row"><dt data-i18n="dims.totalLength">Total length</dt><dd><span id="dim-length">0</span> mm</dd></div>
+          <div class="dims-row"><dt data-i18n="dims.totalDepth">Total depth</dt><dd><span id="dim-depth">0</span> mm <span id="dim-depth-breakdown" class="dims-note" hidden></span></dd></div>
+          <div class="dims-row"><dt data-i18n="dims.totalHeight">Work height</dt><dd><span id="dim-height">0</span> mm</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel-section">
+        <h2 id="side-a-title" data-i18n="side.segments">Segments</h2>
+        <p id="capacity-hint-a" class="capacity-hint">Used 0 / 0 mm</p>
+        <p id="empty-hint-a" class="empty-hint" data-i18n="side.emptyHint">This side is empty — add a segment below.</p>
+        <ul id="segment-list-a" class="module-list"></ul>
+        <h3 class="sub-heading" data-i18n="side.addSegment">Add segment</h3>
+        <div id="add-buttons-a" class="add-buttons"></div>
+        <button type="button" id="add-neutral-btn-a" class="add-btn add-btn-highlight" data-i18n="side.addNeutral">+ Neutral module</button>
+        <button type="button" id="add-drawers-btn-a" class="add-btn add-btn-highlight" data-i18n="side.addDrawers">+ GN 1/1 drawers</button>
+        <button type="button" id="add-custom-btn-a" class="add-btn add-btn-highlight" data-i18n="side.addCustom">+ Custom module…</button>
+      </section>
+
+      <section class="panel-section" id="side-b-section" hidden>
+        <h2 data-i18n="side.sideB">Side B</h2>
+        <p id="capacity-hint-b" class="capacity-hint">Used 0 / 0 mm</p>
+        <p id="empty-hint-b" class="empty-hint" data-i18n="side.emptyHint">This side is empty — add a segment below.</p>
+        <ul id="segment-list-b" class="module-list"></ul>
+        <h3 class="sub-heading" data-i18n="side.addSegment">Add segment</h3>
+        <div id="add-buttons-b" class="add-buttons"></div>
+        <button type="button" id="add-neutral-btn-b" class="add-btn add-btn-highlight" data-i18n="side.addNeutral">+ Neutral module</button>
+        <button type="button" id="add-drawers-btn-b" class="add-btn add-btn-highlight" data-i18n="side.addDrawers">+ GN 1/1 drawers</button>
+        <button type="button" id="add-custom-btn-b" class="add-btn add-btn-highlight" data-i18n="side.addCustom">+ Custom module…</button>
+      </section>
+
+      <section class="panel-section">
+        <h2 data-i18n="arms.sectionTitle">Filling arms</h2>
+        <ul id="arm-list" class="arm-list"></ul>
+        <p id="arm-empty-hint" class="empty-hint" data-i18n="arms.emptyHint">No arms — add one below.</p>
+        <button type="button" id="add-arm-btn" class="action-btn" data-i18n="arms.addBtn">+ Add arm</button>
+      </section>
+
       <footer class="sidebar-footer">
-        <p>Levé tlačítko: výběr segmentu · Střední: rotace · Pravé: posun · Kolečko: zoom</p>
+        <p data-i18n="footer.controls">Left button: select segment · Middle: rotate · Right: pan · Wheel: zoom</p>
       </footer>
     </aside>
 
     <main id="viewport">
       <canvas id="three-canvas"></canvas>
       <div id="selection-badge" class="selection-badge" hidden></div>
+
+      <!-- Půdorysné schéma (SVG) — překryv nad 3D viewportem, SPEC v3 §5 -->
+      <div id="floorplan-overlay" class="floorplan-overlay" hidden>
+        <div class="floorplan-toolbar">
+          <button type="button" id="report-print-btn" class="action-btn action-btn-primary" data-i18n="report.printBtn">Print / save as PDF</button>
+          <button type="button" id="floorplan-download-btn" class="action-btn" data-i18n="floorplan.download">Download floor plan (SVG)</button>
+        </div>
+        <div id="floorplan-svg-container" class="floorplan-svg-container"></div>
+      </div>
     </main>
   </div>
 
   <!-- Overlay dialog pro vlastní modul -->
   <div id="custom-dialog-overlay" class="dialog-overlay" hidden>
     <div class="dialog-box">
-      <h2 id="custom-dialog-title">Vlastní modul</h2>
+      <h2 id="custom-dialog-title">Custom module</h2>
 
       <label class="dialog-field">
-        Název
-        <input type="text" id="custom-name" placeholder="např. Regál na koření" />
+        <span data-i18n="field.name">Name</span>
+        <input type="text" id="custom-name" data-i18n-placeholder="customDialog.namePlaceholder" placeholder="e.g. Spice rack" />
       </label>
 
       <label class="dialog-field">
-        Minimální šířka (mm)
+        <span data-i18n="field.minWidth">Minimum width (mm)</span>
         <input type="number" id="custom-min-width" min="100" max="1200" step="10" value="300" />
       </label>
 
       <label class="dialog-field">
-        Šířka (mm)
+        <span data-i18n="field.width">Width (mm)</span>
         <input type="number" id="custom-width" min="300" max="1200" step="10" value="300" />
         <input type="range" id="custom-width-slider" min="300" max="1200" step="10" value="300" />
       </label>
 
       <label class="dialog-field">
-        Bitmapa horní plochy (jpg/png)
+        <span data-i18n="customDialog.bitmapLabel">Top surface bitmap (jpg/png)</span>
         <input type="file" id="custom-bitmap" accept="image/png,image/jpeg" />
       </label>
-      <img id="custom-bitmap-preview" class="bitmap-preview" hidden alt="Náhled bitmapy" />
+      <img id="custom-bitmap-preview" class="bitmap-preview" hidden data-i18n-alt="common.bitmapPreviewAlt" alt="Bitmap preview" />
 
       <label class="dialog-field">
-        Počet ovládacích prvků (0–8)
+        <span data-i18n="field.controlsCount">Number of controls (0–8)</span>
         <input type="number" id="custom-controls-count" min="0" max="8" step="1" value="2" />
         <input type="range" id="custom-controls-count-slider" min="0" max="8" step="1" value="2" />
       </label>
 
       <label class="dialog-field">
-        Druh ovládacích prvků
+        <span data-i18n="field.controlsType">Type of controls</span>
         <select id="custom-controls-type"></select>
       </label>
 
       <p id="custom-dialog-error" class="dialog-error" hidden></p>
 
       <div class="dialog-actions">
-        <button type="button" id="custom-dialog-cancel" class="action-btn">Zrušit</button>
-        <button type="button" id="custom-dialog-save" class="action-btn action-btn-primary">Uložit</button>
+        <button type="button" id="custom-dialog-cancel" class="action-btn" data-i18n="common.cancel">Cancel</button>
+        <button type="button" id="custom-dialog-save" class="action-btn action-btn-primary" data-i18n="common.save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay dialog: Správce přístrojů (SPEC v3 §3.4) -->
+  <div id="device-manager-overlay" class="dialog-overlay" hidden>
+    <div class="dialog-box dialog-box-wide">
+      <h2 data-i18n="deviceManager.title">Device manager</h2>
+
+      <div id="device-manager-list-view">
+        <ul id="device-manager-list" class="device-list"></ul>
+        <div class="dialog-actions dialog-actions-left">
+          <button type="button" id="device-manager-new-btn" class="action-btn" data-i18n="deviceManager.newBtn">+ New device</button>
+        </div>
+        <div class="dialog-actions">
+          <button type="button" id="device-manager-close-btn" class="action-btn action-btn-primary" data-i18n="common.close">Close</button>
+        </div>
+      </div>
+
+      <div id="device-manager-form-view" hidden>
+        <h3 id="device-manager-form-title" class="sub-heading">New device</h3>
+        <p id="device-manager-builtin-hint" class="dialog-hint" hidden data-i18n="deviceManager.builtinHint">
+          Built-in device — can be fully edited, but not deleted. Use "Reset to
+          default" any time to restore factory settings.
+        </p>
+        <div id="device-manager-reset-row" class="dialog-actions dialog-actions-left" hidden>
+          <button type="button" id="device-manager-reset-btn" class="action-btn" data-i18n="deviceManager.resetBtn">Reset to default</button>
+        </div>
+
+        <label class="dialog-field">
+          <span data-i18n="field.name">Name</span>
+          <input type="text" id="device-name" data-i18n-placeholder="customDialog.namePlaceholder" placeholder="e.g. Spice rack" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.minWidthBase">Minimum base cabinet width (mm)</span>
+          <input type="number" id="device-min-width" min="100" max="1200" step="10" value="400" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.defaultWidth">Default width (mm)</span>
+          <input type="number" id="device-width" min="100" max="1200" step="10" value="400" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.minDepthBase">Minimum base cabinet depth (mm)</span>
+          <input type="number" id="device-min-depth" min="400" max="1200" step="10" value="700" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.defaultDepth">Default depth (mm)</span>
+          <input type="number" id="device-depth" min="400" max="1200" step="10" value="700" />
+        </label>
+
+        <label class="dialog-field dialog-field-checkbox">
+          <input type="checkbox" id="device-width-adjustable" />
+          <span data-i18n="field.widthAdjustable">Width can be changed per segment instance</span>
+        </label>
+
+        <label class="dialog-field dialog-field-checkbox">
+          <input type="checkbox" id="device-top-fixed" />
+          <span data-i18n="field.topFixed">Top element at fixed (nominal) size</span>
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.topFeature">Element on the worktop</span>
+          <select id="device-top-feature"></select>
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.deviceBitmap">Worktop bitmap (jpg/png)</span>
+          <input type="file" id="device-bitmap" accept="image/png,image/jpeg" />
+        </label>
+        <img id="device-bitmap-preview" class="bitmap-preview" hidden data-i18n-alt="common.bitmapPreviewAlt" alt="Bitmap preview" />
+
+        <label class="dialog-field">
+          <span data-i18n="field.controlsCount">Number of controls (0–8)</span>
+          <input type="number" id="device-controls-count" min="0" max="8" step="1" value="0" />
+          <input type="range" id="device-controls-count-slider" min="0" max="8" step="1" value="0" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.controlsType">Type of controls</span>
+          <select id="device-controls-type"></select>
+        </label>
+
+        <div class="dialog-field">
+          <span data-i18n="field.allowedStyles">Allowed base cabinet types (at least one)</span>
+          <div class="checkbox-group">
+            <label class="checkbox-group-item">
+              <input type="checkbox" id="device-style-closed" /> <span data-i18n="bodyStyle.closed">Closed</span>
+            </label>
+            <label class="checkbox-group-item">
+              <input type="checkbox" id="device-style-doors" /> <span data-i18n="bodyStyle.doors">With doors</span>
+            </label>
+            <label class="checkbox-group-item">
+              <input type="checkbox" id="device-style-open" /> <span data-i18n="bodyStyle.open">Open</span>
+            </label>
+          </div>
+        </div>
+
+        <h3 class="sub-heading" data-i18n="deviceManager.techDataTitle">Technical data (optional)</h3>
+
+        <label class="dialog-field">
+          <span data-i18n="field.catalogCode">Catalog code</span>
+          <input type="text" id="device-catalog-code" data-i18n-placeholder="field.catalogCodePlaceholder" placeholder="e.g. ALBA-IND-500" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.powerKW">Power (kW)</span>
+          <input type="number" id="device-power-kw" min="0" step="0.1" data-i18n-placeholder="field.powerKWPlaceholder" placeholder="e.g. 3.5" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.voltage">Power supply</span>
+          <input type="text" id="device-voltage" data-i18n-placeholder="field.voltagePlaceholder" placeholder="e.g. 400 V / 50 Hz" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.gasKW">Gas power (kW)</span>
+          <input type="number" id="device-gas-kw" min="0" step="0.1" data-i18n-placeholder="field.gasKWPlaceholder" placeholder="e.g. 10.5" />
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.descriptionText">Description of functions</span>
+          <textarea id="device-description-text" rows="2"></textarea>
+        </label>
+
+        <label class="dialog-field">
+          <span data-i18n="field.constructionText">Description of construction</span>
+          <textarea id="device-construction-text" rows="2"></textarea>
+        </label>
+
+        <p id="device-manager-error" class="dialog-error" hidden></p>
+
+        <div class="dialog-actions">
+          <button type="button" id="device-manager-form-cancel" class="action-btn" data-i18n="deviceManager.backToList">Back to list</button>
+          <button type="button" id="device-manager-form-save" class="action-btn action-btn-primary" data-i18n="common.save">Save</button>
+        </div>
       </div>
     </div>
   </div>

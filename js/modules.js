@@ -24,12 +24,15 @@ import {
   createGlassMaterial,
   createRecessMaterial,
   createCavityMaterial,
+  createSinkCavityMaterial,
+  createChromeMaterial,
   createEdgeMaterial,
   createBitmapMaterial,
   createLogoMaterial,
   loadBitmapTexture,
 } from './materials.js';
-import { getById as getCatalogEntry } from './catalog.js';
+import { getById as getCatalogEntry, getEntryDisplayName } from './catalog.js';
+import { t } from './i18n.js';
 
 const mm = (v) => v / 1000;
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -67,39 +70,107 @@ export const CATALOG_WIDTH_STEP = 50;
 export const SINK_VAT_WIDTH_MIN = 300;
 export const SINK_VAT_WIDTH_MAX = 900;
 export const SINK_VAT_WIDTH_STEP = 50;
-export const SINK_VAT_WIDTH_DEFAULT = 600;
+export const SINK_VAT_WIDTH_DEFAULT = 500;
 export const SINK_VAT_DEPTH_MIN = 300;
 export const SINK_VAT_DEPTH_MAX = 700;
 export const SINK_VAT_DEPTH_STEP = 50;
-export const SINK_VAT_DEPTH_DEFAULT = 500;
+export const SINK_VAT_DEPTH_DEFAULT = 400;
+// hloubka (výška) vany — zapuštěná dutina; není pole instance, vzhled dřezu
+// je vždy stejný, jen šířka/hloubka vany jsou nastavitelné (viz výše).
+export const SINK_VAT_HEIGHT_MM = 300;
 // šířka podestavby dřezu musí být >= šířka vany + tato rezerva
 export const SINK_WIDTH_MARGIN_MM = 100;
 
-export const CONTROL_TYPES = [
-  { value: 'knob', label: 'Knoflík' },
-  { value: 'button', label: 'Tlačítko' },
-  { value: 'switch', label: 'Přepínač' },
-];
+// §13 SPEC v4 — jen hodnoty (bez natvrdo psaného textu); popisek se získává
+// přes t(`controlType.${value}`) / t(`bodyStyle.${value}`) / t(`plinth.${value}`)
+// v místě použití (ui.js, device-manager.js, custom-dialog.js, floorplan.js),
+// aby se select/label přeložily znovu při každém překreslení po přepnutí jazyka.
+export const CONTROL_TYPES = ['knob', 'button', 'switch'];
+
+// styly podestavby (§10.2 SPEC v4) — nabídka omezená katalogovým polem
+// allowedBodyStyles daného přístroje
+export const BODY_STYLE_OPTIONS = ['closed', 'doors', 'open'];
+
+// provedení soklu / podestavby (§11.2 SPEC v4) — INSTANCE pole `plinth`
+export const PLINTH_TYPES = ['legs', 'building', 'construction'];
+export const DEFAULT_PLINTH = 'construction';
+
+// povrchové provedení (§11.2 SPEC v4) — INSTANCE pole `finish`; jde o kódy
+// (ne jazykový text), stejné ve všech jazycích — nepřekládá se.
+export const FINISH_TYPES = ['HS+', 'H1', 'H2', 'H3'];
+export const DEFAULT_FINISH = 'H1';
 
 export const NEUTRAL_TYPE = 'neutral';
 export const CUSTOM_TYPE = 'custom';
+
+// --- Zásuvky GN 1/1 (samostatný typ segmentu, obdoba neutrálního modulu) ----
+// Šířka je VŽDY pevná (400 mm, neměnná — bez pole pro šířku v UI). Volba
+// s panelem/bez panelu je stejná jako u neutrálního modulu; s panelem je
+// počet zásuvek pevně 2, bez panelu lze zvolit 2 nebo 3 (INSTANCE pole
+// `drawerCount`). Zásuvky jsou dimenzované na gastronádoby GN 1/1 (530×325 mm).
+export const DRAWERS_TYPE = 'drawers';
+export const DRAWERS_WIDTH_MM = 400;
+export const DRAWER_COUNT_OPTIONS = [2, 3];
+export const DEFAULT_DRAWER_COUNT = 2;
+// vnitřní rozměr gastronádoby GN 1/1, jen informativně (dutina zásuvky tomu
+// rozměrově odpovídá — viz buildDrawersBody)
+export const GN_1_1_WIDTH_MM = 530;
+export const GN_1_1_DEPTH_MM = 325;
+
+/** Validovaný počet zásuvek (2 nebo 3), s panelem je vždy vynuceně 2. */
+export function getSegmentDrawerCount(segment) {
+  if (segment && segment.hasPanel) return 2;
+  const v = Number(segment && segment.drawerCount);
+  return DRAWER_COUNT_OPTIONS.includes(v) ? v : DEFAULT_DRAWER_COUNT;
+}
 
 /** Vrátí definici katalogového přístroje (nebo undefined) — viz catalog.js. */
 export function getInstrumentDef(type) {
   return getCatalogEntry(type);
 }
 
-/** Lidsky čitelný název segmentu (pro seznam v UI). */
-export function getSegmentLabel(segment) {
-  if (segment.type === NEUTRAL_TYPE) return 'Neutrální modul';
-  if (segment.type === CUSTOM_TYPE) return segment.name ? `Vlastní: ${segment.name}` : 'Vlastní modul';
+/** Validovaná hodnota INSTANCE pole `plinth` (§11.2), s výchozí hodnotou. */
+export function getSegmentPlinth(segment) {
+  const v = segment && segment.plinth;
+  return PLINTH_TYPES.includes(v) ? v : DEFAULT_PLINTH;
+}
+
+/** Validovaná hodnota INSTANCE pole `finish` (§11.2), s výchozí hodnotou. */
+export function getSegmentFinish(segment) {
+  const v = segment && segment.finish;
+  return FINISH_TYPES.includes(v) ? v : DEFAULT_FINISH;
+}
+
+/** Efektivní styl podestavby katalogového segmentu (§10.2 SPEC v4) — validuje
+ *  instance.bodyStyle proti povoleným stylům přístroje (def.allowedBodyStyles),
+ *  jinak použije první povolený. Neutrál/vlastní modul mají vlastní logiku
+ *  stylu (segment.podestavba), tato funkce je jen pro katalogové přístroje. */
+export function getSegmentBodyStyle(segment) {
   const def = getCatalogEntry(segment.type);
-  return def ? def.name : segment.type;
+  const allowed = def && Array.isArray(def.allowedBodyStyles) && def.allowedBodyStyles.length
+    ? def.allowedBodyStyles
+    : ['closed'];
+  return allowed.includes(segment && segment.bodyStyle) ? segment.bodyStyle : allowed[0];
+}
+
+/** Lidsky čitelný název segmentu (pro seznam v UI). §13 SPEC v4 — název
+ *  katalogového přístroje se bere z aktuálního jazyka (pokud nebyl
+ *  přejmenován, viz catalog.js getEntryDisplayName); vlastní modul se
+ *  NEPŘEKLÁDÁ (zobrazuje se přesně tak, jak jej pojmenoval uživatel). */
+export function getSegmentLabel(segment) {
+  if (segment.type === NEUTRAL_TYPE) return t('module.neutral');
+  if (segment.type === DRAWERS_TYPE) return t('module.drawers');
+  if (segment.type === CUSTOM_TYPE) {
+    return segment.name ? t('module.customPrefix', { name: segment.name }) : t('module.customDefaultName');
+  }
+  const def = getCatalogEntry(segment.type);
+  return def ? getEntryDisplayName(def) : segment.type;
 }
 
 /** Vrátí šířku segmentu v mm (instance-aware — neutrál/custom i nastavitelné
  *  katalogové přístroje mají vlastní šířku uloženou na instanci). */
 export function getSegmentWidthMM(segment) {
+  if (segment.type === DRAWERS_TYPE) return DRAWERS_WIDTH_MM;
   if (segment.type === NEUTRAL_TYPE || segment.type === CUSTOM_TYPE) {
     return Math.round(segment.widthMM) || 0;
   }
@@ -107,6 +178,26 @@ export function getSegmentWidthMM(segment) {
   const instanceWidth = Number(segment.widthMM);
   if (Number.isFinite(instanceWidth) && instanceWidth > 0) return Math.round(instanceWidth);
   return def ? def.widthMM : 400; // neznámý typ (např. z cizí konfigurace) — bezpečný odhad
+}
+
+/** Vrátí hloubku PODESTAVBY katalogového přístroje v mm — PŮVODNÍ (§7.1
+ *  SPEC v3) instance-aware chování, ponecháno kvůli zpětné kompatibilitě
+ *  (např. floorplan.js). Od SPEC v4 §11.1 je hloubka podestavby v rámci
+ *  strany VŽDY jednotná a odvozená z hloubky bloku (viz block.js
+ *  computeSideDepth) — segment.depthMM se už nikde nenastavuje, takže tato
+ *  funkce fakticky vrací jen katalogový výchozí/minimální odhad. */
+export function getSegmentDepthMM(segment) {
+  const def = getCatalogEntry(segment.type);
+  const instanceDepth = Number(segment.depthMM);
+  if (Number.isFinite(instanceDepth) && instanceDepth > 0) return Math.round(instanceDepth);
+  return def ? (def.depthMM || def.minDepthMM || 700) : 700;
+}
+
+/** Minimální hloubka podestavby katalogového přístroje (mm), 700 mm jako
+ *  bezpečný odhad u neznámého typu. */
+export function getSegmentMinDepthMM(segment) {
+  const def = getCatalogEntry(segment.type);
+  return def && def.minDepthMM ? def.minDepthMM : 700;
 }
 
 // --- Obrysové hrany ----------------------------------------------------------
@@ -128,9 +219,41 @@ function box(width, height, depth, material, withEdges = true) {
 
 // --- Základní stavební bloky sdílené všemi segmenty ---------------------------
 
-/** Sokl (podstavba) — grafitový, mírně zapuštěný. */
-export function buildPlinth(group, widthM, depthM) {
-  const plinth = box(widthM - 0.006, PLINTH_HEIGHT, depthM - 0.006, createPlinthMaterial());
+// odsazení nožičky od okraje podestavby a její půdorysný rozměr (§11.2)
+const LEG_SIZE = 0.05;
+const LEG_INSET = 0.045;
+
+/**
+ * Sokl / podestavba (§11.2 SPEC v4) — grafitový, provedení podle INSTANCE
+ * pole `plinth`:
+ *  - 'legs'        — čtyři viditelné nožičky místo plného soklu,
+ *  - 'building'     — plný sokl, téměř v líci (stavební sokl),
+ *  - 'construction' — plný sokl, o něco zapuštěnější (výchozí, konstrukční).
+ * Výška zůstává vždy PLINTH_HEIGHT, aby se neměnila navazující geometrie
+ * korpusu/panelu/desky — liší se jen vzhled (viz SPEC „alespoň vizuálně").
+ */
+export function buildPlinth(group, widthM, depthM, plinthType = DEFAULT_PLINTH) {
+  const plinthMat = createPlinthMaterial();
+
+  if (plinthType === 'legs') {
+    const insetX = Math.min(LEG_INSET, Math.max(widthM / 2 - LEG_SIZE / 2, 0.01));
+    const insetZ = Math.min(LEG_INSET, Math.max(depthM / 2 - LEG_SIZE / 2, 0.01));
+    const xs = [-(widthM / 2 - insetX), widthM / 2 - insetX];
+    const zs = [insetZ, depthM - insetZ];
+    xs.forEach((x) => {
+      zs.forEach((z) => {
+        const leg = box(LEG_SIZE, PLINTH_HEIGHT, LEG_SIZE, plinthMat);
+        leg.position.set(x, PLINTH_HEIGHT / 2, z);
+        group.add(leg);
+      });
+    });
+    return;
+  }
+
+  // 'building' (stavební sokl) je téměř v líci korpusu, 'construction'
+  // (výchozí, konstrukční sokl) o něco zapuštěnější — vizuální odlišení.
+  const inset = plinthType === 'building' ? 0.002 : 0.006;
+  const plinth = box(widthM - inset, PLINTH_HEIGHT, depthM - inset, plinthMat);
   plinth.position.set(0, PLINTH_HEIGHT / 2, depthM / 2);
   group.add(plinth);
 }
@@ -201,12 +324,13 @@ function buildOpenBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY,
   const innerCavity = new THREE.Mesh(new THREE.BoxGeometry(innerWidth, cavityHeight, cavityDepth), cavity);
   innerCavity.position.set(0, cavityBottomY + cavityHeight / 2, lipDepth + cavityDepth / 2);
   innerCavity.receiveShadow = true;
+  innerCavity.castShadow = false;
   group.add(innerCavity);
 
   if (hasShelf) {
     // police vystředěná ve VÝŠCE dutiny, zapuštěná od čela (nevyčnívá přes lem)
     const shelfDepth = Math.max(depthM - wallT - OPEN_SHELF_RECESS_M - 0.01, 0.05);
-    const shelf = box(innerWidth - 0.005, OPEN_SHELF_THICKNESS, shelfDepth, stainless);
+    const shelf = box(innerWidth - 0.01, OPEN_SHELF_THICKNESS, shelfDepth, stainless);
     const shelfCenterY = cavityBottomY + cavityHeight / 2;
     shelf.position.set(0, shelfCenterY, OPEN_SHELF_RECESS_M + shelfDepth / 2);
     group.add(shelf);
@@ -241,6 +365,47 @@ function buildDoorBody(group, widthM, depthM, bodyBottomY, bodyTopY) {
   }
 }
 
+// --- Zásuvky GN 1/1 (§ „Zásuvky GN 1/1" zadání) -------------------------------
+
+const DRAWER_GAP = 0.006; // jemná spára mezi zásuvkovými čely, ať jsou rozeznatelná
+const DRAWER_FRONT_INSET = 0.01; // odsazení čela zásuvky od boku korpusu
+const DRAWER_FRONT_Z = -0.006; // předsazení čela před líc korpusu (stejně jako u dvířek)
+const DRAWER_FRONT_THICKNESS = 0.01;
+
+/**
+ * Korpus se zásuvkovými čely — plný uzavřený korpus (jako closed) s 2 nebo 3
+ * vodorovně dělenými čely s úchytkami. `cavityTopY` je horní hranice prostoru
+ * pro čela (pokud segment má panel, čela končí pod panelem — stejné pravidlo
+ * jako u polic v buildOpenBody), zatímco `bodyTopY` je plná konstrukční výška
+ * korpusu (jde až k desce i za panelem).
+ */
+function buildDrawersBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, drawerCount) {
+  buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
+
+  const stainless = createStainlessMaterial();
+  const handleMat = createKnobMaterial();
+  const totalHeight = Math.max(cavityTopY - bodyBottomY, 0.05);
+  const slotHeight = totalHeight / drawerCount;
+  const frontWidth = Math.max(widthM - DRAWER_FRONT_INSET * 2, 0.05);
+  const frontHeight = Math.max(slotHeight - DRAWER_GAP, 0.03);
+
+  for (let i = 0; i < drawerCount; i++) {
+    const slotCenterY = bodyBottomY + slotHeight * (i + 0.5);
+
+    const front = box(frontWidth, frontHeight, DRAWER_FRONT_THICKNESS, stainless);
+    front.position.set(0, slotCenterY, DRAWER_FRONT_Z);
+    group.add(front);
+
+    // vodorovná úchytka blízko horního okraje čela
+    const handleWidth = frontWidth * 0.5;
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, handleWidth, 12), handleMat);
+    handle.rotation.z = Math.PI / 2;
+    handle.position.set(0, slotCenterY + frontHeight * 0.32, DRAWER_FRONT_Z - DRAWER_FRONT_THICKNESS / 2 - 0.012);
+    handle.castShadow = true;
+    group.add(handle);
+  }
+}
+
 /**
  * Postaví "tělo" podestavby dle stylu — dispatcher pro closed / open / doors.
  * `cavityTopY`/`hasShelf` se využijí jen u stylu 'open' (viz buildOpenBody).
@@ -269,8 +434,8 @@ function buildPanelBand(group, widthM, panelBottomY, panelTopY) {
   const centerY = panelBottomY + height / 2;
   const frontZ = centerZ - thickness / 2; // nejpřednější plocha panelu — odsud se umisťují ovládací prvky ještě dál dopředu
 
-  // malá "samolepka" ALBA (~25 mm) u pravého okraje panelu
-  const stickerM = mm(25);
+  // malá "samolepka" ALBA (~45 mm) u pravého okraje panelu
+  const stickerM = mm(45);
   if (widthM > stickerM * 3) {
     const sticker = box(stickerM, stickerM, 0.003, createLogoMaterial(), false);
     sticker.position.set(widthM / 2 - stickerM * 0.7, centerY, frontZ - 0.0016);
@@ -317,7 +482,7 @@ export function renderControls(group, widthM, panelCenterY, panelFrontZ, control
 
 /** Doplňkové dekorace panelu podle typu vrchní funkce (indikátor, displej…). */
 function decoratePanelExtras(group, topFeatureType, widthM, panelCenterY, panelFrontZ) {
-  if (topFeatureType === 'fryer2') {
+  if (topFeatureType === 'fryer2' || topFeatureType === 'fryer1') {
     const indicator = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.006, 12), createButtonMaterial());
     indicator.rotation.x = Math.PI / 2;
     indicator.position.set(widthM * 0.32, panelCenterY + 0.03, panelFrontZ - 0.006);
@@ -448,6 +613,32 @@ function buildFryerTop(group, widthM, depthM, topY) {
   });
 }
 
+/** Fritéza s JEDNOU vanou — vizuálně shodná s buildFryerTop (2 vany), jen
+ *  jedna vana s košem a víkem, vycentrovaná (např. Lotus F10D-64ET, 10 l). */
+function buildFryer1Top(group, widthM, depthM, topY) {
+  const glass = createGlassMaterial();
+  const recessMat = createRecessMaterial();
+  const vatWidth = widthM * 0.42;
+  const x = 0;
+
+  const vat = new THREE.Mesh(new THREE.BoxGeometry(vatWidth, 0.14, depthM * 0.6), recessMat);
+  vat.position.set(x, topY - 0.06, depthM * 0.5);
+  group.add(vat);
+
+  const basketGeo = new THREE.BoxGeometry(vatWidth - 0.03, 0.11, depthM * 0.5);
+  const basket = new THREE.LineSegments(
+    new THREE.EdgesGeometry(basketGeo),
+    new THREE.LineBasicMaterial({ color: 0x8c8c8c })
+  );
+  basket.position.set(x, topY - 0.03, depthM * 0.5);
+  group.add(basket);
+
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(vatWidth, 0.01, depthM * 0.6), glass);
+  lid.position.set(x, topY + 0.1, depthM * 0.78);
+  lid.rotation.x = -Math.PI * 0.32;
+  group.add(lid);
+}
+
 function buildGrillTop(group, widthM, depthM, topY) {
   const glassCeramic = createGlassCeramicMaterial();
   const plate = new THREE.Mesh(new THREE.BoxGeometry(widthM - 0.02, 0.02, depthM - 0.06), glassCeramic);
@@ -511,40 +702,142 @@ function buildMultiPanTop(group, widthM, depthM, topY) {
   group.add(lever);
 }
 
-/** Dřez s volitelnými rozměry vany (§3.3 SPEC v3) — vatWidthM/vatDepthM
- *  přichází z instance segmentu (main.js), ne z katalogu. */
-function buildSinkTop(group, widthM, depthM, topY, vatWidthM, vatDepthM) {
+/** Půdorysný obdélník se zaoblenými rohy (bez CSG) — použito pro lem a
+ *  dutinu vany dřezu, aby působila dojmem lisované nerezové vany. */
+function roundedRectShape(width, depth, radius) {
+  const r = Math.min(radius, width / 2, depth / 2);
+  const x = -width / 2;
+  const y = -depth / 2;
+  const shape = new THREE.Shape();
+  shape.moveTo(x, y + r);
+  shape.lineTo(x, y + depth - r);
+  shape.quadraticCurveTo(x, y + depth, x + r, y + depth);
+  shape.lineTo(x + width - r, y + depth);
+  shape.quadraticCurveTo(x + width, y + depth, x + width, y + depth - r);
+  shape.lineTo(x + width, y + r);
+  shape.quadraticCurveTo(x + width, y, x + width - r, y);
+  shape.lineTo(x + r, y);
+  shape.quadraticCurveTo(x, y, x, y + r);
+  return shape;
+}
+
+const SINK_RIM_WIDTH_M = 0.025; // šířka viditelného lemu kolem vany
+const SINK_RIM_THICKNESS_M = 0.01; // o kolik lem vystupuje nad desku
+const SINK_CORNER_RADIUS_M = 0.03; // poloměr zaoblení rohů vany
+
+/**
+ * Vana dřezu zapuštěná v desce — viditelný lem (nerez, se zaoblenými rohy)
+ * kolem otvoru + skutečná dutina (extrudovaný zaoblený obdélník s
+ * materiálem side: THREE.BackSide, stejný princip jako dutina otevřené
+ * podestavby v `buildOpenBody` — dutina je tak čitelná, ne plochá deska).
+ */
+function buildSinkBasin(group, vatWidthM, vatDepthM, vatHeightM, topY, centerZ) {
   const stainless = createStainlessMaterial();
-  const knobMat = createKnobMaterial();
+  const cavityMat = createSinkCavityMaterial();
+  const cornerR = Math.min(SINK_CORNER_RADIUS_M, vatWidthM / 2 - 0.005, vatDepthM / 2 - 0.005);
 
-  addBasin(group, widthM, depthM, topY, {
-    basinWidth: vatWidthM,
-    basinDepth: vatDepthM,
-    basinDepthY: 0.18,
-    zOffset: -depthM * 0.06,
-  });
+  // lem — rámeček se zaoblenými rohy, vystupující nad desku a lemující otvor
+  const outerShape = roundedRectShape(vatWidthM + SINK_RIM_WIDTH_M * 2, vatDepthM + SINK_RIM_WIDTH_M * 2, cornerR + SINK_RIM_WIDTH_M);
+  outerShape.holes.push(roundedRectShape(vatWidthM, vatDepthM, cornerR));
+  const rimGeometry = new THREE.ExtrudeGeometry(outerShape, { depth: SINK_RIM_THICKNESS_M, bevelEnabled: false, curveSegments: 12 });
+  const rim = new THREE.Mesh(rimGeometry, stainless);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.set(0, topY + SINK_RIM_THICKNESS_M, centerZ);
+  rim.castShadow = true;
+  rim.receiveShadow = true;
+  group.add(rim);
 
-  const faucetBaseX = widthM * 0.32;
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.05, 16), stainless);
-  base.position.set(faucetBaseX, topY + 0.025, depthM * 0.75);
-  base.castShadow = true;
-  group.add(base);
+  // dutina — skutečná hloubka (vatHeightM), viditelná díky BackSide materiálu
+  const innerShape = roundedRectShape(vatWidthM, vatDepthM, cornerR);
+  const cavityGeometry = new THREE.ExtrudeGeometry(innerShape, { depth: vatHeightM, bevelEnabled: false, curveSegments: 12 });
+  const cavity = new THREE.Mesh(cavityGeometry, cavityMat);
+  cavity.rotation.x = Math.PI / 2;
+  cavity.position.set(0, topY, centerZ);
+  cavity.receiveShadow = true;
+  group.add(cavity);
+}
 
-  const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.22, 12), stainless);
-  riser.position.set(faucetBaseX, topY + 0.15, depthM * 0.75);
-  riser.castShadow = true;
-  group.add(riser);
+/** Dřez s volitelnými rozměry vany (§3.3 SPEC v3) — vatWidthM/vatDepthM
+ *  přichází z instance segmentu (main.js), ne z katalogu. Vana je zapuštěná
+ *  v desce (viz buildSinkBasin) a baterie s loketní pákou stojí na ose ZA
+ *  vanou (vystředěná vůči vaně, posunutá dozadu, ne vedle). Baterie odpovídá
+ *  výkresu Klarco 1E.2904.82.76 — labutí krk, výška 330 mm nad deskou,
+ *  dosah výtoku 245 mm. */
+function buildSinkTop(group, widthM, depthM, topY, vatWidthM, vatDepthM) {
+  const chrome = createChromeMaterial();
+  const vatHeightM = mm(SINK_VAT_HEIGHT_MM);
+  const centerZ = depthM / 2 - depthM * 0.06;
 
-  const spout = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.008, 8, 20, Math.PI), stainless);
-  spout.rotation.set(0, Math.PI / 2, 0);
-  spout.position.set(faucetBaseX, topY + 0.25, depthM * 0.75 - 0.09);
-  spout.castShadow = true;
-  group.add(spout);
+  buildSinkBasin(group, vatWidthM, vatDepthM, vatHeightM, topY, centerZ);
 
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.09, 10), knobMat);
-  handle.rotation.z = Math.PI / 2;
-  handle.position.set(faucetBaseX + 0.03, topY + 0.28, depthM * 0.75);
-  group.add(handle);
+  // --- baterie s loketní pákou (Klarco 1E.2904.82.76), vystředěná nad vanou,
+  // posunutá dozadu -----------------------------------------------------------
+  const vatBackZ = centerZ + vatDepthM / 2;
+  const faucetX = 0; // vana je vždy vystředěná na ose segmentu (x = 0)
+  const faucetZ = Math.min(vatBackZ + 0.06, depthM - 0.05);
+
+  // montážní příruba — Ø47 mm, výška 50 mm
+  const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.0235, 0.0235, 0.05, 24), chrome);
+  flange.position.set(faucetX, topY + 0.025, faucetZ);
+  flange.castShadow = true;
+  group.add(flange);
+
+  // tělo baterie — Ø55 mm, od topY+0.05 do topY+0.17
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0275, 0.0275, 0.12, 24), chrome);
+  body.position.set(faucetX, topY + 0.11, faucetZ);
+  body.castShadow = true;
+  group.add(body);
+
+  // výtokové ramínko Ø25 mm — vychází z těla nízko (85 mm), stoupá šikmo nad
+  // vanu, nahoře těsný ohyb a krátký výtok dolů s perlátorem (dosah osy 245 mm)
+  const spoutZ = faucetZ - 0.245;
+  const armStart = new THREE.Vector3(faucetX, topY + 0.085, faucetZ);
+  const armApex = new THREE.Vector3(faucetX, topY + 0.235, spoutZ + 0.045);
+  const armBend = new THREE.Vector3(faucetX, topY + 0.205, spoutZ);
+  const armEnd = new THREE.Vector3(faucetX, topY + 0.195, spoutZ);
+
+  const riseDir = new THREE.Vector3().subVectors(armApex, armStart).normalize();
+  const bendLen = armApex.distanceTo(armBend) * 0.55; // ramena Bézieru = hladký ohyb
+
+  const neckPath = new THREE.CurvePath();
+  neckPath.add(new THREE.LineCurve3(armStart, armApex));
+  neckPath.add(new THREE.CubicBezierCurve3(
+    armApex,
+    armApex.clone().addScaledVector(riseDir, bendLen),
+    armBend.clone().add(new THREE.Vector3(0, bendLen, 0)),
+    armBend
+  ));
+  neckPath.add(new THREE.LineCurve3(armBend, armEnd));
+
+  const neck = new THREE.Mesh(new THREE.TubeGeometry(neckPath, 96, 0.0125, 16, false), chrome);
+  neck.castShadow = true;
+  group.add(neck);
+
+  // perlátor na ústí výtoku
+  const aerator = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.018, 20), chrome);
+  aerator.position.set(faucetX, armEnd.y - 0.009, spoutZ);
+  aerator.castShadow = true;
+  group.add(aerator);
+
+  // loketní páka — z vrcholu těla šikmo vzhůru NAD ramínko (stejný směr jako
+  // výtok, viz boční výkres), vodorovný průmět 220 mm; její konec je nejvyšším
+  // bodem baterie, tj. přesně 330 mm nad deskou
+  const leverR = 0.009;
+  const leverStart = new THREE.Vector3(faucetX, topY + 0.165, faucetZ);
+  const leverEnd = new THREE.Vector3(faucetX, topY + 0.33 - leverR - 0.002, faucetZ - 0.22);
+  const leverDir = new THREE.Vector3().subVectors(leverEnd, leverStart);
+
+  const lever = new THREE.Mesh(
+    new THREE.CylinderGeometry(leverR, leverR, leverDir.length(), 14), chrome);
+  lever.position.copy(leverStart).lerp(leverEnd, 0.5);
+  lever.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), leverDir.clone().normalize());
+  lever.castShadow = true;
+  group.add(lever);
+
+  const leverKnob = new THREE.Mesh(new THREE.SphereGeometry(leverR + 0.002, 16, 12), chrome);
+  leverKnob.position.copy(leverEnd);
+  leverKnob.castShadow = true;
+  group.add(leverKnob);
 }
 
 /** Dispatcher vrchních detailů podle topFeature.type katalogového přístroje. */
@@ -562,6 +855,9 @@ function applyTopFeature(group, def, segment, widthM, depthM, topY) {
       break;
     case 'fryer2':
       buildFryerTop(group, widthM, depthM, topY);
+      break;
+    case 'fryer1':
+      buildFryer1Top(group, widthM, depthM, topY);
       break;
     case 'grill':
       buildGrillTop(group, widthM, depthM, topY);
@@ -623,7 +919,7 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
   group.userData.widthMM = widthMM;
   group.userData.label = getSegmentLabel(segment);
 
-  buildPlinth(group, widthM, depthM);
+  buildPlinth(group, widthM, depthM, getSegmentPlinth(segment));
 
   if (segment.type === NEUTRAL_TYPE) {
     // Dutina = vnitřní prostor podestavby; pokud má segment panel, dutina
@@ -634,6 +930,17 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
     if (segment.hasPanel) {
       // ovládací panel je jen předsazená dekorace navíc před horní pás čela,
       // korpus pod ním zůstává celý (žádná díra vzadu)
+      buildPanelBand(group, widthM, panelBottomY, bodyTopY);
+    }
+    return group;
+  }
+
+  if (segment.type === DRAWERS_TYPE) {
+    // stejné pravidlo jako u neutrálního modulu — má-li segment panel,
+    // prostor pro čela pod ním končí (panel do zásuvek nepatří)
+    const cavityTopY = segment.hasPanel ? panelBottomY : bodyTopY;
+    buildDrawersBody(group, widthM, depthM, PLINTH_HEIGHT, bodyTopY, cavityTopY, getSegmentDrawerCount(segment));
+    if (segment.hasPanel) {
       buildPanelBand(group, widthM, panelBottomY, bodyTopY);
     }
     return group;
@@ -656,11 +963,15 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
     buildClosedBody(group, widthM, depthM, PLINTH_HEIGHT, bodyTopY);
     return group;
   }
-  buildBodyByStyle(group, def.bodyStyle, widthM, depthM, PLINTH_HEIGHT, bodyTopY);
+  buildBodyByStyle(group, getSegmentBodyStyle(segment), widthM, depthM, PLINTH_HEIGHT, bodyTopY);
   const { centerY, frontZ } = buildPanelBand(group, widthM, panelBottomY, bodyTopY);
-  renderControls(group, widthM, centerY, frontZ, def.controls.type, def.controls.count);
-  decoratePanelExtras(group, def.topFeature ? def.topFeature.type : 'none', widthM, centerY, frontZ);
-  applyTopFeature(group, def, segment, widthM, depthM, workHeightM);
+  // §10.1 SPEC v4 — u topFixed přístrojů se prvek na desce i seskupení
+  // ovládacích prvků kreslí ve JMENOVITÉ šířce (katalogové widthMM), vodorovně
+  // vystředěné, bez ohledu na skutečnou (zvětšenou) šířku podestavby.
+  const topWidthM = def.topFixed ? mm(def.widthMM) : widthM;
+  renderControls(group, topWidthM, centerY, frontZ, def.controls.type, def.controls.count);
+  decoratePanelExtras(group, def.topFeature ? def.topFeature.type : 'none', topWidthM, centerY, frontZ);
+  applyTopFeature(group, def, segment, topWidthM, depthM, workHeightM);
   if (def.imageDataURL) {
     addBitmapOverlay(group, widthM, depthM, workHeightM, def.imageDataURL);
   }

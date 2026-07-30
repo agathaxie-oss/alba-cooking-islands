@@ -18,6 +18,7 @@ let _glassCeramic = null;
 let _glass = null;
 let _recess = null;
 let _cavity = null;
+let _sinkCavity = null;
 let _floorLight = null;
 let _floorDark = null;
 let _edge = null;
@@ -198,10 +199,30 @@ export function createCavityMaterial() {
       metalness: 0.1,
       roughness: 0.95,
       emissive: 0x1c1e20,
+      side: THREE.BackSide,
       name: 'dutina',
     });
   }
   return _cavity;
+}
+
+/**
+ * Vnitřek zapuštěné vany dřezu — stejný princip jako `createCavityMaterial`
+ * (side: THREE.BackSide zobrazí jen "vzdálenější" stěny, takže vana
+ * vypadá jako skutečná dutina, ne jako plochá deska), ale v tmavším
+ * nerezovém odstínu odpovídajícím lisované nerezové vaně.
+ */
+export function createSinkCavityMaterial() {
+  if (!_sinkCavity) {
+    _sinkCavity = new THREE.MeshStandardMaterial({
+      color: 0x3a3d40,
+      metalness: 0.8,
+      roughness: 0.35,
+      side: THREE.BackSide,
+      name: 'vana-dutina',
+    });
+  }
+  return _sinkCavity;
 }
 
 /** Materiál obrysových hran (EdgesGeometry) — technický, čitelný vzhled. */
@@ -230,7 +251,7 @@ export function createLogoMaterial() {
       name: 'logo-alba',
     });
     const loader = new THREE.TextureLoader();
-    loader.load(encodeURI('Logo ALBA.jpg'), (texture) => {
+    loader.load('Logo-ALBA.jpg', (texture) => {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.needsUpdate = true;
       _logo.map = texture;

@@ -3,6 +3,7 @@
 // a ovládací prvky (počet 0–8 + druh).
 
 import { CONTROL_TYPES, CUSTOM_WIDTH_MAX, CUSTOM_CONTROLS_MAX } from './modules.js';
+import { t, onLangChange } from './i18n.js';
 
 const MIN_WIDTH_FLOOR = 100;
 const MIN_WIDTH_CEIL = 1200;
@@ -25,16 +26,24 @@ export function setupCustomDialog() {
     saveBtn: document.getElementById('custom-dialog-save'),
   };
 
-  // naplnění selectu druhů ovládacích prvků
-  CONTROL_TYPES.forEach((ct) => {
-    const opt = document.createElement('option');
-    opt.value = ct.value;
-    opt.textContent = ct.label;
-    els.controlsType.appendChild(opt);
-  });
+  // naplnění selectu druhů ovládacích prvků — přeloží se znovu i při změně
+  // jazyka (viz onLangChange níže), aby volby zůstaly v aktuálním jazyce.
+  function refreshControlsTypeOptions() {
+    const prevValue = els.controlsType.value;
+    els.controlsType.innerHTML = '';
+    CONTROL_TYPES.forEach((value) => {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = t(`controlType.${value}`);
+      els.controlsType.appendChild(opt);
+    });
+    if (prevValue) els.controlsType.value = prevValue;
+  }
+  refreshControlsTypeOptions();
 
   let currentDataURL = null;
   let saveCallback = null;
+  let isEditing = false; // pro překlad titulku při přepnutí jazyka (viz onLangChange níže)
 
   function showError(msg) {
     els.error.textContent = msg;
@@ -88,7 +97,7 @@ export function setupCustomDialog() {
   });
 
   els.saveBtn.addEventListener('click', () => {
-    const name = els.name.value.trim() || 'Vlastní modul';
+    const name = els.name.value.trim() || t('module.customDefaultName');
     let minWidthMM = Math.round(Number(els.minWidth.value));
     let widthMM = Math.round(Number(els.width.value));
     let controlsCount = Math.round(Number(els.controlsCount.value));
@@ -104,7 +113,7 @@ export function setupCustomDialog() {
     controlsCount = Math.min(Math.max(controlsCount, 0), CUSTOM_CONTROLS_MAX);
 
     if (widthMM < minWidthMM) {
-      showError(`Šířka nesmí být menší než minimální šířka (${minWidthMM} mm).`);
+      showError(t('customDialog.errWidthTooSmall', { mm: minWidthMM }));
       return;
     }
 
@@ -128,10 +137,11 @@ export function setupCustomDialog() {
    */
   function open(initial, onSave) {
     saveCallback = onSave;
+    isEditing = !!initial;
     showError('');
     currentDataURL = (initial && initial.imageDataURL) || null;
 
-    els.title.textContent = initial ? 'Upravit vlastní modul' : 'Nový vlastní modul';
+    els.title.textContent = initial ? t('customDialog.editTitle') : t('customDialog.newTitle');
     els.name.value = (initial && initial.name) || '';
     els.minWidth.value = String((initial && initial.minWidthMM) || 300);
     els.width.value = String((initial && initial.widthMM) || (initial && initial.minWidthMM) || 300);
@@ -153,6 +163,15 @@ export function setupCustomDialog() {
 
     els.overlay.hidden = false;
   }
+
+  // §13 SPEC v4 — přepnutí jazyka ihned přeloží select i titulek, pokud je
+  // dialog zrovna otevřený; ostatní statické popisky řeší applyTranslations().
+  onLangChange(() => {
+    refreshControlsTypeOptions();
+    if (!els.overlay.hidden) {
+      els.title.textContent = isEditing ? t('customDialog.editTitle') : t('customDialog.newTitle');
+    }
+  });
 
   return { open };
 }

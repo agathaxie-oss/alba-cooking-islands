@@ -1,16 +1,19 @@
 /* style.css — moderní tmavý boční panel + 3D viewport přes zbytek okna */
 
 :root {
-  --bg-panel: #1c1f24;
-  --bg-panel-alt: #24282e;
-  --bg-input: #2c3038;
-  --border: #343941;
-  --text-main: #eef1f4;
-  --text-muted: #9aa2ad;
-  --accent: #ff8c3a;
-  --accent-soft: rgba(255, 140, 58, 0.18);
-  --danger: #e0554f;
+  --bg-panel: #FEFEFE;
+  --bg-panel-alt: #EBECEC;
+  --bg-input: #F6F7F7;
+  --border: #D8D9D9;
+  --text-main: #2B2A29;
+  --text-muted: #5B5B5B;
+  --accent: #0083C6;
+  --accent-dark: #00639A;
+  --accent-darker: #004E78;
+  --accent-soft: rgba(0, 131, 198, 0.12);
+  --danger: #C0392B;
   --radius: 6px;
+  --shadow: 0 1px 3px rgba(43, 42, 41, 0.12);
 }
 
 * {
@@ -26,11 +29,89 @@ html, body {
   background: var(--bg-panel-alt);
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* skryje prvek vizuálně, ale ponechá ho dostupný čtečkám obrazovky (standardní
+   technika) — použito pro <h1> v horní liště, kde vizuálně nahrazuje logo */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 #app {
   display: flex;
   width: 100%;
-  height: 100vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
+}
+
+/* --- horní lišta — ovládání aplikace (pohledy, strana, podlaha, půdorys,
+   export/import, správce přístrojů, jazyk) -------------------------------- */
+
+#topbar {
+  flex: 0 0 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  background: var(--accent);
+  overflow-x: auto;
+  /* MUSÍ být visible, ne hidden — jinak by se oříznula rozbalená nabídka
+     jazyka (.lang-menu), která je position:absolute pod tlačítkem (ZMĚNA 11). */
+  overflow-y: visible;
+}
+
+.topbar-left, .topbar-center, .topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-left {
+  flex: 0 0 auto;
+  flex-shrink: 0; /* logo se NIKDY nesmí zmenšit */
+}
+
+.topbar-center {
+  flex: 1 1 auto;
+  justify-content: center;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.topbar-right {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+/* oprava hlavní vady (lišta se zalamovala do více řádků při užším okně) —
+   žádné tlačítko v liště se nesmí zalomit ani zmenšit pod svou obsahovou
+   šířku; vodorovné přetečení řeší #topbar { overflow-x: auto } výše. */
+#topbar button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#topbar-logo {
+  display: block;
+  height: 26px;
+  width: auto;
+}
+
+.topbar-export {
+  display: flex;
+  gap: 6px;
 }
 
 /* --- boční panel --------------------------------------------------------- */
@@ -52,20 +133,119 @@ html, body {
   width: 8px;
 }
 #sidebar::-webkit-scrollbar-thumb {
-  background: var(--border);
+  /* var(--border) samotné je na bílém panelu málo viditelné — použit
+     tmavší poloprůhledný odstín (§ rule 4) */
+  background: rgba(43, 42, 41, 0.25);
   border-radius: 4px;
 }
 
-.sidebar-header h1 {
-  font-size: 18px;
-  margin: 0 0 4px;
-  line-height: 1.25;
+/* přepínač jazyka (ZMĚNA 11, SPEC v4 §13) — jedno tlačítko s vlaječkou
+   aktuálního jazyka + šipka, po kliknutí se pod ním rozbalí nabídka se
+   všemi jazyky. Vlaječky kreslené inline SVG (žádné externí soubory, žádné
+   emoji — na Windows se nevykreslí barevně spolehlivě). Rodič musí mít
+   position:relative, ať se nabídka umístí pod tlačítko (position:absolute). */
+.lang-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.subtitle {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: var(--text-muted);
+.lang-switcher-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  outline: 1px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 0;
+  color: #fff;
+}
+
+.lang-switcher-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.lang-switcher-flag {
+  display: block;
+  width: 22px;
+  height: 15px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.lang-switcher-flag svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lang-switcher-caret {
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+
+.lang-switcher-caret svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* rozbalovací nabídka jazyků — vykreslena v document.body s position:fixed,
+   pozice se počítá z rámečku tlačítka v JavaScript */
+.lang-menu {
+  position: fixed;
+  min-width: 170px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  color: var(--text-main);
+}
+
+.lang-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-main);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lang-menu-item:hover {
+  background: var(--bg-panel-alt);
+}
+
+.lang-menu-item[aria-selected="true"] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.lang-menu-flag {
+  display: block;
+  flex-shrink: 0;
+  width: 22px;
+  height: 15px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.lang-menu-flag svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .panel-section {
@@ -133,6 +313,10 @@ html, body {
   color: var(--text-muted);
 }
 
+.field-row[hidden] {
+  display: none; /* .field-row nastavuje display:flex, které by jinak přebilo [hidden] */
+}
+
 .field-row input[type="number"],
 .field-row select {
   width: 110px;
@@ -176,6 +360,18 @@ html, body {
   font-size: 11px;
   color: var(--text-muted);
   margin-left: 2px;
+}
+
+/* poznámka o automatickém zvětšení hloubky strany kvůli hlubšímu segmentu (§7.3) */
+.field-note {
+  display: block;
+  margin: -6px 0 8px;
+  font-size: 11px;
+  color: var(--accent-dark);
+}
+
+.field-note[hidden] {
+  display: none;
 }
 
 /* --- kapacita ----------------------------------------------------------------- */
@@ -224,7 +420,7 @@ html, body {
 }
 
 .module-item:hover {
-  background: #33383f;
+  background: var(--bg-panel-alt);
 }
 
 .module-item.selected {
@@ -288,6 +484,14 @@ html, body {
   color: var(--text-main);
 }
 
+/* text místo selectu, když má katalogový přístroj jen jeden povolený styl
+   podestavby (§10.2 SPEC v4) */
+.extra-static {
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--text-main);
+}
+
 .module-info {
   display: flex;
   flex-direction: column;
@@ -317,7 +521,7 @@ html, body {
   height: 24px;
   border-radius: 4px;
   border: 1px solid var(--border);
-  background: #343941;
+  background: var(--bg-panel);
   color: var(--text-main);
   cursor: pointer;
   font-size: 12px;
@@ -325,7 +529,7 @@ html, body {
 }
 
 .module-controls button:hover:not(:disabled) {
-  background: #3c424b;
+  background: var(--border);
 }
 
 .module-controls button:disabled {
@@ -336,6 +540,7 @@ html, body {
 .module-controls .del-btn:hover {
   background: var(--danger);
   border-color: var(--danger);
+  color: #fff;
 }
 
 /* --- tlačítka pro přidání modulů ---------------------------------------------- */
@@ -359,7 +564,7 @@ html, body {
 
 .add-btn:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-dark);
 }
 
 .add-btn:disabled {
@@ -370,8 +575,8 @@ html, body {
 .add-btn-highlight {
   margin-top: 8px;
   width: 100%;
-  border-color: #3a4a63;
-  background: #26303f;
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* --- pohledy / prostředí / export tlačítka ------------------------------------- */
@@ -388,32 +593,172 @@ html, body {
   gap: 8px;
 }
 
-.view-btn, .env-btn {
+/* --- tlačítka v horní liště (pohledy, strana bloku, podlaha) — SPEC v4 §topbar --
+   Barevný režim lišty: bílý text přímo na --accent (#0083C6) má kontrast jen
+   4.15:1 (pod hranicí WCAG AA 4.5:1). Proto je každý popisek v "pilulce":
+   neaktivní = --accent-dark pozadí + bílý text (6.46:1), aktivní = bílé
+   pozadí + --accent-dark text (6.46:1), hover neaktivního = --accent-darker. */
+
+.view-btn, .side-btn {
   flex: 1 1 auto;
-  padding: 8px 6px;
-  font-size: 12px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  background: var(--accent-dark);
+  border: none;
   border-radius: var(--radius);
-  color: var(--text-main);
+  color: #fff;
   cursor: pointer;
+  white-space: nowrap;
 }
 
-.view-btn:hover, .env-btn:hover {
-  border-color: var(--accent);
+.view-btn:hover, .side-btn:hover {
+  background: var(--accent-darker);
+}
+
+.side-btn.active {
+  background: #fff;
+  color: var(--accent-dark);
+}
+
+.side-btn.active:hover {
+  background: #fff;
+}
+
+/* pohledy jako ikony „domečku" (ZMĚNA 2) — čtvercové tlačítko se
+   symbolem místo textu, popisek je jen v title/aria-label */
+.view-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.view-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* pohledy + přepínač strany jako jeden vizuálně spojený blok (ZMĚNA 6) */
+.view-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.view-group .side-switch {
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  padding-left: 6px;
+  margin-left: 2px;
+}
+
+/* přepínač strany bloku A/B — vidět jen u ostrovního bloku (viz ui.js render) */
+.side-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.side-switch[hidden] {
+  display: none;
+}
+
+.side-btn {
+  flex: 0 0 auto;
+  min-width: 30px;
+  font-weight: 700;
+}
+
+/* podlaha jako barevná políčka (ZMĚNA 8) — data-env zůstává beze změny,
+   js/main.js si podle něj tlačítka hledá; tady je jen vizuál. */
+.env-btn {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: 1px solid rgba(255, 255, 255, 0.45);
+  outline-offset: 0;
+}
+
+.env-btn[data-env="light"] {
+  background: #EBECEC;
+}
+
+.env-btn[data-env="dark"] {
+  background: #2B2A29;
 }
 
 .env-btn.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
+  outline: 2px solid #fff;
+}
+
+/* kompaktní ikonová tlačítka exportu/importu v liště — popisek je jen
+   v title/aria-label (viz index.html), samotné tlačítko nese pouze ikonu */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent-dark);
+  color: #fff;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--accent-darker);
+}
+
+.icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* aktivní stav pohledu / tiskového dokumentu (§1A) — stejný vzhled a stejný
+   mechanismus (třída .active přepínaná v ui.js) jako u .side-btn.active výše;
+   #floorplan-btn (.icon-btn) se chová jako čtvrtý "pohled" ve skupině. */
+.view-btn.active, .icon-btn.active {
+  background: #fff;
+  color: var(--accent-dark);
+}
+
+.view-btn.active:hover, .icon-btn.active:hover {
+  background: #fff;
+}
+
+/* akční tlačítka přesunutá do lišty (Vycentrovat pohled, Půdorys, Správce
+   přístrojů) — přepsat výchozí světlý vzhled .action-btn na "pilulku" */
+#topbar .action-btn {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+  color: #fff;
+  font-size: 12.5px;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+#topbar .action-btn:hover:not(:disabled) {
+  background: var(--accent-darker);
+  border-color: var(--accent-darker);
 }
 
 .action-btn {
   padding: 10px 12px;
   font-size: 13px;
-  background: #2e3a4d;
-  border: 1px solid #3a4a63;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-main);
   cursor: pointer;
@@ -421,7 +766,7 @@ html, body {
 }
 
 .action-btn:hover:not(:disabled) {
-  background: #35455c;
+  border-color: var(--accent);
 }
 
 .action-btn:disabled {
@@ -429,24 +774,44 @@ html, body {
   cursor: not-allowed;
 }
 
+.action-btn-block {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* práce s projektem (uložit/načíst) — první sekce bočního panelu (ZMĚNA 10) */
+.project-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-actions .action-btn {
+  width: 100%;
+  text-align: left;
+}
+
 #export-png {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1c1200;
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+  color: #fff;
 }
 
 #export-png:hover {
-  background: #ff9c56;
+  background: var(--accent-darker);
+  border-color: var(--accent-darker);
 }
 
 .action-btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #1c1200;
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+  color: #fff;
 }
 
 .action-btn-primary:hover {
-  background: #ff9c56;
+  background: var(--accent-darker);
+  border-color: var(--accent-darker);
 }
 
 /* --- napouštěcí ramena ---------------------------------------------------------- */
@@ -548,6 +913,98 @@ html, body {
   gap: 12px;
 }
 
+.dialog-box-wide {
+  max-width: 560px;
+}
+
+.dialog-hint {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dialog-actions-left {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
+/* --- Správce přístrojů (device-manager.js) -------------------------------------- */
+
+.device-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.device-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.device-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  flex: 1 1 auto;
+}
+
+.device-name {
+  font-size: 13px;
+}
+
+.device-width,
+.device-kind {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.device-visible {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.device-visible input {
+  accent-color: var(--accent);
+}
+
+.device-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.action-btn-small {
+  padding: 6px 8px;
+  font-size: 11.5px;
+}
+
+.device-actions .del-btn:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
 .dialog-box h2 {
   margin: 0 0 4px;
   font-size: 16px;
@@ -564,16 +1021,54 @@ html, body {
 .dialog-field input[type="text"],
 .dialog-field input[type="number"],
 .dialog-field select,
-.dialog-field input[type="file"] {
+.dialog-field input[type="file"],
+.dialog-field textarea {
   padding: 8px 10px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text-main);
   font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* skupina checkboxů — povolené typy podestavby (§10.2 SPEC v4) */
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.checkbox-group-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.checkbox-group-item input[type="checkbox"] {
+  accent-color: var(--accent);
 }
 
 .dialog-field input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.dialog-field-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main);
+}
+
+.dialog-field-checkbox input[type="checkbox"] {
   accent-color: var(--accent);
 }
 
@@ -589,7 +1084,7 @@ html, body {
 .dialog-error {
   margin: 0;
   padding: 8px 10px;
-  background: rgba(224, 85, 79, 0.15);
+  background: rgba(192, 57, 43, 0.12);
   border: 1px solid var(--danger);
   border-radius: var(--radius);
   color: var(--danger);
@@ -636,12 +1131,232 @@ html, body {
   top: 16px;
   left: 16px;
   padding: 8px 14px;
-  background: rgba(28, 31, 36, 0.85);
+  /* pevně tmavé poloprůhledné pozadí (nezávislé na --bg-panel), aby odznak
+     zůstal čitelný nad libovolně světlou i tmavou 3D scénou (§ rule 7) */
+  background: rgba(43, 42, 41, 0.82);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  color: var(--text-main);
+  color: #fff;
   font-size: 13px;
   pointer-events: none;
+  box-shadow: var(--shadow);
+}
+
+/* --- půdorysné schéma (floorplan.js) — SVG překryv nad 3D viewportem ------------- */
+
+.floorplan-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.floorplan-overlay[hidden] {
+  display: none;
+}
+
+.floorplan-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-panel-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.floorplan-toolbar .action-btn {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+  color: #fff;
+}
+
+.floorplan-toolbar .action-btn:hover {
+  background: var(--accent-darker);
+  border-color: var(--accent-darker);
+}
+
+.floorplan-svg-container {
+  flex: 1 1 auto;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-panel-alt);
+}
+
+/* --- tiskový dokument (report.js) — nabídkový list, na obrazovce vypadá jako
+   list papíru A4 vycentrovaný v překryvu; tisková podoba viz @media print níže */
+
+.report-document {
+  width: 100%;
+  max-width: 210mm;
+  box-sizing: border-box;
+  background: #fff;
+  color: var(--text-main);
+  padding: 14mm 12mm;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.report-document h2 {
+  font-size: 16px;
+  color: var(--accent-dark);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  margin: 26px 0 10px;
+}
+
+.report-document h3 {
+  font-size: 13.5px;
+  color: var(--text-main);
+  margin: 14px 0 6px;
+}
+
+.report-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.report-logo {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.report-logo svg {
+  height: 34px;
+  width: auto;
+  display: block;
+}
+
+.report-title-wrap {
+  text-align: right;
+}
+
+.report-title {
+  margin: 0 0 4px;
+  font-size: 19px;
+  color: var(--text-main);
+}
+
+.report-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.report-rule {
+  border: none;
+  border-top: 2px solid var(--accent);
+  margin: 12px 0 0;
+}
+
+.report-rule-footer {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0 10px;
+}
+
+.report-previews {
+  margin-top: 16px;
+}
+
+.report-preview-row {
+  display: flex;
+  gap: 14px;
+}
+
+.report-preview-row-double .report-preview-figure {
+  width: calc(50% - 7px);
+}
+
+.report-preview-row-single .report-preview-figure {
+  width: 100%;
+}
+
+.report-preview-figure {
+  margin: 0;
+}
+
+.report-preview-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.report-preview-caption {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.report-page-break {
+  page-break-before: always;
+}
+
+.report-floorplan-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+
+.report-table th, .report-table td {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.report-kv-table th {
+  width: 40%;
+  background: var(--bg-panel-alt);
+  font-weight: 600;
+}
+
+.report-parts-table thead th {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.report-parts-table tbody tr:nth-child(even) {
+  background: var(--bg-panel-alt);
+}
+
+.report-parts-table tr {
+  page-break-inside: avoid;
+}
+
+.report-fitting-block {
+  margin-bottom: 14px;
+}
+
+.report-fitting-spec {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.report-footer-company {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* --- responzivní zúžení pro menší okna ------------------------------------------ */
@@ -659,5 +1374,79 @@ html, body {
   }
   #viewport {
     height: 55%;
+  }
+}
+
+/* --- tisk (§ČÁST 2 Zobrazení a tisk) — tiskne se JEN tiskový dokument
+   (report.js), přes celou stránku, bez okolní aplikace/dialogů ----------------- */
+
+@media print {
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* POZOR: #floorplan-overlay je DOM potomek #viewport (viz index.html —
+     <main id="viewport"> obsahuje <canvas>, badge i #floorplan-overlay).
+     Kdyby se #viewport celý schoval (display:none), zmizel by s ním i
+     dokument uvnitř — proto se #viewport samo skrýt NESMÍ, schovávají se jen
+     JEHO OSTATNÍ děti (3D plátno, odznak výběru) a #floorplan-overlay se
+     naopak zbaví svého overlay-pozicování, ať nateče do normálního toku
+     stránky přes celou její šířku. */
+  #topbar, #sidebar, .floorplan-toolbar, .dialog-overlay, #three-canvas, #selection-badge {
+    display: none !important;
+  }
+
+  #app, #viewport {
+    display: block;
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+
+  #floorplan-overlay {
+    position: static;
+    inset: auto;
+    display: block;
+    background: none;
+  }
+
+  .floorplan-svg-container {
+    overflow: visible;
+    display: block;
+    padding: 0;
+    background: none;
+  }
+
+  .report-document {
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  h2, h3 {
+    page-break-after: avoid;
+  }
+
+  img {
+    page-break-inside: avoid;
+    max-width: 100%;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 14mm 12mm;
+  /* Chrome tuto stránkovou hlavičku/patičku (@bottom-right) v @page zatím
+     nepodporuje a pravidlo ignoruje — číslování stran proto zajišťuje
+     tiskový dialog prohlížeče (má vlastní volbu "Záhlaví a zápatí"), viz
+     výstup ověření (TEST 10 / bod 8 zadání). Záměrně to neobcházíme přes JS. */
+  @bottom-right {
+    content: counter(page);
   }
 }

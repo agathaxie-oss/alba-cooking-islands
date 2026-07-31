@@ -178,6 +178,18 @@ function paletteIconHTML(key, def) {
   return PALETTE_ICONS[key] || PALETTE_ICONS.none;
 }
 
+// --- ikony pásu sestavy (krok 3B redesignu) — koš v záhlaví pruhu parametrů
+// a plus na kartě pro přidání ramene, ve stejném stylu jako ostatní ikony
+// aplikace (viewBox 0 0 24 24, fill="none", stroke-width 1.8) ------------------
+const TRASH_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M4 7h16"/><path d="M10 4h4"/><path d="M10 11v6"/><path d="M14 11v6"/>'
+  + '<path d="M6 7l1 13h10l1-13"/></svg>';
+
+const PLUS_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M12 5v14"/><path d="M5 12h14"/></svg>';
+
 export function setupUI(callbacks) {
   const els = {
     projectName: document.getElementById('project-name'),
@@ -193,10 +205,6 @@ export function setupUI(callbacks) {
     variantIsland: document.getElementById('variant-island'),
     dimsTotalDepth: document.getElementById('dims-total-depth'),
 
-    armList: document.getElementById('arm-list'),
-    armEmptyHint: document.getElementById('arm-empty-hint'),
-    addArmBtn: document.getElementById('add-arm-btn'),
-
     // --- pás sestavy (krok 3A redesignu) --------------------------------------
     assemblyStrip: document.getElementById('assembly-strip'),
     stripTabs: document.getElementById('strip-tabs'),
@@ -205,7 +213,6 @@ export function setupUI(callbacks) {
     stripCards: document.getElementById('strip-cards'),
     stripEmpty: document.getElementById('strip-empty'),
     stripDetail: document.getElementById('strip-detail'),
-    stripArms: document.getElementById('strip-arms'),
 
     viewButtons: Array.from(document.querySelectorAll('[data-view]')),
     sideSwitch: document.getElementById('side-switch'),
@@ -229,6 +236,13 @@ export function setupUI(callbacks) {
   let collapsed = false;
   let prevSelectedId; // sentinel (undefined) — první render se nepočítá za "změnu"
   let lastStripState = null;
+
+  // --- výběr ramene v pásu (§5.4 zadání) — lokální, ramena se ve 3D scéně
+  // nevybírají, takže main.js o tom nemusí vědět. `prevArmIds` slouží k
+  // rozpoznání NOVĚ přidaného ramene (§5.4 odst. 2), aby se po přidání
+  // vybralo právě ono, ne to, co bylo vybrané předtím. ------------------------
+  let selectedArmId = null;
+  let prevArmIds = null; // sentinel (null) — první render se nepočítá za "přidání"
 
   // --- paleta prvků (krok 2 redesignu) — jedna sekce, cílová strana se bere
   // ze stavu aplikace (viz renderPalette níže) --------------------------------
@@ -555,9 +569,6 @@ export function setupUI(callbacks) {
   // --- katalog přístrojů — Správce přístrojů (SPEC v3 §3.4) ---------------------
   els.deviceManagerBtn.addEventListener('click', () => callbacks.onOpenDeviceManager());
 
-  // --- napouštěcí ramena ---------------------------------------------------------
-  els.addArmBtn.addEventListener('click', () => callbacks.onAddArm());
-
   // --- srolování pásu sestavy (krok 3A) — posluchač jen jednou, popisek/ikona
   // a aria-expanded se dopočítávají v renderStripCollapseButton() při každém
   // překreslení (viz §3.7 zadání) --------------------------------------------------
@@ -649,24 +660,16 @@ export function setupUI(callbacks) {
     if (!fitInfo.fits) li.classList.add('overflow');
     li.dataset.id = String(seg.id);
 
-    const px = Math.round(Math.min(220, Math.max(88, getSegmentWidthMM(seg) / 6)));
+    const px = Math.round(Math.min(270, 150 + Math.max(0, getSegmentWidthMM(seg) - 400) / 8));
     li.style.width = px + 'px';
 
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'strip-card-name';
-    nameSpan.textContent = getSegmentLabel(seg);
-    li.appendChild(nameSpan);
-
-    const widthSpan = document.createElement('span');
-    widthSpan.className = 'strip-card-width';
-    widthSpan.textContent = t('segment.width', { mm: getSegmentWidthMM(seg) }) + (fitInfo.fits ? '' : t('segment.overflowSuffix'));
-    li.appendChild(widthSpan);
-
-    const controls = document.createElement('div');
-    controls.className = 'strip-card-controls';
-
+    // tři sourozenci — šipky přesunu na okrajích, tělo karty uprostřed
+    // (§3.2 zadání); tlačítka přesunu MUSÍ mít stopPropagation, jinak by
+    // klik na ně zároveň přepnul výběr karty přes klik na .strip-card-body.
     const leftBtn = document.createElement('button');
     leftBtn.type = 'button';
+    leftBtn.className = 'strip-card-move';
+    leftBtn.dataset.dir = '-1';
     leftBtn.textContent = '◀';
     leftBtn.title = t('segment.moveLeft');
     leftBtn.disabled = index === 0;
@@ -674,9 +677,29 @@ export function setupUI(callbacks) {
       ev.stopPropagation();
       callbacks.onMoveSegment(seg.id, -1);
     });
+    li.appendChild(leftBtn);
+
+    const body = document.createElement('button');
+    body.type = 'button';
+    body.className = 'strip-card-body';
+    body.addEventListener('click', () => callbacks.onSelectSegment(seg.id));
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'strip-card-name';
+    nameSpan.textContent = getSegmentLabel(seg);
+    body.appendChild(nameSpan);
+
+    const widthSpan = document.createElement('span');
+    widthSpan.className = 'strip-card-width';
+    widthSpan.textContent = t('segment.width', { mm: getSegmentWidthMM(seg) }) + (fitInfo.fits ? '' : t('segment.overflowSuffix'));
+    body.appendChild(widthSpan);
+
+    li.appendChild(body);
 
     const rightBtn = document.createElement('button');
     rightBtn.type = 'button';
+    rightBtn.className = 'strip-card-move';
+    rightBtn.dataset.dir = '1';
     rightBtn.textContent = '▶';
     rightBtn.title = t('segment.moveRight');
     rightBtn.disabled = index === total - 1;
@@ -684,25 +707,33 @@ export function setupUI(callbacks) {
       ev.stopPropagation();
       callbacks.onMoveSegment(seg.id, 1);
     });
+    li.appendChild(rightBtn);
+
+    return li;
+  }
+
+  /** Společné záhlaví pruhu parametrů (§4 zadání) — název vybrané položky +
+   *  červená ikona koše, která ji smaže. Používá se jak pro segment, tak
+   *  pro rameno. */
+  function renderDetailHead(title, onRemoveClick, removeLabel) {
+    const head = document.createElement('div');
+    head.className = 'strip-detail-head';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'strip-detail-title';
+    titleSpan.textContent = title;
+    head.appendChild(titleSpan);
 
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
-    delBtn.textContent = '✕';
-    delBtn.title = t('segment.remove');
-    delBtn.className = 'del-btn';
-    delBtn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      callbacks.onRemoveSegment(seg.id);
-    });
+    delBtn.className = 'strip-detail-del';
+    delBtn.title = removeLabel;
+    delBtn.setAttribute('aria-label', removeLabel);
+    delBtn.innerHTML = TRASH_ICON_SVG;
+    delBtn.addEventListener('click', onRemoveClick);
+    head.appendChild(delBtn);
 
-    controls.appendChild(leftBtn);
-    controls.appendChild(rightBtn);
-    controls.appendChild(delBtn);
-    li.appendChild(controls);
-
-    li.addEventListener('click', () => callbacks.onSelectSegment(seg.id));
-
-    return li;
+    return head;
   }
 
   // --- vykreslení pruhu s detailem vybraného segmentu (krok 3A) ---------------------
@@ -936,110 +967,173 @@ export function setupUI(callbacks) {
     return extra;
   }
 
-  // --- vykreslení jednoho ramene ----------------------------------------------------
-  function renderArmItem(arm, lengthMM, variant) {
-    const li = document.createElement('li');
-    li.className = 'arm-item';
+  // --- ramena jako karty v pásu (krok 3B redesignu) ----------------------------------
+  // Ramena teď žijí ve stejném <ol id="strip-cards"> jako segmenty (§5.2 zadání) —
+  // vlastní výběr (selectedArmId) drží tato closure, main.js o něm neví (ramena
+  // se ve 3D scéně nevybírají).
 
-    const header = document.createElement('div');
-    header.className = 'arm-header';
-    const title = document.createElement('span');
-    title.textContent = t('arms.itemTitle', { id: arm.id });
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'del-btn';
-    delBtn.textContent = '✕';
-    delBtn.title = t('arms.remove');
-    delBtn.addEventListener('click', () => callbacks.onRemoveArm(arm.id));
-    header.appendChild(title);
-    header.appendChild(delBtn);
-    li.appendChild(header);
+  /** Jedno pole s číslem + posuvníkem, které se navzájem sladí při `input`
+   *  a volají totéž zpětné volání (stejný vzor jako dřívější renderArmItem,
+   *  jen v novém rozložení — §5.3 zadání). Jednotka jde za dvojici. */
+  function renderArmRangeField(labelText, min, max, step, value, unit, onChange) {
+    const label = document.createElement('label');
+    label.className = 'extra-field';
+    label.textContent = labelText;
 
-    const posLabel = document.createElement('label');
-    posLabel.className = 'extra-field';
-    posLabel.textContent = t('field.positionX');
-    const posRow = document.createElement('div');
-    posRow.className = 'range-row';
-    const posInput = document.createElement('input');
-    posInput.type = 'number';
-    posInput.min = '0';
-    posInput.max = String(lengthMM);
-    posInput.step = '10';
-    posInput.value = String(arm.positionXMM);
-    const posSlider = document.createElement('input');
-    posSlider.type = 'range';
-    posSlider.min = '0';
-    posSlider.max = String(lengthMM);
-    posSlider.step = '10';
-    posSlider.value = String(arm.positionXMM);
-    posInput.addEventListener('input', () => {
-      posSlider.value = posInput.value;
-      callbacks.onArmPositionChange(arm.id, Number(posInput.value));
+    const row = document.createElement('div');
+    row.className = 'range-row';
+
+    const numInput = document.createElement('input');
+    numInput.type = 'number';
+    numInput.min = String(min);
+    numInput.max = String(max);
+    numInput.step = String(step);
+    numInput.value = String(value);
+    numInput.addEventListener('click', (ev) => ev.stopPropagation());
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.step = String(step);
+    slider.value = String(value);
+    slider.addEventListener('click', (ev) => ev.stopPropagation());
+
+    numInput.addEventListener('input', () => {
+      slider.value = numInput.value;
+      onChange(Number(numInput.value));
     });
-    posSlider.addEventListener('input', () => {
-      posInput.value = posSlider.value;
-      callbacks.onArmPositionChange(arm.id, Number(posSlider.value));
+    slider.addEventListener('input', () => {
+      numInput.value = slider.value;
+      onChange(Number(slider.value));
     });
-    posRow.appendChild(posInput);
-    posRow.appendChild(posSlider);
-    posLabel.appendChild(posRow);
-    li.appendChild(posLabel);
 
-    // odsazení — u jednostranného bloku od zadní hrany, u ostrova od středu
+    row.appendChild(numInput);
+    row.appendChild(slider);
+
+    const unitSpan = document.createElement('span');
+    unitSpan.className = 'dim-unit';
+    unitSpan.textContent = unit;
+    row.appendChild(unitSpan);
+
+    label.appendChild(row);
+    return label;
+  }
+
+  /** Mřížka tří parametrů ramene (§5.3 zadání) — meze a výchozí hodnoty se
+   *  berou ze konstant importovaných z ./arms.js, žádná čísla natvrdo.
+   *  onArm*Change v main.js volají jen rebuildScene(), ne ui.render(state)
+   *  (aby tažení posuvníku nepřišlo o focus) — souhrn na kartě ramene by tak
+   *  zůstal zastaralý až do příštího plného překreslení. Proto po každém
+   *  zpětném volání ještě ručně dotáhneme text karty přes refreshArmCardSummary
+   *  — volá se AŽ PO zpětném volání, protože to teprve ořízne hodnotu do mezí
+   *  a zapíše ji do stejného objektu `arm`, na který tu držíme odkaz. */
+  function renderArmDetailGrid(arm, lengthMM, variant) {
+    const grid = document.createElement('div');
+    grid.className = 'strip-detail-grid arm-grid';
+
+    grid.appendChild(renderArmRangeField(
+      t('arms.posLabel'), 0, lengthMM, 10, arm.positionXMM, 'mm',
+      (v) => { callbacks.onArmPositionChange(arm.id, v); refreshArmCardSummary(arm); },
+    ));
+
     const isIsland = variant === 'island';
     const offsetMin = isIsland ? ARM_CENTER_OFFSET_MIN : ARM_BACK_OFFSET_MIN;
     const offsetMax = isIsland ? ARM_CENTER_OFFSET_MAX : ARM_BACK_OFFSET_MAX;
     const offsetDefault = isIsland ? ARM_CENTER_OFFSET_DEFAULT : ARM_BACK_OFFSET_DEFAULT;
-    const offsetText = isIsland ? t('arms.offsetCenter') : t('arms.offsetBack');
+    const offsetLabelText = isIsland ? t('arms.offsetCenterLabel') : t('arms.offsetBackLabel');
     const offsetValue = arm.offsetMM != null ? arm.offsetMM : offsetDefault;
+    grid.appendChild(renderArmRangeField(
+      offsetLabelText, offsetMin, offsetMax, ARM_OFFSET_STEP, offsetValue, 'mm',
+      (v) => { callbacks.onArmOffsetChange(arm.id, v); refreshArmCardSummary(arm); },
+    ));
 
-    const offsetLabel = document.createElement('label');
-    offsetLabel.className = 'extra-field';
-    offsetLabel.textContent = offsetText;
-    const offsetRow = document.createElement('div');
-    offsetRow.className = 'range-row';
-    const offsetInput = document.createElement('input');
-    offsetInput.type = 'number';
-    offsetInput.min = String(offsetMin);
-    offsetInput.max = String(offsetMax);
-    offsetInput.step = String(ARM_OFFSET_STEP);
-    offsetInput.value = String(offsetValue);
-    const offsetSlider = document.createElement('input');
-    offsetSlider.type = 'range';
-    offsetSlider.min = String(offsetMin);
-    offsetSlider.max = String(offsetMax);
-    offsetSlider.step = String(ARM_OFFSET_STEP);
-    offsetSlider.value = String(offsetValue);
-    offsetInput.addEventListener('input', () => {
-      offsetSlider.value = offsetInput.value;
-      callbacks.onArmOffsetChange(arm.id, Number(offsetInput.value));
-    });
-    offsetSlider.addEventListener('input', () => {
-      offsetInput.value = offsetSlider.value;
-      callbacks.onArmOffsetChange(arm.id, Number(offsetSlider.value));
-    });
-    offsetRow.appendChild(offsetInput);
-    offsetRow.appendChild(offsetSlider);
-    offsetLabel.appendChild(offsetRow);
-    li.appendChild(offsetLabel);
+    grid.appendChild(renderArmRangeField(
+      t('arms.angleLabel'), ARM_ANGLE_MIN, ARM_ANGLE_MAX, 1, arm.angleDeg, '°',
+      (v) => { callbacks.onArmAngleChange(arm.id, v); refreshArmCardSummary(arm); },
+    ));
 
-    const angleLabel = document.createElement('label');
-    angleLabel.className = 'extra-field';
-    angleLabel.textContent = t('arms.angle', { deg: arm.angleDeg });
-    const angleSlider = document.createElement('input');
-    angleSlider.type = 'range';
-    angleSlider.min = String(ARM_ANGLE_MIN);
-    angleSlider.max = String(ARM_ANGLE_MAX);
-    angleSlider.step = '5';
-    angleSlider.value = String(arm.angleDeg);
-    angleSlider.addEventListener('input', () => {
-      angleLabel.firstChild.textContent = t('arms.angle', { deg: angleSlider.value });
-      callbacks.onArmAngleChange(arm.id, Number(angleSlider.value));
-    });
-    angleLabel.appendChild(angleSlider);
-    li.appendChild(angleLabel);
+    return grid;
+  }
 
+  /** Aktualizuje jen text souhrnu na kartě daného ramene v pásu, bez
+   *  překreslení zbytku pásu (viz komentář u renderArmDetailGrid výše). */
+  function refreshArmCardSummary(arm) {
+    if (!els.stripCards) return;
+    const el = els.stripCards.querySelector(
+      `.strip-card-arm[data-arm-id="${arm.id}"] .strip-card-width`);
+    if (el) el.textContent = t('arms.cardSummary', { mm: arm.positionXMM, deg: arm.angleDeg });
+  }
+
+  /** Karta jednoho ramene v pásu (§5.2 zadání) — bez šipek přesunu (pořadí
+   *  ramen nemá význam), pevná šířka 132 px. */
+  function renderArmCard(arm) {
+    const li = document.createElement('li');
+    li.className = 'strip-card strip-card-arm';
+    if (arm.id === selectedArmId) li.classList.add('selected');
+    li.dataset.armId = String(arm.id);
+    li.style.width = '132px';
+
+    const body = document.createElement('button');
+    body.type = 'button';
+    body.className = 'strip-card-body';
+    body.addEventListener('click', () => {
+      selectedArmId = arm.id;
+      if (lastStripState) renderStrip(lastStripState);
+    });
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'strip-card-name';
+    nameSpan.textContent = t('arms.itemTitle', { id: arm.id });
+    body.appendChild(nameSpan);
+
+    const widthSpan = document.createElement('span');
+    widthSpan.className = 'strip-card-width';
+    widthSpan.textContent = t('arms.cardSummary', { mm: arm.positionXMM, deg: arm.angleDeg });
+    body.appendChild(widthSpan);
+
+    li.appendChild(body);
     return li;
+  }
+
+  /** Karta „+ rameno" na konci řady (§5.2 zadání). */
+  function renderAddArmCard() {
+    const li = document.createElement('li');
+    li.className = 'strip-card strip-card-add';
+
+    const body = document.createElement('button');
+    body.type = 'button';
+    body.className = 'strip-card-body';
+    body.title = t('arms.addBtn');
+    body.setAttribute('aria-label', t('arms.addBtn'));
+    body.addEventListener('click', () => callbacks.onAddArm());
+    body.innerHTML = PLUS_ICON_SVG;
+
+    const label = document.createElement('span');
+    label.textContent = t('arms.addShort');
+    body.appendChild(label);
+
+    li.appendChild(body);
+    return li;
+  }
+
+  /** Sladí selectedArmId se skutečným seznamem ramen (§5.4 zadání): po přidání
+   *  vybere nově přidané (nejvyšší id mezi nově objevenými), po smazání nebo
+   *  při otevření záložky s neplatným výběrem vybere první, nebo null, když
+   *  ramena nejsou žádná. Volá se při KAŽDÉM překreslení pásu, ne jen na
+   *  záložce ramen, aby prevArmIds zůstal spolehlivě v kroku. */
+  function reconcileArmSelection(arms) {
+    const currentIds = arms.map((a) => a.id);
+    if (prevArmIds) {
+      const addedIds = currentIds.filter((id) => !prevArmIds.has(id));
+      if (addedIds.length) {
+        selectedArmId = Math.max(...addedIds);
+      }
+    }
+    prevArmIds = new Set(currentIds);
+    if (!arms.some((a) => a.id === selectedArmId)) {
+      selectedArmId = arms.length ? arms[0].id : null;
+    }
   }
 
   // --- pás sestavy (krok 3A redesignu) ----------------------------------------------
@@ -1118,16 +1212,21 @@ export function setupUI(callbacks) {
     els.stripCapacity.classList.toggle('over', usedMM > capacityMM);
   }
 
-  /** Řada karet aktivní strany (§3.4). U záložky ramen je celá schovaná. Odrolování
-   *  vybrané karty do záběru se dělá jen při SKUTEČNÉ změně selectedId (§6 bod 6),
-   *  ne při každém překreslení — o to se stará volající renderStrip() přes `selectionChanged`. */
+  /** Řada karet aktivní strany (§3.4), nebo karty ramen + karta pro přidání na
+   *  záložce ramen (§5.2). Odrolování vybrané karty do záběru se dělá jen při
+   *  SKUTEČNÉ změně selectedId (§6 bod 6), ne při každém překreslení — o to se
+   *  stará volající renderStrip() přes `selectionChanged`. */
   function renderStripCards(state, selectionChanged) {
     if (!els.stripCards || !els.stripEmpty) return;
 
     if (activeTab === 'arms') {
-      els.stripCards.hidden = true;
-      els.stripCards.innerHTML = '';
+      els.stripCards.hidden = false;
       els.stripEmpty.hidden = true;
+      els.stripCards.innerHTML = '';
+      state.arms.forEach((arm) => {
+        els.stripCards.appendChild(renderArmCard(arm));
+      });
+      els.stripCards.appendChild(renderAddArmCard());
       return;
     }
 
@@ -1153,37 +1252,50 @@ export function setupUI(callbacks) {
     }
   }
 
-  /** Pruh s detailem (§3.5 pro záložku ramen, §3.6 pro vybraný segment).
-   *  Prvky ramen (#arm-list, #arm-empty-hint, #add-arm-btn) žijí trvale uvnitř
-   *  #strip-arms — NIKDY se nepřesouvají ani neodpojují z DOM (přesun by je na
-   *  chvíli vyřadil z `document`, takže by je `applyTranslations()` v main.js
-   *  po přepnutí jazyka nenašla, a `getElementById` by mezitím vracelo null).
-   *  Mezi záložkami se přepíná jen `hidden` na #strip-detail / #strip-arms. */
+  /** Pruh s detailem — společné záhlaví (§4) nad mřížkou parametrů, jak pro
+   *  vybraný segment (§3.6), tak pro vybrané rameno (§5.3). #strip-detail je
+   *  nově vidět vždy (žádné přepínání hidden mezi segmenty a rameny). */
   function renderStripDetail(state) {
-    if (!els.stripDetail || !els.stripArms) return;
+    if (!els.stripDetail) return;
+
+    els.stripDetail.innerHTML = '';
 
     if (activeTab === 'arms') {
-      els.stripArms.hidden = false;
-      els.stripDetail.hidden = true;
+      const arm = state.arms.find((a) => a.id === selectedArmId);
+      if (!arm) {
+        const hint = document.createElement('p');
+        hint.className = 'strip-detail-hint';
+        hint.textContent = t('arms.emptyHint');
+        els.stripDetail.appendChild(hint);
+        return;
+      }
+
+      els.stripDetail.appendChild(renderDetailHead(
+        t('arms.itemTitle', { id: arm.id }),
+        () => callbacks.onRemoveArm(arm.id),
+        t('arms.remove'),
+      ));
+      els.stripDetail.appendChild(renderArmDetailGrid(arm, state.dimensions.lengthMM, state.variant));
       return;
     }
 
-    els.stripArms.hidden = true;
-    els.stripDetail.hidden = false;
-
     const segments = activeTab === 'B' ? state.segmentsB : state.segmentsA;
     const seg = segments.find((s) => s.id === state.selectedId);
-    const grid = seg ? renderSegmentDetail(seg) : null;
-
-    els.stripDetail.innerHTML = '';
-    if (grid) {
-      els.stripDetail.appendChild(grid);
-    } else {
+    if (!seg) {
       const hint = document.createElement('p');
       hint.className = 'strip-detail-hint';
       hint.textContent = t('strip.detailHint');
       els.stripDetail.appendChild(hint);
+      return;
     }
+
+    els.stripDetail.appendChild(renderDetailHead(
+      getSegmentLabel(seg),
+      () => callbacks.onRemoveSegment(seg.id),
+      t('segment.remove'),
+    ));
+    const grid = renderSegmentDetail(seg);
+    if (grid) els.stripDetail.appendChild(grid);
   }
 
   /** Vykreslí celý pás sestavy — záložky, kapacitu, karty a detail (§3.3–§3.8). */
@@ -1218,6 +1330,10 @@ export function setupUI(callbacks) {
     prevSelectedId = state.selectedId;
 
     if (!isIsland && activeTab === 'B') activeTab = 'A'; // §3.3 poslední odstavec
+
+    // výběr ramene (§5.4) — udržuje se při KAŽDÉM překreslení, ne jen na
+    // záložce ramen, ať prevArmIds zůstane spolehlivě v kroku.
+    reconcileArmSelection(state.arms);
 
     renderStripTabs(isIsland);
     renderStripCapacity(state);
@@ -1300,13 +1416,6 @@ export function setupUI(callbacks) {
     // paleta prvků (krok 2 redesignu) — čte kapacitu cílové strany ze state,
     // proto se volá až po renderStrip výše
     renderPalette(state);
-
-    // seznam ramen
-    els.armList.innerHTML = '';
-    els.armEmptyHint.style.display = state.arms.length === 0 ? 'block' : 'none';
-    state.arms.forEach((arm) => {
-      els.armList.appendChild(renderArmItem(arm, state.dimensions.lengthMM, state.variant));
-    });
 
     // aktivní tlačítko prostředí
     els.envButtons.forEach((btn) => {

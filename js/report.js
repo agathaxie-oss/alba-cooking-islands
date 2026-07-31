@@ -38,12 +38,12 @@ import {
 // --- Technická specifikace materiálu — hodnoty jsou překladové KLÍČE (věty se
 // musí lokalizovat), ne texty samotné. Prázdný klíč = údaj nedodán, vykreslí
 // se jako „—" (viz buildMaterialSection). *** NIC SI NEVYMÝŠLET *** nad rámec
-// toho, co dodal uživatel — bodyThickness a surface zatím nedodány.
+// toho, co dodal uživatel. Od 31. 7. 2026 jsou vyplněné všechny čtyři údaje.
 const MATERIAL_SPEC = {
   steelGrade: 'report.steelGradeValue',
   worktopThickness: 'report.worktopThicknessValue',
-  bodyThickness: '',
-  surface: '',
+  bodyThickness: 'report.bodyThicknessValue',
+  surface: 'report.surfaceValue',
 };
 
 // --- Kontakty firmy (dodáno uživatelem). E-mail a web se odvozují podle

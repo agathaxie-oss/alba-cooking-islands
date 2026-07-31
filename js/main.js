@@ -90,6 +90,9 @@ function sanitizeBodyStyle(def, value) {
 
 let nextId = 1;
 const state = {
+  // Název projektu (přestavba horní části panelu) — ukládá se do konfigurace
+  // a předvyplňuje název souboru při ukládání (viz projectFileName/saveConfig).
+  projectName: '',
   dimensions: { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: 900 },
   variant: 'single', // 'single' | 'island'
   segmentsA: [],
@@ -417,6 +420,7 @@ function exportPNG() {
 function serializeConfig() {
   return {
     version: 3,
+    projectName: state.projectName,
     variant: state.variant,
     environment: state.environment,
     dimensions: { ...state.dimensions },
@@ -427,22 +431,65 @@ function serializeConfig() {
   };
 }
 
-function saveConfig() {
-  const json = JSON.stringify(serializeConfig(), null, 2);
-
-  // 1) uložení do localStorage
-  localStorage.setItem(STORAGE_KEY, json);
-
-  // 2) stažení jako soubor
+function downloadJson(json, filename) {
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${t('export.jsonFilenamePrefix')}-${Date.now()}.json`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// Odvodí bezpečný název souboru z názvu projektu (přestavba horní části
+// panelu, §4.3 zadání) — zakázané znaky nahradí pomlčkou, ořízne na 60
+// znaků. Prázdný název → dnešní prefix z export.jsonFilenamePrefix.
+// Pozn.: literální regex ze zadání ([\\/:*?"<>| -]) obsahuje uvnitř třídy
+// i mezeru, takže by nahrazoval i mezery pomlčkou — na vstupu z kritéria 9
+// („Kuchyně / Novák: 1") by tak vyšlo „Kuchyně---Novák--1.json", ne zadáním
+// požadované „Kuchyně - Novák- 1.json". Mezera je zde záměrně vyňata z třídy
+// zakázaných znaků, ať výstup odpovídá kritériu 9 doslova.
+function projectFileName(name) {
+  const base = String(name || '')
+    .replace(/[\\/:*?"<>|-]/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/^[.\s]+|[.\s]+$/g, '')
+    .slice(0, 60)
+    .trim();
+  return (base || t('export.jsonFilenamePrefix')) + '.json';
+}
+
+async function saveConfig() {
+  const json = JSON.stringify(serializeConfig(), null, 2);
+
+  // 1) do prohlížeče — VŽDY, i když uživatel dialog na soubor zruší
+  localStorage.setItem(STORAGE_KEY, json);
+
+  // 2) do souboru, s možností upravit název
+  const suggested = projectFileName(state.projectName);
+  if (typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: suggested,
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(json);
+      await writable.close();
+    } catch (err) {
+      // zrušení dialogu NENÍ chyba a nesmí nic hlásit
+      if (err && err.name === 'AbortError') { ui.render(state); return; }
+      downloadJson(json, suggested); // jiná chyba → náhradní cesta
+    }
+  } else {
+    const entered = window.prompt(t('project.filenamePrompt'), suggested);
+    if (entered === null) { ui.render(state); return; } // zrušeno
+    const name = entered.trim().toLowerCase().endsWith('.json')
+      ? entered.trim() : entered.trim() + '.json';
+    downloadJson(json, projectFileName(name.replace(/\.json$/i, '')));
+  }
 
   ui.render(state);
 }
@@ -584,6 +631,8 @@ function applyConfig(config) {
   state.arms = arms;
   state.variant = config.variant === 'island' ? 'island' : 'single';
   state.environment = config.environment === 'dark' ? 'dark' : 'light';
+  // starší uložené soubory pole projectName nemají — musí se otevřít bez chyby (§4.4 zadání)
+  state.projectName = typeof config.projectName === 'string' ? config.projectName.slice(0, 60) : '';
   state.selectedId = null;
 
   floorMesh.material = createFloorMaterial(state.environment === 'dark');
@@ -649,6 +698,11 @@ const floorplan = setupFloorplan({
 // --- napojení bočního panelu -----------------------------------------------------
 
 const ui = setupUI({
+  onProjectNameChange(name) {
+    state.projectName = String(name || '').slice(0, 60);
+    ui.render(state);
+    // pozn.: rebuildBlock() se NEVOLÁ — název projektu nemá vliv na geometrii.
+  },
   onDimensionsChange(partial) {
     if (partial.lengthMM !== undefined) {
       state.dimensions.lengthMM = clamp(Math.round(partial.lengthMM / LENGTH_STEP) * LENGTH_STEP, LENGTH_MIN, LENGTH_MAX);
@@ -913,7 +967,7 @@ const ui = setupUI({
     exportPNG();
   },
   onSaveConfig() {
-    saveConfig();
+    saveConfig().catch((err) => console.error(err));
   },
   onLoadFile(file) {
     loadConfigFromFile(file);

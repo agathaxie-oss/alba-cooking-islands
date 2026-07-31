@@ -71,51 +71,83 @@
     <aside id="sidebar">
       <section class="panel-section">
         <h2 data-i18n="project.sectionTitle">Project</h2>
+
+        <div class="project-name-row">
+          <input type="text" id="project-name" class="project-name" maxlength="60"
+                 data-i18n-placeholder="project.untitled"
+                 data-i18n-aria-label="project.nameLabel"
+                 data-i18n-title="project.nameTitle"
+                 placeholder="Untitled" autocomplete="off" spellcheck="false" />
+          <span class="project-name-pencil" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+          </span>
+        </div>
+
         <div class="project-actions">
-          <button type="button" id="save-config" class="action-btn" data-i18n="export.saveConfig">Save configuration</button>
-          <button type="button" id="load-file-btn" class="action-btn" data-i18n="export.loadFile">Load from file…</button>
-          <button type="button" id="load-storage-btn" class="action-btn" data-i18n="export.loadStorage">Load saved assembly</button>
+          <button type="button" id="save-config" class="icon-btn-sm"
+                  data-i18n-title="export.saveConfig" data-i18n-aria-label="export.saveConfig">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 3h10l4 4v14H5z"/><path d="M8 3v6h7V3"/><path d="M8 21v-7h8v7"/>
+            </svg>
+          </button>
+          <button type="button" id="load-file-btn" class="icon-btn-sm"
+                  data-i18n-title="export.loadFile" data-i18n-aria-label="export.loadFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h6l2 2h10v11H3z"/><path d="M3 11h18"/>
+            </svg>
+          </button>
+          <button type="button" id="load-storage-btn" class="icon-btn-sm"
+                  data-i18n-title="export.loadStorage" data-i18n-aria-label="export.loadStorage">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3.5 9A9 9 0 1 1 3 12"/><path d="M3 4v5h5"/><path d="M12 7.5V12l3.5 2"/>
+            </svg>
+          </button>
           <input type="file" id="load-file-input" accept="application/json" hidden />
         </div>
       </section>
 
       <section class="panel-section">
         <h2 data-i18n="dims.sectionTitle">Block dimensions</h2>
-        <div class="variant-toggle">
-          <label class="radio-label">
+
+        <div class="variant-segmented" role="group"
+             data-i18n-aria-label="dims.sectionTitle">
+          <label class="variant-seg" data-i18n-title="variant.single">
             <input type="radio" name="variant" id="variant-single" value="single" checked />
-            <span data-i18n="variant.single">Single-sided block (against wall)</span>
+            <span data-i18n="variant.singleShort">against wall</span>
           </label>
-          <label class="radio-label">
+          <label class="variant-seg" data-i18n-title="variant.island">
             <input type="radio" name="variant" id="variant-island" value="island" />
-            <span data-i18n="variant.island">Island block (two-sided)</span>
+            <span data-i18n="variant.islandShort">island</span>
           </label>
         </div>
 
-        <div class="field-row">
-          <label for="input-length" data-i18n="field.length">Length (mm)</label>
+        <div class="dim-row">
+          <label for="input-length" data-i18n="field.lengthShort">Length</label>
           <input type="number" id="input-length" min="1200" max="6000" step="50" value="3200" />
+          <span class="dim-unit">mm</span>
         </div>
-        <div class="field-row">
-          <label for="input-depth-a" id="depth-a-label" data-i18n="field.depth">Depth (mm)</label>
+        <div class="dim-row">
+          <label for="input-depth-a" id="depth-a-label" data-i18n="field.depthShort">Depth</label>
           <input type="number" id="input-depth-a" min="500" max="1200" step="10" value="850" />
+          <span class="dim-unit">mm</span>
         </div>
         <p id="depth-a-grow-note" class="field-note" hidden></p>
-        <div class="field-row" id="depth-b-row" hidden>
-          <label for="input-depth-b" data-i18n="field.depthB">Depth side B (mm)</label>
+        <div class="dim-row" id="depth-b-row" hidden>
+          <label for="input-depth-b" data-i18n="field.depthBShort">Depth B</label>
           <input type="number" id="input-depth-b" min="500" max="1200" step="10" value="850" />
+          <span class="dim-unit">mm</span>
         </div>
         <p id="depth-b-grow-note" class="field-note" hidden></p>
-        <div class="field-row">
-          <label for="input-height" data-i18n="field.height">Work height (mm)</label>
+        <div class="dim-row">
+          <label for="input-height" data-i18n="field.heightShort">Work height</label>
           <input type="number" id="input-height" min="850" max="950" step="10" value="900" />
+          <span class="dim-unit">mm</span>
         </div>
-
-        <dl class="dims">
-          <div class="dims-row"><dt data-i18n="dims.totalLength">Total length</dt><dd><span id="dim-length">0</span> mm</dd></div>
-          <div class="dims-row"><dt data-i18n="dims.totalDepth">Total depth</dt><dd><span id="dim-depth">0</span> mm <span id="dim-depth-breakdown" class="dims-note" hidden></span></dd></div>
-          <div class="dims-row"><dt data-i18n="dims.totalHeight">Work height</dt><dd><span id="dim-height">0</span> mm</dd></div>
-        </dl>
+        <p id="dims-total-depth" class="dims-total" hidden></p>
       </section>
 
       <section class="panel-section" id="palette-section">

@@ -180,6 +180,7 @@ function paletteIconHTML(key, def) {
 
 export function setupUI(callbacks) {
   const els = {
+    projectName: document.getElementById('project-name'),
     inputLength: document.getElementById('input-length'),
     inputDepthA: document.getElementById('input-depth-a'),
     inputDepthB: document.getElementById('input-depth-b'),
@@ -190,10 +191,7 @@ export function setupUI(callbacks) {
     inputHeight: document.getElementById('input-height'),
     variantSingle: document.getElementById('variant-single'),
     variantIsland: document.getElementById('variant-island'),
-    dimLength: document.getElementById('dim-length'),
-    dimDepth: document.getElementById('dim-depth'),
-    dimDepthBreakdown: document.getElementById('dim-depth-breakdown'),
-    dimHeight: document.getElementById('dim-height'),
+    dimsTotalDepth: document.getElementById('dims-total-depth'),
 
     armList: document.getElementById('arm-list'),
     armEmptyHint: document.getElementById('arm-empty-hint'),
@@ -500,6 +498,30 @@ export function setupUI(callbacks) {
 
   renderLangSwitcher();
   onLangChange(renderLangSwitcher);
+
+  // --- název projektu (přestavba horní části panelu) --------------------------
+  // Pole je vždy <input>, jen vypadá jako prostý text — viz §4.2 zadání.
+  // valueBeforeEdit drží hodnotu z okamžiku zaostření, aby Escape mohl vrátit
+  // přesně tu, co tam byla PŘED úpravou (ne poslední uloženou hodnotu ve stavu).
+  if (els.projectName) {
+    let valueBeforeEdit = '';
+    els.projectName.addEventListener('focus', () => {
+      valueBeforeEdit = els.projectName.value;
+    });
+    els.projectName.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        els.projectName.blur();
+      } else if (ev.key === 'Escape') {
+        els.projectName.value = valueBeforeEdit;
+        els.projectName.blur();
+      }
+    });
+    const commitProjectName = () => {
+      callbacks.onProjectNameChange(els.projectName.value.trim());
+    };
+    els.projectName.addEventListener('change', commitProjectName);
+    els.projectName.addEventListener('blur', commitProjectName);
+  }
 
   // --- rozměry bloku -----------------------------------------------------------
   els.inputLength.addEventListener('change', () => {
@@ -1198,6 +1220,12 @@ export function setupUI(callbacks) {
   function render(state) {
     const isIsland = state.variant === 'island';
 
+    // název projektu — přepiš jen když uživatel zrovna nepíše (stejná pojistka
+    // jako u polí rozměrů níže), viz §4.2 zadání.
+    if (els.projectName && document.activeElement !== els.projectName) {
+      els.projectName.value = state.projectName || '';
+    }
+
     // rozměry — vstupy (jen pokud uživatel zrovna nepíše, jinak by skákala hodnota)
     if (document.activeElement !== els.inputLength) els.inputLength.value = String(state.dimensions.lengthMM);
     if (document.activeElement !== els.inputHeight) els.inputHeight.value = String(state.dimensions.heightMM);
@@ -1206,7 +1234,7 @@ export function setupUI(callbacks) {
     els.variantSingle.checked = state.variant === 'single';
     els.variantIsland.checked = state.variant === 'island';
 
-    els.depthALabel.textContent = isIsland ? t('field.depthA') : t('field.depth');
+    els.depthALabel.textContent = isIsland ? t('field.depthAShort') : t('field.depthShort');
     els.depthBRow.hidden = !isIsland;
 
     // aktivní tlačítko pohledu (§1A) — je-li otevřený tiskový dokument, žádný
@@ -1249,14 +1277,11 @@ export function setupUI(callbacks) {
       els.depthBGrowNote.textContent = t('notice.depthGrown', { mm: state.builtDimensions.depthBMM, reasons });
     }
 
-    els.dimLength.textContent = state.builtDimensions.lengthMM;
-    els.dimDepth.textContent = state.builtDimensions.depthMM;
-    els.dimHeight.textContent = state.builtDimensions.heightMM;
+    // tichá řádka s celkovou hloubkou (A + B) — jen u ostrova, jediná odvozená
+    // hodnota rozměrů bloku, kterou nelze prostě opsat ze vstupu (§2.3 zadání)
+    els.dimsTotalDepth.hidden = !isIsland;
     if (isIsland) {
-      els.dimDepthBreakdown.hidden = false;
-      els.dimDepthBreakdown.textContent = t('dims.depthBreakdown', { a: state.builtDimensions.depthAMM, b: state.builtDimensions.depthBMM });
-    } else {
-      els.dimDepthBreakdown.hidden = true;
+      els.dimsTotalDepth.textContent = t('dims.totalDepthLine', { mm: state.builtDimensions.depthMM });
     }
 
     // pás sestavy (krok 3A redesignu) — nahrazuje dřívější dvojí renderSide('A'/'B')

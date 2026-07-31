@@ -101,10 +101,18 @@ const state = {
   selectedId: null,
   environment: 'light', // 'light' | 'dark' — barva podlahy
   currentViewName: 'perspective',
-  // Strana bloku, na kterou se aktuálně dívá kamera (jen 'island' — přepínač
-  // A/B v liště). Čistě dočasný stav pohledu, NEUKLÁDÁ se do konfigurace ani
-  // do localStorage (viz serializeConfig/applyConfig — nesahají na toto pole).
+  // Strana bloku, na kterou se aktuálně dívá KAMERA (jen 'island' — přepínač
+  // A/B v horní liště). Řídí VÝHRADNĚ pohled — nemá vliv na to, kam se
+  // přidávají nové prvky ani na aktivní záložku v pásu (to řídí editSide
+  // níže). Čistě dočasný stav pohledu, NEUKLÁDÁ se do konfigurace ani do
+  // localStorage (viz serializeConfig/applyConfig — nesahají na toto pole).
   currentSide: 'A', // 'A' | 'B'
+  // Strana bloku, která se EDITUJE (jen 'island' — záložka A/B ve spodním
+  // pásu, klik na segment/kartu, paleta). Nezávislá na pohledu kamery
+  // (currentSide výše) — vazba je jednosměrná: přepnutí editSide (záložkou)
+  // otočí i kameru, ale otočení kamery editSide nepřepne. Čistě dočasný
+  // stav, stejně jako currentSide — NEUKLÁDÁ se do konfigurace.
+  editSide: 'A', // 'A' | 'B'
   // §1A — je-li tiskový dokument (report.js) otevřený nad 3D viewportem;
   // #floorplan-btn se v liště chová jako čtvrtý "pohled" (viz ui.js render).
   // Čistě dočasný stav, stejně jako currentSide — NEUKLÁDÁ se do konfigurace.
@@ -722,7 +730,10 @@ const ui = setupUI({
     state.variant = variant;
     // přepínač strany A/B je jen u ostrova — u jednostranného je strana
     // vždy A (viz spodní panel v liště, side-switch se u single skryje)
-    if (variant !== 'island') state.currentSide = 'A';
+    if (variant !== 'island') {
+      state.currentSide = 'A';
+      state.editSide = 'A';
+    }
     rebuildBlock();
   },
 
@@ -957,6 +968,22 @@ const ui = setupUI({
     state.currentSide = side === 'B' ? 'B' : 'A';
     reframeCamera();
     ui.render(state);
+  },
+  // Přepínač EDITOVANÉ strany (záložka A/B ve spodním pásu, výběr segmentu
+  // v paletě/pásu apod.) — odděleně od pohledu kamery (viz onSideChange
+  // výše). `opts.turnCamera` řídí, jestli se má kamera otočit na editovanou
+  // stranu (klik na záložku ANO, následování výběru segmentu NE — kamera se
+  // nesmí hnout jen kvůli tomu, že uživatel vybral segment na druhé straně).
+  onEditSideChange(side, opts) {
+    const next = side === 'B' ? 'B' : 'A';
+    state.editSide = state.variant === 'island' ? next : 'A';
+    if (opts && opts.turnCamera && state.variant === 'island') {
+      // otočení kamery voláme přes onSideChange (téhož objektu) — zajišťuje
+      // to i state.currentSide a překreslení, žádné kopírování těla.
+      this.onSideChange(state.editSide);
+    } else {
+      ui.render(state);
+    }
   },
   onEnvChange(mode) {
     state.environment = mode;

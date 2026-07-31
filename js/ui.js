@@ -221,12 +221,12 @@ export function setupUI(callbacks) {
   };
 
   // --- pás sestavy (krok 3A redesignu) — stav záložky/srolování žije jen
-  // v této closure, nikam se neukládá; `prevCurrentSide`/`prevSelectedId`
-  // slouží k rozpoznání SKUTEČNÉ změny (viz §3.3 a §3.4 zadání) tak, aby se
-  // pás uživateli neposouval/nepřepínal při každém překreslení. ----------------
+  // v této closure, nikam se neukládá; activeTab (mimo 'arms') se odvozuje
+  // přímo od state.editSide při každém překreslení (viz renderStrip);
+  // `prevSelectedId` slouží k rozpoznání SKUTEČNÉ změny výběru (§3.3 a §3.4
+  // zadání) tak, aby se pás uživateli neodroloval při každém překreslení. ----
   let activeTab = 'A'; // 'A' | 'B' | 'arms'
   let collapsed = false;
-  let prevCurrentSide = null;
   let prevSelectedId; // sentinel (undefined) — první render se nepočítá za "změnu"
   let lastStripState = null;
 
@@ -281,7 +281,7 @@ export function setupUI(callbacks) {
     if (!state || !paletteEls.list) return;
 
     const isIsland = state.variant === 'island';
-    const targetSide = isIsland ? state.currentSide : 'A';
+    const targetSide = isIsland ? state.editSide : 'A';
 
     paletteEls.badge.hidden = !isIsland;
     if (isIsland) {
@@ -1060,8 +1060,8 @@ export function setupUI(callbacks) {
     els.stripCollapse.textContent = collapsed ? '▴' : '▾';
   }
 
-  /** Záložky pásu — sada podle varianty bloku (§3.3). Klik na 'A'/'B' je
-   *  tentýž přepínač strany jako v horní liště (callbacks.onSideChange);
+  /** Záložky pásu — sada podle varianty bloku (§3.3). Klik na 'A'/'B' mění
+   *  EDITOVANOU stranu (callbacks.onEditSideChange) a zároveň otočí kameru;
    *  klik na 'arms' mění jen activeTab, kameru nechává na pokoji. */
   function renderStripTabs(isIsland) {
     if (!els.stripTabs) return;
@@ -1086,10 +1086,15 @@ export function setupUI(callbacks) {
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', String(isActive));
       btn.textContent = label;
+      if (key === 'A' || key === 'B') {
+        btn.title = t('strip.editSideTitle', { side: key });
+      }
       btn.addEventListener('click', () => {
         if (key === 'A' || key === 'B') {
           activeTab = key;
-          callbacks.onSideChange(key); // jeden zdroj pravdy se stranou v horní liště
+          // záložka mění EDITOVANOU stranu a zároveň otočí kameru (na rozdíl
+          // od A/B v horní liště, které mění jen pohled) — viz zadání §2.
+          callbacks.onEditSideChange(key, { turnCamera: true });
         } else {
           activeTab = 'arms';
           if (lastStripState) renderStrip(lastStripState);
@@ -1186,24 +1191,29 @@ export function setupUI(callbacks) {
     lastStripState = state;
     const isIsland = state.variant === 'island';
 
-    // rule §3.3 odst. 2 — přepínač strany v horní liště přepne i activeTab,
-    // a to i když byla zrovna otevřená záložka ramen.
-    if (prevCurrentSide !== null && state.currentSide !== prevCurrentSide) {
-      activeTab = state.currentSide;
-    }
-    prevCurrentSide = state.currentSide;
+    // activeTab (mimo 'arms') se vždy řídí EDITOVANOU stranou — pohled
+    // kamery (state.currentSide) na aktivní záložku nemá vliv (viz zadání §2).
+    if (activeTab !== 'arms') activeTab = state.editSide;
 
     if (!isIsland && activeTab === 'B') activeTab = 'A';
 
     // rule §3.3 odst. 3 — kliknutí do 3D scény (změna selectedId) otevře
-    // záložku strany, na které vybraný segment leží. NEVOLÁ onSideChange —
-    // kamera se nesmí hnout jen kvůli výběru (§6 bod 2).
+    // záložku strany, na které vybraný segment leží, a přepne i editovanou
+    // stranu — ale NEOTOČÍ kameru (§6 bod 2). Podmínka `target !== state.editSide`
+    // zároveň brání zacyklení: onEditSideChange níže volá ui.render(state), který
+    // zavolá renderStrip znovu — při tom druhém průchodu už target === state.editSide,
+    // takže se podruhé nic nevolá.
     const selectionChanged = state.selectedId !== prevSelectedId;
     if (selectionChanged && state.selectedId != null) {
       const inA = state.segmentsA.some((s) => s.id === state.selectedId);
       const inB = isIsland && state.segmentsB.some((s) => s.id === state.selectedId);
-      if (inA) activeTab = 'A';
-      else if (inB) activeTab = 'B';
+      const target = inA ? 'A' : (inB ? 'B' : null);
+      if (target && target !== state.editSide) {
+        activeTab = target;
+        callbacks.onEditSideChange(target, { turnCamera: false });
+      } else if (target) {
+        activeTab = target;
+      }
     }
     prevSelectedId = state.selectedId;
 

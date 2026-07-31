@@ -74,7 +74,17 @@
       "Bash(curl -s http://localhost:8000/)",
       "Bash(curl -s http://localhost:8000/js/i18n.js)",
       "Bash(python -)",
-      "Bash(curl -s http://localhost:8000)"
+      "Bash(curl -s http://localhost:8000)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(sed -n '/onSaveConfig/,/^  },/p' js/main.js)",
+      "Bash(sed -n '/onLoadStorage/,/^  },/p' js/main.js)",
+      "Bash(sed -n '/^function saveConfig/,/^}/p' js/main.js)",
+      "Bash(sed -n '/^function loadConfigFromStorage/,/^}/p' js/main.js)",
+      "Bash(git commit -q -m ' *)",
+      "Bash(node --input-type=module -e \"import\\('./js/ui.js'\\).then\\(\\(\\)=>console.log\\('ui.js import OK'\\)\\).catch\\(e=>{console.error\\('IMPORT ERROR', e.message\\); process.exit\\(1\\)}\\)\")",
+      "Bash(sed -n '/onArmPositionChange/,/^  onArmAngleChange/p' js/main.js)",
+      "Bash(sed -n '/onArmAngleChange/,/^  },/p' js/main.js)"
     ]
   }
 }

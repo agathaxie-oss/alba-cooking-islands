@@ -35,15 +35,37 @@ import {
   ARM_SPOUT_HEIGHT, ARM_REACH, ARM_ANGLE_MAX, ARM_BACK_OFFSET_DEFAULT, ARM_CENTER_OFFSET_DEFAULT,
 } from './arms.js';
 
-// --- Vyhrazené místo — technické údaje zatím nedodány. Doplní se sem. -------
-// *** NIC SI NEVYMÝŠLET *** — prázdná hodnota se v dokumentu vykreslí jako „—".
-const MATERIAL_SPEC = { steelGrade: '', worktopThickness: '', bodyThickness: '', surface: '' };
-
-// --- Vyhrazené místo — kontakty zatím nedodány. Doplní se sem. -------------
-const COMPANY = {
-  name: 'ALBA Professional s.r.o.', street: '', city: '',
-  phone: '', email: '', web: '', regNo: '', vatNo: '',
+// --- Technická specifikace materiálu — hodnoty jsou překladové KLÍČE (věty se
+// musí lokalizovat), ne texty samotné. Prázdný klíč = údaj nedodán, vykreslí
+// se jako „—" (viz buildMaterialSection). *** NIC SI NEVYMÝŠLET *** nad rámec
+// toho, co dodal uživatel — bodyThickness a surface zatím nedodány.
+const MATERIAL_SPEC = {
+  steelGrade: 'report.steelGradeValue',
+  worktopThickness: 'report.worktopThicknessValue',
+  bodyThickness: '',
+  surface: '',
 };
+
+// --- Kontakty firmy (dodáno uživatelem). E-mail a web se odvozují podle
+// jazykové mutace — viz companyContact(). Telefon/IČO/DIČ nedodány, zůstávají
+// prázdné a do patičky se nepromítnou (viz buildFooter).
+const COMPANY = {
+  name: 'ALBA Professional s.r.o.',
+  street: 'Sklenářka 487/1',
+  city: '268 01 Hořovice',
+  country: 'Česká republika',
+  phone: '',
+  regNo: '',
+  vatNo: '',
+};
+
+// E-mail a web podle jazykové mutace dokumentu: cs/sk -> .cz, de -> .de,
+// en/pl -> .com (mapování dodal uživatel, závazné).
+function companyContact() {
+  const lang = getLang();
+  const domain = lang === 'de' ? 'de' : (lang === 'cs' || lang === 'sk') ? 'cz' : 'com';
+  return { email: `info@alba-professional.${domain}`, web: `alba-professional.${domain}` };
+}
 
 // --- Pevné katalogové údaje výrobků (zadané uživatelem, ověřené) — NEMĚNIT
 // a nedohledávat jinde. Výška/dosah/úhel napouštěcího ramene se berou přímo
@@ -246,10 +268,10 @@ function buildMaterialSection() {
   const section = el('section', { className: 'report-section' });
   section.appendChild(el('h2', { text: t('report.sectionMaterial') }));
   const rows = [
-    [t('report.steelGrade'), MATERIAL_SPEC.steelGrade || '—'],
-    [t('report.worktopThickness'), MATERIAL_SPEC.worktopThickness || '—'],
-    [t('report.bodyThickness'), MATERIAL_SPEC.bodyThickness || '—'],
-    [t('report.surface'), MATERIAL_SPEC.surface || '—'],
+    [t('report.steelGrade'), MATERIAL_SPEC.steelGrade ? t(MATERIAL_SPEC.steelGrade) : '—'],
+    [t('report.worktopThickness'), MATERIAL_SPEC.worktopThickness ? t(MATERIAL_SPEC.worktopThickness) : '—'],
+    [t('report.bodyThickness'), MATERIAL_SPEC.bodyThickness ? t(MATERIAL_SPEC.bodyThickness) : '—'],
+    [t('report.surface'), MATERIAL_SPEC.surface ? t(MATERIAL_SPEC.surface) : '—'],
   ];
   section.appendChild(kvTable(rows));
   return section;
@@ -414,7 +436,11 @@ function buildFittingsSection(ctx) {
 function buildFooter() {
   const footer = el('footer', { className: 'report-footer' });
   footer.appendChild(document.createElement('hr')).className = 'report-rule report-rule-footer';
-  const parts = [COMPANY.name, COMPANY.street, COMPANY.city, COMPANY.phone, COMPANY.email, COMPANY.web, COMPANY.regNo, COMPANY.vatNo]
+  const contact = companyContact();
+  const parts = [
+    COMPANY.name, COMPANY.street, COMPANY.city, COMPANY.country,
+    COMPANY.phone, contact.email, contact.web, COMPANY.regNo, COMPANY.vatNo,
+  ]
     .map((v) => (v == null ? '' : String(v).trim()))
     .filter(Boolean);
   footer.appendChild(el('p', { className: 'report-footer-company', text: parts.join(' · ') }));

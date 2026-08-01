@@ -58,7 +58,7 @@ import {
   pickModuleAt,
   toNDC,
 } from './viewer.js';
-import { setupUI, STORAGE_KEY } from './ui.js';
+import { setupUI } from './ui.js';
 import { setupCustomDialog } from './custom-dialog.js';
 import { setupDeviceManager } from './device-manager.js';
 import { buildFloorplanSVG, setupFloorplan } from './floorplan.js';
@@ -93,6 +93,11 @@ const state = {
   // Název projektu (přestavba horní části panelu) — ukládá se do konfigurace
   // a předvyplňuje název souboru při ukládání (viz projectFileName/saveConfig).
   projectName: '',
+  // Typ bloku zvolený při založení projektu (úvodní obrazovka) — VÝHRADNĚ
+  // neutrální kód 'segment' | 'mono', nikdy obchodní jméno řady (přejmenování
+  // řady tak neznamená změnu formátu uloženého souboru). 'segment' = dnešní
+  // typ, výchozí i pro starší/cizí soubory bez tohoto pole (viz applyConfig).
+  productType: 'segment', // 'segment' | 'mono'
   dimensions: { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: 900 },
   variant: 'single', // 'single' | 'island'
   segmentsA: [],
@@ -121,6 +126,18 @@ const state = {
   capacityA: { usedMM: 0, capacityMM: 0, results: [] },
   capacityB: { usedMM: 0, capacityMM: 0, results: [] },
 };
+
+// §ÚKOL C — příznak „od posledního uložení do souboru (nebo načtení souboru)
+// došlo ke změně". NEUKLÁDÁ se do konfigurace, řídí jen dotaz při zavírání
+// okna (beforeunload níže). Nastavuje se v rebuildScene() (pokrývá naprostou
+// většinu stavových změn — rozměry, segmenty, ramena, varianta) a explicitně
+// v handlerech, které stav mění BEZ přestavby scény (název projektu,
+// prostředí/barva podlahy). Shazuje se po úspěšném uložení do souboru,
+// po úspěšném načtení souboru a při založení nového projektu.
+let hasUnsavedChanges = false;
+function markUnsavedChanges() {
+  hasUnsavedChanges = true;
+}
 
 // výchozí sestava strany A: neutrální + sporák plynový + fritéza + neutrální
 function createDefaultSegmentsA() {
@@ -182,6 +199,10 @@ function createCatalogSegment(type) {
 const viewportEl = document.getElementById('viewport');
 const canvas = document.getElementById('three-canvas');
 const badgeEl = document.getElementById('selection-badge');
+// §ROZHRANÍ proti ui.js — úvodní obrazovka spouští otevření souboru přes
+// onRequestOpenFile() (viz setupUI options níže); skutečný <input type=file>
+// zůstává ten stávající, jen ho main.js sám odklikne.
+const loadFileInputEl = document.getElementById('load-file-input');
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -294,6 +315,8 @@ function updateSelectionHighlight() {
 // kameru znovu vycentruje — samostatné tlačítko „Vycentrovat pohled" bylo
 // zrušeno (ZMĚNA 1), tuto roli teď plní přímo tlačítka pohledů.
 function rebuildScene() {
+  markUnsavedChanges(); // §ÚKOL C — jakákoli přestavba geometrie = stavová změna
+
   if (blockGroup) {
     scene.remove(blockGroup);
     disposeGroup(blockGroup);
@@ -447,6 +470,7 @@ function serializeConfig() {
   return {
     version: 4,
     projectName: state.projectName,
+    productType: state.productType,
     variant: state.variant,
     environment: state.environment,
     dimensions: { ...state.dimensions },
@@ -498,10 +522,9 @@ function projectFileName(name) {
 async function saveConfig() {
   const json = JSON.stringify(serializeConfig(), null, 2);
 
-  // 1) do prohlížeče — VŽDY, i když uživatel dialog na soubor zruší
-  localStorage.setItem(STORAGE_KEY, json);
-
-  // 2) do souboru, s možností upravit název
+  // §ÚKOL B — ukládání do prohlížeče (localStorage) zrušeno, ikonka „poslední
+  // uložené" se ruší jako nebezpečná a autosave se nezavádí. Zůstává jen
+  // ukládání do SOUBORU, beze změny.
   const suggested = projectFileName(state.projectName);
   if (typeof window.showSaveFilePicker === 'function') {
     try {
@@ -512,10 +535,12 @@ async function saveConfig() {
       const writable = await handle.createWritable();
       await writable.write(json);
       await writable.close();
+      hasUnsavedChanges = false; // §ÚKOL C — úspěšně uloženo do souboru
     } catch (err) {
       // zrušení dialogu NENÍ chyba a nesmí nic hlásit
       if (err && err.name === 'AbortError') { ui.render(state); return; }
       downloadJson(json, suggested); // jiná chyba → náhradní cesta
+      hasUnsavedChanges = false; // §ÚKOL C — náhradní cesta je taky úspěšné uložení
     }
   } else {
     const entered = window.prompt(t('project.filenamePrompt'), suggested);
@@ -523,6 +548,7 @@ async function saveConfig() {
     const name = entered.trim().toLowerCase().endsWith('.json')
       ? entered.trim() : entered.trim() + '.json';
     downloadJson(json, projectFileName(name.replace(/\.json$/i, '')));
+    hasUnsavedChanges = false; // §ÚKOL C — úspěšně uloženo do souboru
   }
 
   ui.render(state);
@@ -640,6 +666,14 @@ function applyConfig(config) {
     return;
   }
 
+  // §ÚKOL A — typ bloku (§ROZHRANÍ): tolerantní validace, žádné odmítnutí
+  // souboru (na rozdíl od kontrol výše) — neplatná/chybějící hodnota prostě
+  // spadne na výchozí 'segment'. Musí se ale spočítat TADY, ve stejné fázi
+  // jako kontroly výše a PŘED sloučením katalogu z importu níže — pořadí
+  // kontrol/sloučení je opravená chyba (odmítnutý soubor nesmí zanechat
+  // stopu v katalogu) a nesmí se rozbít vsunutím dalšího kroku doprostřed.
+  const productType = config.productType === 'mono' ? 'mono' : 'segment';
+
   // katalog z importu (pokud existuje) sloučit až TEĎ — po všech kontrolách
   // výše, které mohly vést k odmítnutí souboru (return), ale PŘED sanitizací
   // segmentů hned pod tímto blokem. sanitizeSegment() hledá definici
@@ -685,6 +719,7 @@ function applyConfig(config) {
   state.environment = config.environment === 'dark' ? 'dark' : 'light';
   // starší uložené soubory pole projectName nemají — musí se otevřít bez chyby (§4.4 zadání)
   state.projectName = typeof config.projectName === 'string' ? config.projectName.slice(0, 60) : '';
+  state.productType = productType; // §ÚKOL A — spočítáno výše, PŘED sloučením katalogu
   state.selectedId = null;
 
   floorMesh.material = createFloorMaterial(state.environment === 'dark');
@@ -692,30 +727,36 @@ function applyConfig(config) {
   // §9 SPEC v4 — načtení konfigurace ze souboru/prohlížeče je jedno
   // z povolených míst pro přerámování kamery.
   reframeCamera();
+  ui.setProductType(state.productType); // §ROZHRANÍ proti ui.js — po načtení souboru
+  hasUnsavedChanges = false; // §ÚKOL C — čerstvě načtený soubor = žádné neuložené změny
 }
 
 function loadConfigFromFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
+    // §Parsování uvnitř try/catch — hláška se týká pouze neplatného JSONu.
+    // applyConfig() se volá až za blokem, takže neplatná konfigurace
+    // (vyhozená z applyConfig) neuteče a zůstane viditelná v konzoli.
+    let config;
     try {
-      applyConfig(JSON.parse(String(reader.result)));
+      config = JSON.parse(String(reader.result));
     } catch (err) {
       alert(t('alert.invalidJSONFile'));
       console.error(err);
+      return;
     }
+    applyConfig(config);
   };
   reader.readAsText(file);
 }
 
-function loadConfigFromStorage() {
-  const json = localStorage.getItem(STORAGE_KEY);
-  if (!json) return;
-  try {
-    applyConfig(JSON.parse(json));
-  } catch (err) {
-    alert(t('alert.loadStorageFailed'));
-    console.error(err);
-  }
+// §ÚKOL B/C — ukládání konfigurace do prohlížeče je zrušené, takže dnes není
+// nikdy co při startu obnovit. Schválně jako FUNKCE (ne natvrdo `null`) — až
+// se jednou doplní autosave (jiné úložiště než zrušený localStorage klíč
+// konfigurace), stačí upravit tělo této funkce a chování na startu (viz
+// inicializace na konci souboru) se změní samo.
+function getStoredConfig() {
+  return null;
 }
 
 // --- dialog vlastního modulu ------------------------------------------------------
@@ -752,6 +793,7 @@ const floorplan = setupFloorplan({
 const ui = setupUI({
   onProjectNameChange(name) {
     state.projectName = String(name || '').slice(0, 60);
+    markUnsavedChanges(); // §ÚKOL C — mění se ukládané pole, ale rebuildBlock() se nevolá (viz níže)
     ui.render(state);
     // pozn.: rebuildBlock() se NEVOLÁ — název projektu nemá vliv na geometrii.
   },
@@ -1031,6 +1073,7 @@ const ui = setupUI({
   },
   onEnvChange(mode) {
     state.environment = mode;
+    markUnsavedChanges(); // §ÚKOL C — mění se ukládané pole, ale rebuildBlock() se nevolá
     floorMesh.material = createFloorMaterial(mode === 'dark');
     ui.render(state);
   },
@@ -1043,8 +1086,33 @@ const ui = setupUI({
   onLoadFile(file) {
     loadConfigFromFile(file);
   },
-  onLoadStorage() {
-    loadConfigFromStorage();
+  // §ÚKOL B — tlačítko #load-storage-btn (načtení z prohlížeče) i jeho
+  // obsluha odsud mizí spolu se zrušeným ukládáním do localStorage; DOM
+  // stranu (samotné tlačítko v index.html) ruší druhý agent.
+
+  // §ROZHRANÍ proti ui.js — úvodní obrazovka.
+  onNewProject(type) {
+    // vyprázdnění sestavy do výchozího stavu (stejné hodnoty jako při startu
+    // aplikace — viz state výše a createDefaultSegmentsA)
+    state.projectName = '';
+    state.dimensions = { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: 900 };
+    state.segmentsA = createDefaultSegmentsA();
+    state.segmentsB = [];
+    state.arms = [];
+    state.selectedId = null;
+    state.productType = type === 'mono' ? 'mono' : 'segment';
+
+    rebuildBlock();
+    reframeCamera();
+    hasUnsavedChanges = false; // §ÚKOL C — čerstvě založený projekt = žádné neuložené změny
+
+    ui.setProductType(state.productType);
+    ui.hideStartScreen();
+    // potvrzovací dotaz (rozpracovaná sestava se zahodí) řeší ui.js, tady se
+    // už neptáme (viz zadání §ÚKOL A/rozhraní).
+  },
+  onRequestOpenFile() {
+    loadFileInputEl.click();
   },
 });
 
@@ -1092,7 +1160,14 @@ function animate() {
 // reframeCamera, viz §9) a otevřený půdorys (už součástí rebuildBlock).
 onLangChange(() => {
   applyTranslations();
+  // §ÚKOL C — přepnutí jazyka není stavová změna (jazyk se neukládá do
+  // konfigurace), ale rebuildBlock() vevnitř rebuildScene() nastavuje
+  // hasUnsavedChanges natvrdo (§9 SPEC v4 — reframeCamera se tu ani nevolá).
+  // Příznak proto kolem přestavby zachováme, ať jen kvůli překreslení popisků
+  // v jiném jazyce nevznikne falešný dotaz při zavírání okna.
+  const wasDirty = hasUnsavedChanges;
   rebuildBlock();
+  hasUnsavedChanges = wasDirty;
 });
 
 // --- inicializace ---------------------------------------------------------------
@@ -1103,4 +1178,27 @@ rebuildBlock();
 // míst pro přerámování kamery (firstBuild=true uvnitř reframeCamera zajistí
 // okamžité nastavení bez animace).
 reframeCamera();
+hasUnsavedChanges = false; // §ÚKOL C — výchozí sestava při startu není „neuložená změna"
 animate();
+
+// §ÚKOL A/ROZHRANÍ proti ui.js — start screen. getStoredConfig() dnes vrací
+// vždy null (ukládání do prohlížeče je zrušené, viz §ÚKOL B), takže se úvodní
+// obrazovka zobrazí při každém startu. Schválně jako podmínka nad funkcí, ne
+// natvrdo — až se jednou doplní autosave, zapne se přeskočení start screen
+// samo, beze změny na tomto řádku.
+if (!getStoredConfig()) {
+  ui.showStartScreen();
+}
+
+// §ÚKOL C — dotaz při zavření/reloadu okna, jen když existují neuložené
+// změny A sestava není prázdná (žádný segment na žádné straně, žádné
+// rameno) — prázdnou sestavu nemá smysl „zachraňovat".
+window.addEventListener('beforeunload', (event) => {
+  const isEmpty = state.segmentsA.length === 0 && state.segmentsB.length === 0 && state.arms.length === 0;
+  if (!hasUnsavedChanges || isEmpty) return;
+  event.preventDefault();
+  // moderní prohlížeče vlastní text stejně nezobrazí (ukazují svůj vlastní),
+  // ale returnValue musí být nastaven, ať se dialog vůbec objeví; i18n klíč
+  // držíme napojený pro případ prohlížečů, které text respektují.
+  event.returnValue = t('alert.unsavedChanges');
+});

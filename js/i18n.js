@@ -16,6 +16,12 @@ export const LANGS = ['en', 'de', 'pl', 'cs', 'sk'];
 export const DEFAULT_LANG = 'en';
 export const STORAGE_KEY = 'alba-jazyk';
 
+// Názvy produktových řad se nepřekládají — jsou to ochranné známky.
+export const PRODUCT_NAMES = {
+  segment: 'ALBA SEGMENT',
+  mono: 'ALBA MONO',
+};
+
 const DICTS = {
   en: {
     'lang.en': 'English', 'lang.de': 'Deutsch', 'lang.pl': 'Polski', 'lang.cs': 'Čeština', 'lang.sk': 'Slovenčina',
@@ -128,11 +134,23 @@ const DICTS = {
     'project.nameLabel': 'Project name',
     'project.nameTitle': 'Click to rename the project',
     'project.filenamePrompt': 'File name',
+    'project.newBtn': 'New project',
+    'project.typeLabel': 'Block type',
+    'project.typeWarning': 'Changing the type means a new project.',
+
+    'init.title': 'New project',
+    'init.subtitle': 'Select the cooking block type. The type cannot be changed later.',
+    'init.segment.description': 'Assembly of independent segments in a row. Proven, cost-effective, quick assembly.',
+    'init.mono.description': 'Continuous plate with control panel on base cabinets. Free element positioning, bridges and overhangs, shaped edges.',
+    'init.createBtn': 'Create',
+    'init.continueText': 'Or continue with:',
+    'init.openFile': 'open file',
+
+    'confirm.newProject': 'The unfinished block will be discarded. Continue?',
 
     'export.png': 'Download PNG',
     'export.saveConfig': 'Save configuration',
     'export.loadFile': 'Load from file…',
-    'export.loadStorage': 'Load saved assembly',
     'export.pngFilenamePrefix': 'cooking-block',
     'export.jsonFilenamePrefix': 'cooking-block-config',
 
@@ -143,7 +161,7 @@ const DICTS = {
     'alert.invalidConfig': 'Invalid configuration format.',
     'alert.emptyConfig': 'The configuration contains no recognizable segments or arms.',
     'alert.invalidJSONFile': 'The file could not be loaded — invalid JSON.',
-    'alert.loadStorageFailed': 'The saved assembly could not be loaded.',
+    'alert.unsavedChanges': 'You have unsaved changes.',
 
     'module.neutral': 'Neutral module',
     'module.drawers': 'GN 1/1 drawers',
@@ -427,11 +445,23 @@ const DICTS = {
     'project.nameLabel': 'Projektname',
     'project.nameTitle': 'Zum Umbenennen klicken',
     'project.filenamePrompt': 'Dateiname',
+    'project.newBtn': 'Neues Projekt',
+    'project.typeLabel': 'Blocktyp',
+    'project.typeWarning': 'Die Änderung des Typs bedeutet ein neues Projekt.',
+
+    'init.title': 'Neues Projekt',
+    'init.subtitle': 'Wählen Sie den Typ des Kochblocks. Der Typ kann später nicht geändert werden.',
+    'init.segment.description': 'Zusammenstellung unabhängiger Segmente in einer Reihe. Bewährt, wirtschaftlich, schnelle Montage.',
+    'init.mono.description': 'Durchgehende Platte mit Bedienfeld auf Unterbauten. Freie Elementpositionierung, Brücken und Überhangsedge, geformte Kanten.',
+    'init.createBtn': 'Erstellen',
+    'init.continueText': 'Oder fortfahren mit:',
+    'init.openFile': 'Datei öffnen',
+
+    'confirm.newProject': 'Der unvollendete Block wird verworfen. Fortfahren?',
 
     'export.png': 'PNG herunterladen',
     'export.saveConfig': 'Konfiguration speichern',
     'export.loadFile': 'Aus Datei laden…',
-    'export.loadStorage': 'Gespeicherte Konfiguration laden',
     'export.pngFilenamePrefix': 'kochblock',
     'export.jsonFilenamePrefix': 'kochblock-konfiguration',
 
@@ -442,7 +472,7 @@ const DICTS = {
     'alert.invalidConfig': 'Ungültiges Konfigurationsformat.',
     'alert.emptyConfig': 'Die Konfiguration enthält keine erkennbaren Segmente oder Arme.',
     'alert.invalidJSONFile': 'Die Datei konnte nicht geladen werden — ungültiges JSON.',
-    'alert.loadStorageFailed': 'Die gespeicherte Konfiguration konnte nicht geladen werden.',
+    'alert.unsavedChanges': 'Sie haben ungespeicherte Änderungen.',
 
     'module.neutral': 'Neutrales Modul',
     'module.drawers': 'GN 1/1 Schubladen',
@@ -727,11 +757,23 @@ const DICTS = {
     'project.nameLabel': 'Nazwa projektu',
     'project.nameTitle': 'Kliknij, aby zmienić nazwę',
     'project.filenamePrompt': 'Nazwa pliku',
+    'project.newBtn': 'Nowy projekt',
+    'project.typeLabel': 'Typ bloku',
+    'project.typeWarning': 'Zmiana typu oznacza nowy projekt.',
+
+    'init.title': 'Nowy projekt',
+    'init.subtitle': 'Wybierz typ bloku kuchennego. Typ nie może być zmieniony później.',
+    'init.segment.description': 'Montaż niezależnych segmentów w rzędzie. Sprawdzony, ekonomiczny, szybka montaż.',
+    'init.mono.description': 'Ciągła płyta z panelem sterowania na szafkach podblatowych. Dowolne pozycjonowanie elementów, mosty i zwisy, krawędzie kształtowane.',
+    'init.createBtn': 'Utwórz',
+    'init.continueText': 'Lub kontynuuj z:',
+    'init.openFile': 'otwórz plik',
+
+    'confirm.newProject': 'Niedokończony blok zostanie odrzucony. Kontynuować?',
 
     'export.png': 'Pobierz PNG',
     'export.saveConfig': 'Zapisz konfigurację',
     'export.loadFile': 'Wczytaj z pliku…',
-    'export.loadStorage': 'Wczytaj zapisany zestaw',
     'export.pngFilenamePrefix': 'blok-kuchenny',
     'export.jsonFilenamePrefix': 'blok-kuchenny-konfiguracja',
 
@@ -742,7 +784,7 @@ const DICTS = {
     'alert.invalidConfig': 'Nieprawidłowy format konfiguracji.',
     'alert.emptyConfig': 'Konfiguracja nie zawiera żadnych rozpoznawalnych segmentów ani ramion.',
     'alert.invalidJSONFile': 'Nie udało się wczytać pliku — nieprawidłowy JSON.',
-    'alert.loadStorageFailed': 'Nie udało się wczytać zapisanego zestawu.',
+    'alert.unsavedChanges': 'Masz niezapisane zmiany.',
 
     'module.neutral': 'Moduł neutralny',
     'module.drawers': 'szuflady GN 1/1',
@@ -1030,11 +1072,23 @@ const DICTS = {
     'project.nameLabel': 'Název projektu',
     'project.nameTitle': 'Kliknutím projekt přejmenujete',
     'project.filenamePrompt': 'Název souboru',
+    'project.newBtn': 'Nový projekt',
+    'project.typeLabel': 'Typ bloku',
+    'project.typeWarning': 'Změna typu znamená nový projekt.',
+
+    'init.title': 'Nový projekt',
+    'init.subtitle': 'Vyberte typ varného bloku. Typ nelze později změnit.',
+    'init.segment.description': 'Sestava samostatných segmentů v řadě. Osvědčené, cenově dostupné, rychlá montáž.',
+    'init.mono.description': 'Průběžná deska s ovládacím panelem na podestavbách. Volná poloha prvků, mosty a převisy, tvarovaná zakončení.',
+    'init.createBtn': 'Založit',
+    'init.continueText': 'Nebo pokračovat:',
+    'init.openFile': 'otevřít soubor',
+
+    'confirm.newProject': 'Rozpracovaný blok se zahodí. Pokračovat?',
 
     'export.png': 'Stáhnout PNG',
     'export.saveConfig': 'Uložit konfiguraci',
     'export.loadFile': 'Načíst ze souboru…',
-    'export.loadStorage': 'Načíst uloženou sestavu',
     'export.pngFilenamePrefix': 'varny-blok',
     'export.jsonFilenamePrefix': 'varny-blok-konfigurace',
 
@@ -1045,7 +1099,7 @@ const DICTS = {
     'alert.invalidConfig': 'Neplatný formát konfigurace.',
     'alert.emptyConfig': 'Konfigurace neobsahuje žádné rozpoznatelné segmenty ani ramena.',
     'alert.invalidJSONFile': 'Soubor se nepodařilo načíst — neplatný JSON.',
-    'alert.loadStorageFailed': 'Uloženou sestavu se nepodařilo načíst.',
+    'alert.unsavedChanges': 'Máte neuložené změny.',
 
     'module.neutral': 'Neutrální modul',
     'module.drawers': 'Zásuvky GN 1/1',
@@ -1332,11 +1386,23 @@ const DICTS = {
     'project.nameLabel': 'Názov projektu',
     'project.nameTitle': 'Kliknutím projekt premenujete',
     'project.filenamePrompt': 'Názov súboru',
+    'project.newBtn': 'Nový projekt',
+    'project.typeLabel': 'Typ bloku',
+    'project.typeWarning': 'Zmena typu znamená nový projekt.',
+
+    'init.title': 'Nový projekt',
+    'init.subtitle': 'Vyberte typ varného bloku. Typ sa nemôže neskôr zmeniť.',
+    'init.segment.description': 'Montáž nezávislých segmentov v rade. Overené, ekonomické, rýchla montáž.',
+    'init.mono.description': 'Priebežná doska s ovládacím panelom na podstavbách. Voľné umiestnenie prvkov, mosty a presahy, tvarované konce.',
+    'init.createBtn': 'Vytvoriť',
+    'init.continueText': 'Alebo pokračujte s:',
+    'init.openFile': 'otvoriť súbor',
+
+    'confirm.newProject': 'Nedokončený blok sa vyradia. Pokračovať?',
 
     'export.png': 'Stiahnuť PNG',
     'export.saveConfig': 'Uložiť konfiguráciu',
     'export.loadFile': 'Načítať zo súboru…',
-    'export.loadStorage': 'Načítať uloženú zostavu',
     'export.pngFilenamePrefix': 'varny-blok',
     'export.jsonFilenamePrefix': 'varny-blok-konfiguracia',
 
@@ -1347,7 +1413,7 @@ const DICTS = {
     'alert.invalidConfig': 'Neplatný formát konfigurácie.',
     'alert.emptyConfig': 'Konfigurácia neobsahuje žiadne rozpoznateľné segmenty ani ramená.',
     'alert.invalidJSONFile': 'Súbor sa nepodarilo načítať — neplatný JSON.',
-    'alert.loadStorageFailed': 'Uloženú zostavu sa nepodarilo načítať.',
+    'alert.unsavedChanges': 'Máte neuložené zmeny.',
 
     'module.neutral': 'Neutrálny modul',
     'module.drawers': 'Zásuvky GN 1/1',

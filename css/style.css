@@ -1829,6 +1829,104 @@ body {
   color: var(--text-muted);
 }
 
+/* --- úvodní obrazovka (#start-screen-overlay) — volba řady bloku ----------------
+   Vychází ze společné .dialog-overlay/.dialog-box (viz výše), jen širší box
+   pro dvě karty vedle sebe. Karty jsou záměrně rovnocenné — žádná není
+   vizuálně "ta lepší" (žádný zvýrazněný rámeček, žádný odznak "doporučeno"). */
+
+.start-screen-box {
+  position: relative;
+  max-width: 720px;
+  gap: 16px;
+}
+
+/* zavírací křížek úvodní obrazovky — position:relative na .start-screen-box
+   umožňuje absolute pozicování křížku v rohu */
+.start-screen-box .start-screen-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.start-screen-subtitle {
+  margin: -6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.start-screen-cards {
+  display: flex;
+  gap: 16px;
+}
+
+.start-card {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.start-card-art {
+  width: 100%;
+  max-width: 200px;
+}
+
+.start-card-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.start-card-name {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.start-card-desc {
+  flex: 1 1 auto;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.start-card-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.start-screen-footer {
+  margin: 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.start-screen-link {
+  color: var(--accent-dark);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.start-screen-link:hover {
+  color: var(--accent-darker);
+}
+
+@media (max-width: 640px) {
+  .start-screen-cards {
+    flex-direction: column;
+  }
+}
+
 /* --- responzivní zúžení pro menší okna ------------------------------------------ */
 
 @media (max-width: 720px) {
@@ -2029,6 +2127,38 @@ body {
 .icon-btn-sm:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* --- odznak typu bloku (SEGMENT/MONO) v panelu Projekt --------------------
+   Jen informativní, typ se tady NEPŘEPÍNÁ (viz #start-screen-overlay).
+   Pozadí je záměrně plné (ne poloprůhledné), ať se kontrast textu nepočítá
+   přes skládání alfy nad --bg-panel. */
+.project-type-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-top: 8px;
+}
+
+.project-type-chip {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.project-type-note {
+  flex: 1 1 120px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 /* --- segmentový přepínač varianty ---------------------------------------- */

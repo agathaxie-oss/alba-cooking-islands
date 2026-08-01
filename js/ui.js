@@ -42,7 +42,9 @@ import {
   ARM_CENTER_OFFSET_MAX,
   ARM_CENTER_OFFSET_DEFAULT,
 } from './arms.js';
-import { t, getLang, setLang, onLangChange, LANGS } from './i18n.js';
+import {
+  t, getLang, setLang, onLangChange, LANGS, PRODUCT_NAMES,
+} from './i18n.js';
 
 export const STORAGE_KEY = 'nerez-blok-config-v3';
 
@@ -224,8 +226,28 @@ export function setupUI(callbacks) {
     saveConfigBtn: document.getElementById('save-config'),
     loadFileInput: document.getElementById('load-file-input'),
     loadFileBtn: document.getElementById('load-file-btn'),
-    loadStorageBtn: document.getElementById('load-storage-btn'),
+    newProjectBtn: document.getElementById('new-project-btn'),
+    projectTypeChip: document.getElementById('project-type-chip'),
+
+    // --- úvodní obrazovka (výběr řady bloku, viz níže) ------------------------
+    startScreenOverlay: document.getElementById('start-screen-overlay'),
+    startCardNameSegment: document.getElementById('start-card-name-segment'),
+    startCardNameMono: document.getElementById('start-card-name-mono'),
+    startCardBtnSegment: document.getElementById('start-card-btn-segment'),
+    startCardBtnMono: document.getElementById('start-card-btn-mono'),
+    startScreenOpenFile: document.getElementById('start-screen-open-file'),
   };
+
+  // --- typ řady bloku (segment/mono) — ui.js si ho drží jen jako kopii pro
+  // vykreslení odznaku v panelu Projekt a pro tlačítko „Nový projekt" (to
+  // typ nenabízí k výběru, jen zopakuje ten aktuální). Zdroj pravdy je
+  // main.js, který po každé změně zavolá setProductType() (viz return níže).
+  let currentProductType = null;
+
+  function renderProductTypeChip() {
+    if (!els.projectTypeChip) return;
+    els.projectTypeChip.textContent = PRODUCT_NAMES[currentProductType] || '';
+  }
 
   // --- pás sestavy (krok 3A redesignu) — stav záložky/srolování žije jen
   // v této closure, nikam se neukládá; activeTab (mimo 'arms') se odvozuje
@@ -610,7 +632,95 @@ export function setupUI(callbacks) {
     if (file) callbacks.onLoadFile(file);
     event.target.value = '';
   });
-  els.loadStorageBtn.addEventListener('click', () => callbacks.onLoadStorage());
+  // --- úvodní obrazovka (výběr řady bloku) ------------------------------------
+  // Otevírá se jak při startu aplikace (main.js, když není co obnovit — viz
+  // showStartScreen() v return níže), tak z tlačítka „Nový projekt". V obou
+  // případech se na ní typ VOLÍ (klik na kartu), tlačítko samo typ nenabízí.
+  //
+  // Zavíratelnost overlaye je stavová (startScreenCloseable), NE napevno:
+  // při startu aplikace není kam se vrátit (žádný projekt ještě nevznikl),
+  // takže křížek i Escape musí být vypnuté — jinak by uživatel mohl uváznout
+  // v aplikaci bez zvoleného typu bloku. Z tlačítka „Nový projekt" naproti
+  // tomu rozpracovaná sestava mezitím žije dál za overlayem (zahodí ji až
+  // main.js v onNewProject() PO výběru karty), takže návrat zpět dává smysl
+  // a musí být možný. Proto dvě cesty dovnitř (openStartScreen(false/true))
+  // a jedna cesta ven přes zavření (closeStartScreen, jen když closeable).
+  let startScreenCloseable = false;
+
+  // Křížek v rohu overlaye — dohledá existující prvek z index.html,
+  // obslouží kliknutí a přepíná viditelnost podle startScreenCloseable.
+  const startScreenCloseBtn = document.getElementById('start-screen-close-btn');
+  if (startScreenCloseBtn) {
+    startScreenCloseBtn.addEventListener('click', () => closeStartScreen());
+  }
+
+  /** Aktualizuj přístupové atributy křížku — existující klíč common.close
+   *  zajišťuje applyTranslations přes data-i18n-title a data-i18n-aria-label. */
+  function updateStartScreenCloseLabel() {
+    // applyTranslations už popisek obnovuje přes data-i18n atributy, takže tady
+    // není nutné nic dělat — už to funguje bez dalšího kódu.
+  }
+  onLangChange(updateStartScreenCloseLabel);
+
+  function setStartScreenCloseable(closeable) {
+    startScreenCloseable = closeable;
+    if (startScreenCloseBtn) startScreenCloseBtn.hidden = !closeable;
+  }
+
+  function openStartScreen(closeable) {
+    setStartScreenCloseable(closeable);
+    if (els.startScreenOverlay) els.startScreenOverlay.hidden = false;
+  }
+
+  function closeStartScreen() {
+    if (!startScreenCloseable) return;
+    if (!els.startScreenOverlay || els.startScreenOverlay.hidden) return;
+    els.startScreenOverlay.hidden = true;
+  }
+
+  // zavření křížkem řeší posluchač výše, zavření klávesou Escape je globální
+  // (no-op, když overlay není zavíratelný nebo není vidět — viz closeStartScreen)
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') closeStartScreen();
+  });
+
+  // Názvy karet jsou obchodní jména z PRODUCT_NAMES (i18n.js) — nepřekládají
+  // se, proto se nastavují jednou tady, ne přes data-i18n. Klik na kartu jen
+  // ohlásí volbu (main.js pak sám zavolá ui.hideStartScreen()), nezavírá se sám.
+  if (els.startCardNameSegment) els.startCardNameSegment.textContent = PRODUCT_NAMES.segment;
+  if (els.startCardNameMono) els.startCardNameMono.textContent = PRODUCT_NAMES.mono;
+  if (els.startCardBtnSegment) {
+    els.startCardBtnSegment.addEventListener('click', () => callbacks.onNewProject('segment'));
+  }
+  if (els.startCardBtnMono) {
+    els.startCardBtnMono.addEventListener('click', () => callbacks.onNewProject('mono'));
+  }
+  if (els.startScreenOpenFile) {
+    els.startScreenOpenFile.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      callbacks.onRequestOpenFile();
+    });
+  }
+
+  // --- tlačítko „Nový projekt" (panel Projekt) — typ se tady NENABÍZÍ. Dřív
+  // tohle tlačítko rovnou zavolalo callbacks.onNewProject(currentProductType),
+  // čímž založilo nový projekt ve STÁVAJÍCÍM typu bez ptaní — špatně, typ se
+  // smí volit VÝHRADNĚ na úvodní obrazovce (viz výše). Správně tedy tlačítko
+  // jen otevře úvodní obrazovku (zavíratelnou, protože rozdělaná sestava
+  // mezitím žije dál za overlayem) a čeká, až uživatel klikne na kartu.
+  // Potvrzovací dotaz (window.confirm) se přeskočí, když je sestava prázdná.
+  if (els.newProjectBtn) {
+    els.newProjectBtn.addEventListener('click', () => {
+      const state = lastStripState;
+      const isEmpty = !state || (
+        (state.segmentsA || []).length === 0
+        && (state.variant !== 'island' || (state.segmentsB || []).length === 0)
+        && (state.arms || []).length === 0
+      );
+      if (!isEmpty && !window.confirm(t('confirm.newProject'))) return;
+      openStartScreen(true);
+    });
+  }
 
   // --- provedení soklu + povrchová úprava (§11.2 SPEC v4) — u KAŽDÉHO segmentu ----
   function appendPlinthFinishFields(extra, seg) {
@@ -1423,10 +1533,23 @@ export function setupUI(callbacks) {
     els.envButtons.forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.env === state.environment);
     });
-
-    // tlačítko načtení uložené sestavy je aktivní jen pokud něco je uloženo
-    els.loadStorageBtn.disabled = !localStorage.getItem(STORAGE_KEY);
   }
 
-  return { render };
+  return {
+    render,
+    // --- úvodní obrazovka a odznak typu bloku (rozhraní proti main.js) -------
+    // main.js volá showStartScreen() bez argumentů jen při úplném startu
+    // aplikace (není co obnovit) — proto NEzavíratelně (§komentář výše).
+    showStartScreen() {
+      openStartScreen(false);
+    },
+    hideStartScreen() {
+      setStartScreenCloseable(false);
+      if (els.startScreenOverlay) els.startScreenOverlay.hidden = true;
+    },
+    setProductType(type) {
+      currentProductType = type;
+      renderProductTypeChip();
+    },
+  };
 }

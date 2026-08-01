@@ -99,14 +99,25 @@
               <path d="M3 6h6l2 2h10v11H3z"/><path d="M3 11h18"/>
             </svg>
           </button>
-          <button type="button" id="load-storage-btn" class="icon-btn-sm"
-                  data-i18n-title="export.loadStorage" data-i18n-aria-label="export.loadStorage">
+          <button type="button" id="new-project-btn" class="icon-btn-sm"
+                  data-i18n-title="project.newBtn" data-i18n-aria-label="project.newBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M3.5 9A9 9 0 1 1 3 12"/><path d="M3 4v5h5"/><path d="M12 7.5V12l3.5 2"/>
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>
+              <path d="M12 11v6"/><path d="M9 14h6"/>
             </svg>
           </button>
           <input type="file" id="load-file-input" accept="application/json" hidden />
+        </div>
+
+        <!-- Odznak aktuálního typu bloku (SEGMENT/MONO) — jen informativní,
+             typ se přepíná výhradně na úvodní obrazovce (#start-screen-overlay).
+             Text odznaku doplňuje ui.js z PRODUCT_NAMES (js/i18n.js), protože
+             obchodní jména se nepřekládají. -->
+        <div class="project-type-row">
+          <span id="project-type-chip" class="project-type-chip"
+                data-i18n-aria-label="project.typeLabel"></span>
+          <span class="project-type-note" data-i18n="project.typeWarning">Changing the type means a new project.</span>
         </div>
       </section>
 
@@ -200,6 +211,59 @@
           <div id="strip-detail" class="strip-detail"></div>
         </div>
       </section>
+    </div>
+  </div>
+
+  <!-- Overlay úvodní obrazovky — volba řady bloku při založení projektu.
+       Typ (segment/mono) se volí VÝHRADNĚ tady (viz main.js), jinde v
+       aplikaci se přepnout nedá. Obě karty jsou rovnocenné, žádná není
+       zvýrazněná jako "doporučená". -->
+  <div id="start-screen-overlay" class="dialog-overlay start-screen-overlay" hidden>
+    <div class="dialog-box start-screen-box">
+      <button type="button" id="start-screen-close-btn" class="icon-btn start-screen-close" title="Close" aria-label="Close" data-i18n-title="common.close" data-i18n-aria-label="common.close" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <h2 data-i18n="init.title">New project</h2>
+      <p class="start-screen-subtitle" data-i18n="init.subtitle">Select the cooking block type. The type cannot be changed later.</p>
+
+      <div class="start-screen-cards">
+        <div class="start-card">
+          <div class="start-card-art" aria-hidden="true">
+            <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg">
+              <rect x="10" y="20" width="56" height="14" rx="2" fill="var(--accent-soft)" stroke="var(--accent-dark)" stroke-width="2"/>
+              <rect x="10" y="34" width="56" height="70" rx="2" fill="none" stroke="var(--accent-dark)" stroke-width="2"/>
+              <rect x="72" y="20" width="56" height="14" rx="2" fill="var(--accent-soft)" stroke="var(--accent-dark)" stroke-width="2"/>
+              <rect x="72" y="34" width="56" height="70" rx="2" fill="none" stroke="var(--accent-dark)" stroke-width="2"/>
+              <rect x="134" y="20" width="56" height="14" rx="2" fill="var(--accent-soft)" stroke="var(--accent-dark)" stroke-width="2"/>
+              <rect x="134" y="34" width="56" height="70" rx="2" fill="none" stroke="var(--accent-dark)" stroke-width="2"/>
+            </svg>
+          </div>
+          <h3 class="start-card-name" id="start-card-name-segment"></h3>
+          <p class="start-card-desc" data-i18n="init.segment.description">Assembly of independent segments in a row.</p>
+          <button type="button" class="action-btn action-btn-primary start-card-btn"
+                  id="start-card-btn-segment" data-i18n="init.createBtn">Create</button>
+        </div>
+
+        <div class="start-card">
+          <div class="start-card-art" aria-hidden="true">
+            <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="18" width="184" height="12" rx="2" fill="var(--accent-soft)" stroke="var(--accent-dark)" stroke-width="2"/>
+              <rect x="60" y="34" width="80" height="10" rx="2" fill="none" stroke="var(--accent-dark)" stroke-width="1.6" stroke-dasharray="3 2"/>
+              <rect x="8" y="48" width="70" height="58" rx="2" fill="none" stroke="var(--accent-dark)" stroke-width="2"/>
+              <rect x="122" y="48" width="70" height="58" rx="2" fill="none" stroke="var(--accent-dark)" stroke-width="2"/>
+            </svg>
+          </div>
+          <h3 class="start-card-name" id="start-card-name-mono"></h3>
+          <p class="start-card-desc" data-i18n="init.mono.description">Continuous plate with control panel on base cabinets.</p>
+          <button type="button" class="action-btn action-btn-primary start-card-btn"
+                  id="start-card-btn-mono" data-i18n="init.createBtn">Create</button>
+        </div>
+      </div>
+
+      <p class="start-screen-footer">
+        <span data-i18n="init.continueText">Or continue with:</span>
+        <a href="#" id="start-screen-open-file" class="start-screen-link" data-i18n="init.openFile">open file</a>
+      </p>
     </div>
   </div>
 

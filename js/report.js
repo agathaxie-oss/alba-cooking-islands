@@ -25,11 +25,10 @@
 // dílů nikdy neodporovaly.
 
 import { t, getLang } from './i18n.js';
-import {
-  computeLayout, getBodyStyle, hasPanelFlag, hasShelfFlag, getPlinthType, getFinishType,
-} from './floorplan.js';
+import { computeLayout } from './floorplan.js';
 import {
   getSegmentLabel, getInstrumentDef, DRAWERS_TYPE, getSegmentDrawerCount, SINK_VAT_HEIGHT_MM,
+  getSegmentBodyStyle, hasPanelFlag, hasShelfFlag, getSegmentPlinth, getSegmentFinish,
 } from './modules.js';
 import {
   ARM_SPOUT_HEIGHT, ARM_REACH, ARM_ANGLE_MAX, ARM_BACK_OFFSET_DEFAULT, ARM_CENTER_OFFSET_DEFAULT,
@@ -287,7 +286,7 @@ function buildBaseCellText(item) {
     ].join(' · ');
   }
   return [
-    t(`bodyStyle.${getBodyStyle(seg, item.def)}`),
+    t(`bodyStyle.${getSegmentBodyStyle(seg)}`),
     t('floorplan.shelfLine', { value: hasShelfFlag(seg) ? t('common.yes') : t('common.no') }),
     t('floorplan.panelLine', { value: hasPanelFlag(seg) ? t('common.yes') : t('common.no') }),
   ].join(' · ');
@@ -334,8 +333,8 @@ function buildPartsTable(items, heightMM) {
       (def && def.catalogCode) || '—',
       `${Math.round(item.widthMM)} × ${Math.round(item.plinthDepthMM)} × ${Math.round(heightMM)} mm`,
       buildBaseCellText(item),
-      t(`plinth.${getPlinthType(seg)}`),
-      getFinishType(seg),
+      t(`plinth.${getSegmentPlinth(seg)}`),
+      getSegmentFinish(seg),
       buildTechDataCellText(def),
     ];
     const tr = document.createElement('tr');

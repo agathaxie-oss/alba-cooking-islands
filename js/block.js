@@ -97,17 +97,6 @@ export function computeSideDepth(fittingSegments, requestedSideDepthMM, marginMM
 }
 
 /**
- * @deprecated Zpětně kompatibilní shim pro starší volání (§7.3 SPEC v3),
- * ponecháno jen aby neselhal import v souborech, které dosud nebyly
- * aktualizovány na nový model §11.1 (viz computeSideDepth). Používá výchozí
- * mezeru jednostranného bloku (SINGLE_SIDE_MARGIN_MM).
- */
-export function computeEffectiveDepth(fittingSegments, requestedDepthMM) {
-  const { effectiveDepthMM, reasons } = computeSideDepth(fittingSegments, requestedDepthMM, SINGLE_SIDE_MARGIN_MM);
-  return { effectiveDepthMM, reasons };
-}
-
-/**
  * Sestaví podestavby JEDNÉ strany (segmenty + výplň) do lokální skupiny.
  * Lokální prostor: x vystředěno kolem 0 (šířka usableWidthMM), z od 0 (čelo
  * strany) do rowDepthMM.

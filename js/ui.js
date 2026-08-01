@@ -387,9 +387,11 @@ export function setupUI(callbacks) {
 
   // --- přepínač jazyka: jedno tlačítko (vlaječka aktuálního jazyka + šipka)
   // a rozbalovací nabídka se všemi jazyky (ZMĚNA 11, §13 SPEC v4) — pořadí
-  // a vlaječky se berou přímo z i18n.js (LANGS/LANG_FLAGS), takže přidání
-  // dalšího jazyka stačí udělat na jednom místě. Přepnutí ihned překreslí
-  // celý panel přes onLangChange posluchač zaregistrovaný v main.js. -----------
+  // jazyků se bere z i18n.js (LANGS), kresby vlaječek jsou v FLAG_SVGS nahoře
+  // v tomto souboru (emoji vlaječky se na Windows nevykreslují barevně).
+  // Přidání dalšího jazyka je tedy úprava na dvou místech: LANGS v i18n.js
+  // a FLAG_SVGS zde. Přepnutí ihned překreslí celý panel přes onLangChange
+  // posluchač zaregistrovaný v main.js. ----------------------------------------
   const langSwitcherEl = document.getElementById('lang-switcher');
   const CARET_DOWN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" '
     + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';

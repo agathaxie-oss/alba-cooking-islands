@@ -19,19 +19,19 @@
 //  - kresba má dvě vrstvy: obrys podestavby (plná čára) + schematický
 //    půdorys přístroje na desce (hořáky, plotny, vany…) při pohledu shora.
 //
-// Tento soubor je záměrně NEZÁVISLÝ na (měnícím se) výpočtu efektivní hloubky
-// v block.js — hloubku podestavby a případné zvětšení strany kvůli
-// minDepthMM si počítá vlastní funkcí computeSideDepth() níže, aby schéma
-// fungovalo, i než paralelně probíhající úpravy block.js/main.js doběhnou.
+// Hloubku podestavby a případné zvětšení strany kvůli minDepthMM (§11.1)
+// počítá SDÍLENÁ funkce computeSideDepth z block.js (stejná, jakou pro 3D
+// používá block.js/buildBlock) — dřív tu byla vlastní, textově skoro shodná
+// kopie, což hrozilo rozjetím obou výpočtů; teď je jen jeden zdroj pravdy.
 
-import { computeCapacity, OVERHANG_MM, SIDE_PANEL_MM } from './block.js';
+import {
+  computeCapacity, OVERHANG_MM, SIDE_PANEL_MM,
+  computeSideDepth, SINGLE_SIDE_MARGIN_MM, ISLAND_ROW_MARGIN_MM,
+} from './block.js';
 import {
   getSegmentWidthMM,
   getSegmentLabel,
-  getSegmentMinDepthMM,
   getInstrumentDef,
-  NEUTRAL_TYPE,
-  CUSTOM_TYPE,
   DRAWERS_TYPE,
   getSegmentDrawerCount,
   SINK_VAT_WIDTH_DEFAULT,
@@ -46,10 +46,6 @@ import {
 } from './arms.js';
 import { t } from './i18n.js';
 
-// mezera mezi podestavbou a stěnou/protější podestavbou (§11.1)
-const SINGLE_WALL_GAP_MM = 50;
-const ISLAND_SEAM_HALF_GAP_MM = 75; // na stranu — dohromady 150 mm
-
 function clamp(v, min, max) {
   return Math.min(Math.max(v, min), max);
 }
@@ -63,78 +59,6 @@ function esc(str) {
 }
 
 const round = (v) => Math.round(v);
-
-// --- Provedení podestavby (§11.2) --------------------------------------------
-// Tyto malé pomocné funkce (typ podestavby/soklu/povrchu, panel/police) čte
-// i js/report.js (tiskový dokument) — vykreslují se stejná data ve dvou
-// různých dokumentech (SVG schéma zde / HTML soupis dílů v report.js), takže
-// je nutné mít jednu sdílenou pravdu, ne dvě kopie stejné logiky (proto jsou
-// exportované).
-
-const PLINTH_TYPES = ['legs', 'building', 'construction'];
-const FINISH_TYPES = ['HS+', 'H1', 'H2', 'H3'];
-
-export function getPlinthType(seg) {
-  return PLINTH_TYPES.includes(seg.plinth) ? seg.plinth : 'construction';
-}
-export function getFinishType(seg) {
-  return FINISH_TYPES.includes(seg.finish) ? seg.finish : 'H1';
-}
-/** Typ podestavby (uzavřená/dvířka/otevřená) — instance, nebo (u katalogových
- *  přístrojů bez vlastního nastavení) výchozí styl z katalogu. Tolerantní k
- *  chybějícím polím. Čte primárně seg.bodyStyle, zpětně kompatibilně seg.podestavba. */
-export function getBodyStyle(seg, def) {
-  // Primárně čti nový název pole (SPEC v4)
-  if (seg.bodyStyle === 'open' || seg.bodyStyle === 'doors' || seg.bodyStyle === 'closed') {
-    return seg.bodyStyle;
-  }
-  // Zpětná kompatibilita se starým názvem (SPEC v3)
-  if (seg.podestavba === 'open' || seg.podestavba === 'doors' || seg.podestavba === 'closed') {
-    return seg.podestavba;
-  }
-  // Výchozí hodnota z definice katalogu
-  if (def && def.bodyStyle) return def.bodyStyle;
-  // Finální výchozí: neutrální → 'doors', přístrojové → 'closed'
-  return seg.type === NEUTRAL_TYPE ? 'doors' : 'closed';
-}
-/** Panel je u katalogových/vlastních přístrojů vždy přítomný (mají ovládací
- *  panel z podstaty věci); u neutrálního modulu je volitelný (pole hasPanel). */
-export function hasPanelFlag(seg) {
-  if (typeof seg.hasPanel === 'boolean') return seg.hasPanel;
-  return seg.type !== NEUTRAL_TYPE && seg.type !== DRAWERS_TYPE;
-}
-export function hasShelfFlag(seg) {
-  return typeof seg.hasShelf === 'boolean' ? seg.hasShelf : false;
-}
-
-// --- Výpočet jednotné hloubky podestavby řady (§11.1) ------------------------
-
-/**
- * Spočítá jednotnou hloubku podestavby jedné strany a případné automatické
- * zvětšení hloubky strany, pokud by se do odvozené hloubky podestavby
- * nevešel nejhlubší přístroj (minDepthMM). `gapMM` je mezera za podestavbou
- * (50 mm u jednostranného bloku, 75 mm na stranu u ostrova).
- */
-function computeSideDepth(fittingSegments, requestedSideDepthMM, gapMM) {
-  let maxMinDepthMM = 0;
-  const limiting = [];
-  fittingSegments.forEach((seg) => {
-    if (seg.type === NEUTRAL_TYPE || seg.type === CUSTOM_TYPE || seg.type === DRAWERS_TYPE) return;
-    const minD = getSegmentMinDepthMM(seg);
-    if (minD > maxMinDepthMM) maxMinDepthMM = minD;
-  });
-  const requestedPlinthMM = Math.max(requestedSideDepthMM - gapMM, 0);
-  const plinthDepthMM = Math.max(requestedPlinthMM, maxMinDepthMM);
-  const effectiveSideDepthMM = plinthDepthMM + gapMM;
-  const grown = effectiveSideDepthMM > requestedSideDepthMM;
-  if (grown) {
-    fittingSegments.forEach((seg) => {
-      if (seg.type === NEUTRAL_TYPE || seg.type === CUSTOM_TYPE || seg.type === DRAWERS_TYPE) return;
-      if (getSegmentMinDepthMM(seg) === maxMinDepthMM) limiting.push(getSegmentLabel(seg));
-    });
-  }
-  return { plinthDepthMM, effectiveSideDepthMM, grown, reasons: limiting };
-}
 
 /** Lokální (řádkové) pozice segmentů jedné strany — kumulativní kurzor
  *  zprava doleva, stejná logika jako block.js buildSideSegments. `mirrorX`
@@ -201,22 +125,25 @@ export function computeLayout(state) {
   const capacityA = computeCapacity(segmentsA, usableWidthMM);
   const fitIdsA = new Set(capacityA.results.filter((r) => r.fits).map((r) => r.id));
   const fittingA = segmentsA.filter((s) => fitIdsA.has(s.id));
-  const gapA = isIsland ? ISLAND_SEAM_HALF_GAP_MM : SINGLE_WALL_GAP_MM;
+  const gapA = isIsland ? ISLAND_ROW_MARGIN_MM : SINGLE_SIDE_MARGIN_MM;
   const sideA = computeSideDepth(fittingA, requestedDepthAMM, gapA);
+  const grownA = sideA.effectiveDepthMM > requestedDepthAMM;
   const rawItemsA = layoutRow(fittingA, usableWidthMM, 'A', false);
 
   let rawItemsB = [];
-  let sideB = { plinthDepthMM: 0, effectiveSideDepthMM: 0, grown: false, reasons: [] };
+  let sideB = { plinthDepthMM: 0, effectiveDepthMM: 0, reasons: [] };
+  let grownB = false;
   if (isIsland) {
     const capacityB = computeCapacity(segmentsB, usableWidthMM);
     const fitIdsB = new Set(capacityB.results.filter((r) => r.fits).map((r) => r.id));
     const fittingB = segmentsB.filter((s) => fitIdsB.has(s.id));
-    sideB = computeSideDepth(fittingB, requestedDepthBMM, ISLAND_SEAM_HALF_GAP_MM);
+    sideB = computeSideDepth(fittingB, requestedDepthBMM, ISLAND_ROW_MARGIN_MM);
+    grownB = sideB.effectiveDepthMM > requestedDepthBMM;
     rawItemsB = layoutRow(fittingB, usableWidthMM, 'B', true);
   }
 
-  const depthAMM = sideA.effectiveSideDepthMM;
-  const depthBMM = isIsland ? sideB.effectiveSideDepthMM : 0;
+  const depthAMM = sideA.effectiveDepthMM;
+  const depthBMM = isIsland ? sideB.effectiveDepthMM : 0;
   const totalDepthMM = isIsland ? depthAMM + depthBMM : depthAMM;
 
   // strana A: podestavba od čela (z=0), mezera vzadu (u zdi / u spáry)
@@ -237,8 +164,8 @@ export function computeLayout(state) {
     variant, isIsland, lengthMM, heightMM, usableWidthMM,
     depthAMM, depthBMM, totalDepthMM,
     plinthDepthA: sideA.plinthDepthMM, plinthDepthB: sideB.plinthDepthMM,
-    gapA, gapB: ISLAND_SEAM_HALF_GAP_MM,
-    depthGrownA: sideA.grown, depthGrownB: isIsland && sideB.grown,
+    gapA, gapB: ISLAND_ROW_MARGIN_MM,
+    depthGrownA: grownA, depthGrownB: isIsland && grownB,
     depthReasonsA: sideA.reasons, depthReasonsB: sideB.reasons,
     itemsA, itemsB, items: itemsA.concat(itemsB), armItems,
   };

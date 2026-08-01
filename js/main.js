@@ -1,6 +1,6 @@
 // main.js — bootstrap aplikace: scéna, renderer, světla, podlaha, render smyčka
 // a propojení stavu aplikace s bočním panelem (ui.js), dialogem vlastního
-// modulu (custom-dialog.js) a 3D scénou (block.js/arms.js). SPEC v3.
+// modulu (custom-dialog.js) a 3D scénou (block.js/arms.js). SPEC v4.
 
 import * as THREE from 'three';
 import { setupEnvironment, createFloorMaterial, createBackgroundTexture } from './materials.js';
@@ -425,9 +425,27 @@ function exportPNG() {
 
 // --- export / import JSON konfigurace -------------------------------------------
 
+/** Sada `type` hodnot použitých v aktuální sestavě, na obou stranách bloku
+ *  (§ÚKOL 1) — čte přímo ze state.segmentsA/segmentsB, tedy včetně segmentů,
+ *  které se do bloku aktuálně nevejdou a přetékají (buildBlock je z vstupu
+ *  nijak neodstraňuje, jsou pořád součástí pole). Slouží k omezení ukládaného
+ *  katalogu jen na skutečně použité přístroje (viz serializeConfig níže) —
+ *  segmenty typu 'neutral'/'custom'/'drawers' (NEUTRAL_TYPE/CUSTOM_TYPE/
+ *  DRAWERS_TYPE) nejsou katalogové položky a žádnému id v katalogu
+ *  neodpovídají, takže tímhle filtrem přirozeně vypadnou samy, bez zvláštní
+ *  výjimky (vlastní modul si svoji definici nese přímo v segmentu).
+ */
+function usedCatalogTypes() {
+  const types = new Set();
+  state.segmentsA.forEach((s) => types.add(s.type));
+  state.segmentsB.forEach((s) => types.add(s.type));
+  return types;
+}
+
 function serializeConfig() {
+  const usedTypes = usedCatalogTypes();
   return {
-    version: 3,
+    version: 4,
     projectName: state.projectName,
     variant: state.variant,
     environment: state.environment,
@@ -435,7 +453,15 @@ function serializeConfig() {
     segmentsA: state.segmentsA.map((s) => ({ ...s })),
     segmentsB: state.segmentsB.map((s) => ({ ...s })),
     arms: state.arms.map((a) => ({ ...a })),
-    catalog: getCatalog(), // vlastní přístroje + viditelnost — jde přenést s konfigurací
+    // Ukládáme jen POUŽITÉ přístroje (§ÚKOL 1), ne celý katalog — katalog čeká
+    // zásadní přestavbu a vestavěné přístroje z něj mohou zmizet nebo se
+    // nahradit; uložený projekt si proto musí nést definice použitých
+    // přístrojů s sebou, jinak by po přestavbě katalogu ztratil rozměry
+    // i vzhled a segmenty by se vykreslily jako prázdná výplň (viz
+    // sanitizeSegment/getCatalogEntry). Rozhoduje POUŽITÍ, ne příznak
+    // builtin — použitý vestavěný přístroj se uloží stejně jako použitý
+    // vlastní.
+    catalog: getCatalog().filter((entry) => usedTypes.has(entry.id)),
   };
 }
 
@@ -506,7 +532,7 @@ function sanitizeSegment(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const id = nextId++;
   // §11.2 SPEC v4 — plinth/finish jsou INSTANCE pole u KAŽDÉHO segmentu;
-  // chybějící/neplatná hodnota (starší export bez těchto polí) → výchozí.
+  // chybějící/neplatná hodnota → výchozí.
   const plinth = sanitizePlinth(raw.plinth);
   const finish = sanitizeFinish(raw.finish);
   if (raw.type === NEUTRAL_TYPE) {
@@ -523,8 +549,7 @@ function sanitizeSegment(raw) {
   }
   if (raw.type === DRAWERS_TYPE) {
     // §Zásuvky GN 1/1 — šířka je vždy pevná (400 mm), s panelem je počet
-    // zásuvek vynuceně 2; tolerantně přijme i starší/cizí konfiguraci bez
-    // pole drawerCount (výchozí 2).
+    // zásuvek vynuceně 2; chybějící/neplatné pole drawerCount → výchozí 2.
     const hasPanel = !!raw.hasPanel;
     const drawerCount = hasPanel
       ? 2
@@ -557,10 +582,10 @@ function sanitizeSegment(raw) {
   const def = getCatalogEntry(raw.type);
   const seg = { id, type: raw.type, plinth, finish };
   if (def) {
-    // šířka je vlastnost INSTANCE (§7.1); starší konfigurace bez uloženého
-    // widthMM (dřívější „nenastavitelné" přístroje) se tolerantně doplní na
-    // výchozí hodnotu katalogu. Hloubka podestavby už NENÍ instance-level
-    // pole (§11.1 SPEC v4 — zrušeno, odvozuje se z hloubky strany bloku).
+    // šířka je vlastnost INSTANCE (§7.1); chybějící/neplatné widthMM se
+    // doplní na výchozí hodnotu katalogu. Hloubka podestavby už NENÍ
+    // instance-level pole (§11.1 SPEC v4 — zrušeno, odvozuje se z hloubky
+    // strany bloku).
     seg.widthMM = clamp(Number(raw.widthMM) || def.widthMM, def.minWidthMM, CATALOG_WIDTH_MAX);
     seg.bodyStyle = sanitizeBodyStyle(def, raw.bodyStyle);
   }
@@ -579,19 +604,50 @@ function applyConfig(config) {
     return;
   }
 
-  // starší v2 export měl jediné pole `segments` (jedna strana); v3 má
-  // `segmentsA` / `segmentsB` — načítáme tolerantně podle toho, co je přítomné.
-  const isV3 = Array.isArray(config.segmentsA) || Array.isArray(config.segmentsB);
-  const rawSegmentsA = isV3 ? config.segmentsA : config.segments;
-  const rawSegmentsB = isV3 ? config.segmentsB : null;
+  // SPEC v4 — soubor musí být v aktuálním formátu (version 4); jiná nebo
+  // chybějící verze se odmítne stejně jako neplatný soubor. Tahle kontrola
+  // musí proběhnout jako úplně první — dřív, než se cokoli v aplikaci nebo
+  // v katalogu změní (viz sloučení importovaného katalogu níže).
+  if (config.version !== 4) {
+    alert(t('alert.invalidConfig'));
+    return;
+  }
+
+  const rawSegmentsA = config.segmentsA;
+  const rawSegmentsB = config.segmentsB;
 
   if (!Array.isArray(rawSegmentsA) && !Array.isArray(rawSegmentsB) && !Array.isArray(config.arms)) {
     alert(t('alert.invalidConfig'));
     return;
   }
 
-  // katalog z importu (pokud existuje) sloučit ještě PŘED sanitizací segmentů,
-  // ať jsou dostupné definice vlastních přístrojů z importované sestavy
+  // Kontrola prázdné konfigurace (žádný segment ani rameno) musí proběhnout
+  // NAD SUROVÝMI poli konfigurace (config.segmentsA/B, config.arms), ne nad
+  // už sanitizovanými — sanitizace segmentů níže (sanitizeSegment →
+  // getCatalogEntry) totiž potřebuje mít katalog z importu už sloučený (viz
+  // importCatalog níže), a to sloučení smí proběhnout až PO týhle kontrole:
+  // odmítnutý soubor (return) tak nezanechá žádnou stopu v katalogu uživatele
+  // ani v localStorage. Pole, která nejsou pole (chybí/jsou cizího typu), se
+  // počítají jako 0 prvků.
+  // Pozn.: soubor s neprázdnými poli, ale se všemi prvky nepoužitelnými (po
+  // sanitizaci níže samé null), touhle kontrolou projde a katalog se sloučí,
+  // i když nakonec nevznikne žádný segment — neškodné, řešit to netřeba.
+  const rawSegmentsACount = Array.isArray(rawSegmentsA) ? rawSegmentsA.length : 0;
+  const rawSegmentsBCount = Array.isArray(rawSegmentsB) ? rawSegmentsB.length : 0;
+  const rawArmsCount = Array.isArray(config.arms) ? config.arms.length : 0;
+  if (rawSegmentsACount === 0 && rawSegmentsBCount === 0 && rawArmsCount === 0) {
+    alert(t('alert.emptyConfig'));
+    return;
+  }
+
+  // katalog z importu (pokud existuje) sloučit až TEĎ — po všech kontrolách
+  // výše, které mohly vést k odmítnutí souboru (return), ale PŘED sanitizací
+  // segmentů hned pod tímto blokem. sanitizeSegment() hledá definici
+  // přístroje přes getCatalogEntry(raw.type) — bez sloučeného katalogu by
+  // u přístroje, který uživatel v katalogu nemá, vyšla `def` undefined a
+  // segmentu by se vůbec nenastavilo widthMM/bodyStyle ani rozměry vany
+  // u dřezu (uložená šířka by se ztratila, segment by se po sestavení
+  // vykreslil v katalogové výchozí šířce).
   if (Array.isArray(config.catalog)) {
     importCatalog(config.catalog);
   }
@@ -600,8 +656,10 @@ function applyConfig(config) {
   const segmentsB = (Array.isArray(rawSegmentsB) ? rawSegmentsB : []).map(sanitizeSegment).filter(Boolean);
 
   const arms = Array.isArray(config.arms)
-    ? config.arms.map((a) => {
-        // v2 mělo `edge: 'front'|'back'` místo `offsetMM` — tolerantní výchozí hodnota
+    ? config.arms.filter((a) => a && typeof a === 'object').map((a) => {
+        // offsetMM smí platně být 0 (viz ARM_BACK_OFFSET_MIN) — proto `!= null`,
+        // ne `||`, ať výchozí hodnota nahradí jen chybějící pole, ne legitimně
+        // uloženou nulu.
         const rawOffset = a.offsetMM != null ? Number(a.offsetMM) : ARM_BACK_OFFSET_DEFAULT;
         return {
           id: nextId++,
@@ -613,24 +671,10 @@ function applyConfig(config) {
       })
     : [];
 
-  if (segmentsA.length === 0 && segmentsB.length === 0 && arms.length === 0) {
-    alert(t('alert.emptyConfig'));
-    return;
-  }
-
   const d = config.dimensions || {};
   const lengthMM = clamp(Number(d.lengthMM) || 3200, LENGTH_MIN, LENGTH_MAX);
-  let depthAMM;
-  let depthBMM;
-  if (isV3) {
-    depthAMM = clamp(Number(d.depthAMM) || 850, DEPTH_MIN, DEPTH_MAX);
-    depthBMM = clamp(Number(d.depthBMM) || 850, DEPTH_MIN, DEPTH_MAX);
-  } else {
-    // v2: jediná hloubka (700/850/1000) — použije se pro obě strany
-    const legacyDepth = Number(d.depthMM) || 850;
-    depthAMM = clamp(legacyDepth, DEPTH_MIN, DEPTH_MAX);
-    depthBMM = depthAMM;
-  }
+  const depthAMM = clamp(Number(d.depthAMM) || 850, DEPTH_MIN, DEPTH_MAX);
+  const depthBMM = clamp(Number(d.depthBMM) || 850, DEPTH_MIN, DEPTH_MAX);
   const heightMM = clamp(Number(d.heightMM) || 900, HEIGHT_MIN, HEIGHT_MAX);
 
   state.dimensions = { lengthMM, depthAMM, depthBMM, heightMM };

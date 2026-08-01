@@ -112,10 +112,6 @@ export const DRAWERS_TYPE = 'drawers';
 export const DRAWERS_WIDTH_MM = 400;
 export const DRAWER_COUNT_OPTIONS = [2, 3];
 export const DEFAULT_DRAWER_COUNT = 2;
-// vnitřní rozměr gastronádoby GN 1/1, jen informativně (dutina zásuvky tomu
-// rozměrově odpovídá — viz buildDrawersBody)
-export const GN_1_1_WIDTH_MM = 530;
-export const GN_1_1_DEPTH_MM = 325;
 
 /** Validovaný počet zásuvek (2 nebo 3), s panelem je vždy vynuceně 2. */
 export function getSegmentDrawerCount(segment) {
@@ -141,16 +137,56 @@ export function getSegmentFinish(segment) {
   return FINISH_TYPES.includes(v) ? v : DEFAULT_FINISH;
 }
 
-/** Efektivní styl podestavby katalogového segmentu (§10.2 SPEC v4) — validuje
- *  instance.bodyStyle proti povoleným stylům přístroje (def.allowedBodyStyles),
- *  jinak použije první povolený. Neutrál/vlastní modul mají vlastní logiku
- *  stylu (segment.podestavba), tato funkce je jen pro katalogové přístroje. */
+/**
+ * Efektivní styl podestavby segmentu (§10.2 SPEC v4) — JEDNA sdílená pravda
+ * pro 3D náhled (createSegmentMesh níže) i pro výkres/tiskovou rozpisku
+ * (floorplan.js/report.js), které dřív měly vlastní, ne úplně shodnou kopii
+ * této logiky. Podle typu segmentu:
+ *   - NEUTRAL_TYPE  — řídí INSTANCE pole `podestavba` (starší název ze
+ *                     SPEC v3, zachováno kvůli zpětné kompatibilitě):
+ *                     'open', jinak 'doors' (i pro chybějící hodnotu).
+ *   - CUSTOM_TYPE   — vždy 'closed' (vlastní modul se ve 3D kreslí jako
+ *                     uzavřený korpus, viz buildClosedBody v createSegmentMesh).
+ *   - DRAWERS_TYPE  — vždy 'closed' (zásuvky mají vlastní kresbu i vlastní
+ *                     větev v report.js, tato hodnota se tak fakticky nikde
+ *                     nepoužije — jen ať funkce nevrací nesmysl).
+ *   - katalogový přístroj — validuje instance.bodyStyle proti povoleným
+ *                     stylům přístroje (def.allowedBodyStyles), jinak použije
+ *                     první povolený.
+ *   - neznámý typ (def v katalogu chybí) — 'closed'.
+ *
+ * VĚDOMÁ ZMĚNA CHOVÁNÍ: dřívější floorplan.js/getBodyStyle u katalogových
+ * přístrojů instance.bodyStyle NEVALIDOVAL proti allowedBodyStyles — pokud
+ * uživatel ve Správci přístrojů dodatečně zúžil povolené styly (např. dřezu
+ * odebral „otevřená"), 3D náhled a tištěná rozpiska mohly u existujících
+ * segmentů ukazovat RŮZNÝ styl podestavby. Teď je vždy platný ten, co ukazuje
+ * 3D (tato funkce), shodně v obou dokumentech.
+ */
 export function getSegmentBodyStyle(segment) {
+  if (!segment) return 'closed';
+  if (segment.type === NEUTRAL_TYPE) return segment.podestavba === 'open' ? 'open' : 'doors';
+  if (segment.type === CUSTOM_TYPE) return 'closed';
+  if (segment.type === DRAWERS_TYPE) return 'closed';
   const def = getCatalogEntry(segment.type);
-  const allowed = def && Array.isArray(def.allowedBodyStyles) && def.allowedBodyStyles.length
+  if (!def) return 'closed';
+  const allowed = Array.isArray(def.allowedBodyStyles) && def.allowedBodyStyles.length
     ? def.allowedBodyStyles
     : ['closed'];
-  return allowed.includes(segment && segment.bodyStyle) ? segment.bodyStyle : allowed[0];
+  return allowed.includes(segment.bodyStyle) ? segment.bodyStyle : allowed[0];
+}
+
+/** Panel je u katalogových/vlastních přístrojů vždy přítomný (mají ovládací
+ *  panel z podstaty věci); u neutrálního modulu je volitelný (INSTANCE pole
+ *  `hasPanel`). Přesunuto z floorplan.js — čte i report.js (soupis dílů). */
+export function hasPanelFlag(segment) {
+  if (typeof segment.hasPanel === 'boolean') return segment.hasPanel;
+  return segment.type !== NEUTRAL_TYPE && segment.type !== DRAWERS_TYPE;
+}
+
+/** Volitelná police v otevřené podestavbě (§4 SPEC v3) — INSTANCE pole
+ *  `hasShelf`. Přesunuto z floorplan.js — čte i report.js (soupis dílů). */
+export function hasShelfFlag(segment) {
+  return typeof segment.hasShelf === 'boolean' ? segment.hasShelf : false;
 }
 
 /** Lidsky čitelný název segmentu (pro seznam v UI). §13 SPEC v4 — název
@@ -178,19 +214,6 @@ export function getSegmentWidthMM(segment) {
   const instanceWidth = Number(segment.widthMM);
   if (Number.isFinite(instanceWidth) && instanceWidth > 0) return Math.round(instanceWidth);
   return def ? def.widthMM : 400; // neznámý typ (např. z cizí konfigurace) — bezpečný odhad
-}
-
-/** Vrátí hloubku PODESTAVBY katalogového přístroje v mm — PŮVODNÍ (§7.1
- *  SPEC v3) instance-aware chování, ponecháno kvůli zpětné kompatibilitě
- *  (např. floorplan.js). Od SPEC v4 §11.1 je hloubka podestavby v rámci
- *  strany VŽDY jednotná a odvozená z hloubky bloku (viz block.js
- *  computeSideDepth) — segment.depthMM se už nikde nenastavuje, takže tato
- *  funkce fakticky vrací jen katalogový výchozí/minimální odhad. */
-export function getSegmentDepthMM(segment) {
-  const def = getCatalogEntry(segment.type);
-  const instanceDepth = Number(segment.depthMM);
-  if (Number.isFinite(instanceDepth) && instanceDepth > 0) return Math.round(instanceDepth);
-  return def ? (def.depthMM || def.minDepthMM || 700) : 700;
 }
 
 /** Minimální hloubka podestavby katalogového přístroje (mm), 700 mm jako
@@ -923,8 +946,9 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
 
   if (segment.type === NEUTRAL_TYPE) {
     // Dutina = vnitřní prostor podestavby; pokud má segment panel, dutina
-    // pod ním končí (panel do dutiny nepatří) — §4 SPEC v3.
-    const style = segment.podestavba === 'open' ? 'open' : 'doors';
+    // pod ním končí (panel do dutiny nepatří) — §4 SPEC v3. Styl (open/doors)
+    // se bere ze sdílené getSegmentBodyStyle, ne z vlastního inline výrazu.
+    const style = getSegmentBodyStyle(segment);
     const cavityTopY = segment.hasPanel ? panelBottomY : bodyTopY;
     buildBodyByStyle(group, style, widthM, depthM, PLINTH_HEIGHT, bodyTopY, cavityTopY, !!segment.hasShelf);
     if (segment.hasPanel) {

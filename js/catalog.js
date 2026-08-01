@@ -41,8 +41,10 @@ export const CATALOG_STORAGE_KEY = 'alba-katalog-v1';
 const CONTROL_TYPES = ['knob', 'button', 'switch'];
 const BODY_STYLES = ['closed', 'doors', 'open'];
 // v2 — přidány značkové drop-in přístroje (Lotus PCD-68G/FTLD-66ET/F10D-64ET,
-// Berner BI1EG5) a ALBA Bain Marie EBM 1/1; migrateIfNeeded doplní chybějící
-// tovární přístroje do starších uložených katalogů.
+// Berner BI1EG5) a ALBA Bain Marie EBM 1/1. Číslo schématu se ukládá spolu
+// s katalogem do localStorage (viz persist); při načtení se neshoduje-li
+// s aktuálním, katalog se bere jako neuložený a použijí se výchozí hodnoty
+// (viz ensureLoaded).
 const CURRENT_SCHEMA_VERSION = 2;
 
 // meze normalizace minimální/výchozí hloubky (§7.1)
@@ -209,90 +211,8 @@ const BUILTIN_DEFAULTS = [
   },
 ];
 
-// §13 — dřívější tovární názvy značkových přístrojů (před přejmenováním na
-// tvar „<typ> <značka> <parametr>"). Uživatel může mít tyto řetězce uložené
-// v localStorage z doby, kdy ještě byly tovární — normalizeEntry je proto
-// nesmí vyhodnotit jako ruční přejmenování (nameCustom), jinak by se po
-// aktualizaci nového názvu nikdy nedočkal.
-const LEGACY_BUILTIN_NAMES = {
-  lotus_pcd_68g: ['Lotus PCD-68G — plynová varná deska, 4 hořáky'],
-  lotus_ftld_66et: ['Lotus FTLD-66ET — elektrická grilovací deska'],
-  lotus_f10d_64et: ['Lotus F10D-64ET — elektrická fritéza, 10 l'],
-  berner_bi1eg5: ['Berner BI1EG5 — indukční varná deska, 1 zóna'],
-  alba_ebm_11: ['ALBA Bain Marie EBM 1/1 — vodní lázeň, GN 1/1'],
-};
-
 function cloneEntry(entry) {
   return JSON.parse(JSON.stringify(entry));
-}
-
-/** Migruje katalog ze staršího schématu na aktuální verzi. Zajistí, aby
- *  u vestavěných přístrojů chybějící pole topFixed a allowedBodyStyles
- *  byly doplněny z BUILTIN_DEFAULTS; u vlastních přístrojů odvozuje
- *  allowedBodyStyles ze starého bodyStyle. Schema v2: doplní i tovární
- *  přístroje přidané po uložení katalogu (lotus_pcd_68g, lotus_ftld_66et,
- *  lotus_f10d_64et, berner_bi1eg5, alba_ebm_11), pokud v uloženém katalogu
- *  ještě chybí. */
-function migrateIfNeeded(entries, schemaVersion) {
-  if (schemaVersion >= CURRENT_SCHEMA_VERSION) {
-    return entries;
-  }
-
-  const builtinIds = new Set(BUILTIN_DEFAULTS.map((d) => d.id));
-
-  const migrated = entries.map((entry) => {
-    if (!entry || !entry.id) return entry;
-
-    const isBuiltin = builtinIds.has(entry.id);
-    const migratedEntry = { ...entry };
-
-    if (isBuiltin) {
-      // U vestavěných přístrojů: vezmi chybějící pole z BUILTIN_DEFAULTS
-      const builtinDefault = BUILTIN_DEFAULTS.find((d) => d.id === entry.id);
-      if (builtinDefault) {
-        // Pokud chybí topFixed, vezmi z defaults
-        if (migratedEntry.topFixed === undefined) {
-          migratedEntry.topFixed = builtinDefault.topFixed;
-        }
-        // Pokud chybí allowedBodyStyles, vezmi z defaults
-        if (!Array.isArray(migratedEntry.allowedBodyStyles)) {
-          migratedEntry.allowedBodyStyles = [...builtinDefault.allowedBodyStyles];
-        }
-      }
-    } else {
-      // U vlastních přístrojů: odvoď allowedBodyStyles ze starého bodyStyle pokud chybí
-      if (!Array.isArray(migratedEntry.allowedBodyStyles)) {
-        if (migratedEntry.bodyStyle && BODY_STYLES.includes(migratedEntry.bodyStyle)) {
-          migratedEntry.allowedBodyStyles = [migratedEntry.bodyStyle];
-        } else {
-          migratedEntry.allowedBodyStyles = ['closed', 'doors', 'open'];
-        }
-      }
-      // Pokud chybí topFixed, použij false (vlastní přístroje se roztahují s šířkou)
-      if (migratedEntry.topFixed === undefined) {
-        migratedEntry.topFixed = false;
-      }
-    }
-
-    // Zajisti, aby allowedBodyStyles bylo validní a neprázdné
-    migratedEntry.allowedBodyStyles = normalizeAllowedBodyStyles(
-      migratedEntry.allowedBodyStyles,
-      migratedEntry.bodyStyle
-    );
-
-    return migratedEntry;
-  });
-
-  // Doplň tovární přístroje, které v uloženém katalogu ještě nejsou
-  // (přidané do BUILTIN_DEFAULTS po uložení katalogu uživatelem).
-  const presentIds = new Set(
-    migrated.filter((entry) => entry && entry.id).map((entry) => String(entry.id))
-  );
-  const missingBuiltins = BUILTIN_DEFAULTS
-    .filter((def) => !presentIds.has(def.id))
-    .map((def) => cloneEntry(def));
-
-  return [...migrated, ...missingBuiltins];
 }
 
 function clampNum(value, min, max, fallback) {
@@ -314,14 +234,11 @@ function normalizeOptionalText(value) {
 }
 
 /** Povolené styly podestavby (§10.2 SPEC v4) — podmnožina ['closed','doors',
- *  'open'], vždy alespoň jeden. Tolerantní ke starším katalogům, které měly
- *  jen jediné pole `bodyStyle` (fallbackSingle) místo pole allowedBodyStyles. */
-function normalizeAllowedBodyStyles(rawAllowed, fallbackSingle) {
+ *  'open'], vždy alespoň jeden; prázdné/neplatné pole → všechny tři styly. */
+function normalizeAllowedBodyStyles(rawAllowed) {
   const arr = Array.isArray(rawAllowed) ? rawAllowed.filter((v) => BODY_STYLES.includes(v)) : [];
   const unique = Array.from(new Set(arr));
-  if (unique.length) return unique;
-  if (BODY_STYLES.includes(fallbackSingle)) return [fallbackSingle];
-  return ['closed', 'doors', 'open'];
+  return unique.length ? unique : ['closed', 'doors', 'open'];
 }
 
 function normalizeEntry(raw, fallbackBuiltin) {
@@ -331,23 +248,10 @@ function normalizeEntry(raw, fallbackBuiltin) {
   const builtinDef = builtin ? BUILTIN_DEFAULTS.find((d) => d.id === String(raw.id)) : null;
   const rawName = typeof raw.name === 'string' ? raw.name.trim() : '';
   // §13 — nameCustom rozlišuje přejmenovaný vestavěný přístroj (zobrazuje se
-  // doslovně) od nepřejmenovaného (název se bere z překladu podle id).
-  // Tolerantní ke starším uloženým datům bez pole nameCustom: pokud uložený
-  // název odpovídá tovární (dřívější jednojazyčné) hodnotě nebo je prázdný,
-  // bere se jako nepřejmenovaný.
-  let nameCustom;
-  if (raw.nameCustom !== undefined) {
-    nameCustom = !!raw.nameCustom;
-  } else if (builtinDef) {
-    // starší tovární název (viz LEGACY_BUILTIN_NAMES) se také počítá jako
-    // nepřejmenovaný, jinak by se po přejmenování továrního vzoru přejmenování
-    // u stávajících uživatelů vůbec neprojevilo
-    const legacyNames = LEGACY_BUILTIN_NAMES[builtinDef.id] || [];
-    const isLegacyName = legacyNames.includes(rawName);
-    nameCustom = !!(rawName && rawName !== builtinDef.name && !isLegacyName);
-  } else {
-    nameCustom = true; // vlastní přístroje se vždy zobrazují doslovně
-  }
+  // doslovně) od nepřejmenovaného (název se bere z překladu podle id). Bere
+  // se přímo z uloženého pole; chybí-li, je false u vestavěného (builtinDef)
+  // a true u vlastního přístroje.
+  const nameCustom = raw.nameCustom !== undefined ? !!raw.nameCustom : !builtinDef;
   const name = nameCustom ? (rawName || t('catalog.deviceFallbackName')) : '';
   // ZADANI-KATALOG.md — descriptionCustom/constructionCustom rozlišují popis
   // upravený uživatelem (zobrazuje se doslovně) od nepřejmenovaného vestavěného
@@ -379,7 +283,7 @@ function normalizeEntry(raw, fallbackBuiltin) {
     // §10.1 — prvek na desce v pevné (jmenovité) velikosti bez ohledu na šířku
     topFixed: !!raw.topFixed,
     // §10.2 — povolené typy podestavby (nahrazuje dřívější jediné `bodyStyle`)
-    allowedBodyStyles: normalizeAllowedBodyStyles(raw.allowedBodyStyles, raw.bodyStyle),
+    allowedBodyStyles: normalizeAllowedBodyStyles(raw.allowedBodyStyles),
     // §10.3 — volitelné technické údaje, u vestavěných prázdné
     powerKW: normalizeOptionalNumber(raw.powerKW),
     voltage: normalizeOptionalText(raw.voltage),
@@ -429,38 +333,22 @@ function persist() {
 function ensureLoaded() {
   if (catalog) return;
   let stored = null;
-  let schemaVersion = 0;
-  let needsMigration = false;
   try {
     const json = localStorage.getItem(CATALOG_STORAGE_KEY);
     if (json) {
       const parsed = JSON.parse(json);
-      // Kompatibilita se starými katalogy: mohou být holé pole nebo { schema, entries }
-      if (Array.isArray(parsed)) {
-        stored = parsed;
-        schemaVersion = 0; // Stará verze bez schématického formátu
-        needsMigration = true;
-      } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries)) {
+      // Platný uložený katalog = objekt { schema, entries } se shodným
+      // číslem schématu; cokoli jiné (holé pole, cizí/poškozený obsah, jiné
+      // schéma) se bere jako „nic uloženo" a použijí se výchozí hodnoty.
+      if (parsed && typeof parsed === 'object' && parsed.schema === CURRENT_SCHEMA_VERSION && Array.isArray(parsed.entries)) {
         stored = parsed.entries;
-        schemaVersion = parsed.schema || 0;
-        needsMigration = schemaVersion < CURRENT_SCHEMA_VERSION;
       }
     }
   } catch (err) {
     console.error('Uložený katalog přístrojů se nepodařilo načíst, používám výchozí.', err);
   }
 
-  // Migruj pokud je potřeba
-  if (stored && needsMigration) {
-    stored = migrateIfNeeded(stored, schemaVersion);
-  }
-
   catalog = mergeWithBuiltins(stored);
-
-  // Pokud se katalog migroval, ulož ho zpět v novém tvaru
-  if (needsMigration) {
-    persist();
-  }
 }
 
 /** Vrátí celý katalog (vestavěné + vlastní). */
@@ -600,14 +488,11 @@ export function resetBuiltin(id) {
 }
 
 /** Sloučí katalog z importované konfigurace (JSON export) — tolerantní,
- *  nikdy nezahodí builtin přístroje. Používá se při načtení uložené sestavy.
- *  Importované data procházejí stejnou migrací jako uložená data. */
+ *  nikdy nezahodí builtin přístroje. Používá se při načtení uložené sestavy. */
 export function importCatalog(rawArray) {
   if (!Array.isArray(rawArray)) return;
   ensureLoaded();
-  // Migruj importované data (budou bez schémy, takže schemaVersion = 0)
-  const migratedArray = migrateIfNeeded(rawArray, 0);
   const customOnly = catalog.filter((entry) => !entry.builtin);
-  catalog = mergeWithBuiltins([...customOnly, ...migratedArray]);
+  catalog = mergeWithBuiltins([...customOnly, ...rawArray]);
   persist();
 }

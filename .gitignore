@@ -1,0 +1,9 @@
+# Provozní a komunikační soubory mezi uživatelem a agenty / mezi agenty
+# (zadání, předávky mezi sessions, specifikace, nasazovací návod, interní materiály)
+# Nepatří na veřejný GitHub — viz git historie: odstraněno přes git-filter-repo 2026-08-01.
+DEPLOY.md
+ZADANI-*.md
+PREDANI-NOVA-SESSION.md
+SPEC.md
+SPEC-HERDBLOK.md
+Alba_logomanual.pdf

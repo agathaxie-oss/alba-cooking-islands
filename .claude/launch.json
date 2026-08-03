@@ -4,6 +4,12 @@
     {
       "name": "alba-konfigurator",
       "url": "http://localhost:8000"
+    },
+    {
+      "name": "alba-server",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8000"],
+      "port": 8000
     }
   ]
 }

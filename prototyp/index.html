@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ALBA MONO — parametrický prototyp varného bloku</title>
+  <!-- Vývojářský nástroj. NENÍ součást produktu a nesahá na css/style.css
+       ani na nic mimo adresář prototyp/. -->
+  <style>
+    :root {
+      --accent: #0083C6;
+      --bg: #dfe3e7;
+      --panel-bg: #f7f8f9;
+      --line: #c3c9cf;
+      --text: #22262b;
+      --muted: #6b737b;
+      --spec: #2f6b3f;
+      --derived: #8a5a00;
+      --uncertain: #b3341f;
+      --proto: #5a5f9c;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: var(--text); background: var(--bg);
+    }
+    #app { display: flex; height: 100%; }
+    #viewport { position: relative; flex: 1 1 auto; min-width: 200px; }
+    #three-canvas { display: block; width: 100%; height: 100%; }
+
+    #info {
+      position: absolute; left: 12px; bottom: 12px;
+      background: rgba(255,255,255,0.92); border: 1px solid var(--line);
+      border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--muted);
+    }
+    #hint {
+      position: absolute; right: 12px; bottom: 12px;
+      background: rgba(255,255,255,0.92); border: 1px solid var(--line);
+      border-radius: 6px; padding: 6px 10px; font-size: 12px; color: var(--muted);
+    }
+    #fit-btn {
+      position: absolute; right: 12px; top: 12px;
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+      border-radius: 5px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    }
+    #fit-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    #panel {
+      flex: 0 1 380px; min-width: 200px; height: 100%; overflow-y: auto;
+      background: var(--panel-bg); border-left: 1px solid var(--line);
+      padding: 12px 14px 60px;
+    }
+    .panel-head h1 { font-size: 15px; margin: 0 0 6px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-item .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; display: inline-block; }
+    .c-spec { color: var(--spec); }
+    .c-derived { color: var(--derived); }
+    .c-uncertain { color: var(--uncertain); }
+    .c-proto { color: var(--proto); }
+
+    .switches { border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 8px 10px; margin-bottom: 10px; }
+    .switch-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .switch-label { flex: 0 0 108px; font-size: 12px; color: var(--muted); }
+    .switch-group { display: flex; flex-wrap: wrap; gap: 4px; }
+    .switch-btn {
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+      border-radius: 4px; padding: 3px 8px; font-size: 12px; cursor: pointer;
+    }
+    .switch-btn:hover { border-color: var(--accent); }
+    .switch-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .actions { display: flex; gap: 6px; margin-bottom: 10px; }
+    .action-btn {
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+      border-radius: 4px; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    }
+    .action-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .action-btn:hover { border-color: var(--accent); }
+
+    .dump {
+      max-height: 240px; overflow: auto; background: #1e2227; color: #dfe6ec;
+      border-radius: 6px; padding: 8px 10px; font: 11px/1.4 ui-monospace, Consolas, monospace;
+      white-space: pre; user-select: text; margin: 0 0 10px;
+    }
+
+    .derived { border: 1px solid var(--line); border-radius: 6px; background: #fff; padding: 8px 10px; margin-bottom: 10px; }
+    .derived h2 { font-size: 12px; margin: 0 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .derived-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 1px 0; }
+    .derived-row.warn { color: var(--uncertain); font-weight: 600; }
+    .derived-label { color: var(--muted); }
+    .derived-row.warn .derived-label { color: inherit; }
+    .derived-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    details.group { border: 1px solid var(--line); border-radius: 6px; background: #fff; margin-bottom: 8px; }
+    details.group > summary {
+      cursor: pointer; padding: 7px 10px; font-weight: 600; font-size: 12.5px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    details.group[open] > summary { border-bottom: 1px solid var(--line); }
+    .badge {
+      margin-left: auto; font-weight: 400; font-size: 11px;
+      color: var(--uncertain); border: 1px solid currentColor; border-radius: 10px; padding: 0 6px;
+    }
+
+    .param { padding: 6px 10px; border-top: 1px solid #eceef0; }
+    .param:first-of-type { border-top: none; }
+    .param-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+    .param.c-uncertain .param-label { color: var(--uncertain); }
+    .param.c-uncertain .param-label::before { content: "◆ "; }
+    .param.c-derived .param-label { color: var(--derived); }
+    .param.c-derived .param-label::before { content: "≈ "; }
+    .param.c-proto .param-label { color: var(--proto); }
+    .param.c-spec .param-label { color: var(--text); }
+    .param-line { display: flex; align-items: center; gap: 6px; }
+    .param-line input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
+    .param-line input[type=number] { flex: 0 0 72px; padding: 2px 4px; font-size: 12px; border: 1px solid var(--line); border-radius: 3px; }
+    .param-unit { flex: 0 0 26px; font-size: 11px; color: var(--muted); }
+    .param-note { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="viewport">
+      <canvas id="three-canvas"></canvas>
+      <button type="button" id="fit-btn">Srovnat pohled</button>
+      <div id="info"></div>
+      <div id="hint">Levé tlačítko: rotace · Pravé: posun · Kolečko: zoom</div>
+    </div>
+    <aside id="panel"></aside>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

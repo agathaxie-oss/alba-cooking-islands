@@ -1,9 +1,15 @@
-# Provozní a komunikační soubory mezi uživatelem a agenty / mezi agenty
-# (zadání, předávky mezi sessions, specifikace, nasazovací návod, interní materiály)
-# Nepatří na veřejný GitHub — viz git historie: odstraněno přes git-filter-repo 2026-08-01.
-DEPLOY.md
-ZADANI-*.md
-PREDANI-NOVA-SESSION.md
-SPEC.md
-SPEC-HERDBLOK.md
+# Interní materiály, které nepatří do veřejného repozitáře.
+#
+# Pozn.: dřívější verze tohoto souboru skrývala i pracovní specifikace a zadání
+# (SPEC*.md, ZADANI-*.md, PREDANI-*.md). Ty byly 1. 8. 2026 vráceny do repozitáře
+# na pokyn uživatele — jsou to živé dokumenty, na kterých stojí předávání práce
+# mezi sessions, a mimo git se ztrácely.
+#
+# Historie byla 1. 8. 2026 přepsána přes git-filter-repo, takže starší kopie
+# těchto souborů v ní nejsou. Nově přidané verze v historii budou.
+
+# Značkový manuál — velký binární soubor od třetí strany, do gitu nepatří
 Alba_logomanual.pdf
+
+# Nasazovací návod — může obsahovat údaje o infrastruktuře
+DEPLOY.md

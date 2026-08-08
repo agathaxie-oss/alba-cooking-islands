@@ -19,6 +19,7 @@
 // (viz "Co se teď NEDĚLÁ" v zadání), proto se layout.herdblok tady vůbec
 // nečte; z výstupu layoutu se bere jen lengthMM, podestavby a panelItems.
 
+import * as THREE from 'three';
 import {
   buildMonoBlock,
   END_TYPES,
@@ -27,6 +28,12 @@ import {
   WORK_HEIGHT_MAX_MM,
 } from './mono-geometry.js';
 import { computeMonoLayout } from './mono-layout.js';
+import {
+  createArmMesh,
+  ARM_BACK_OFFSET_MIN,
+  ARM_BACK_OFFSET_MAX,
+  ARM_BACK_OFFSET_DEFAULT,
+} from './arms.js';
 
 const mm = (v) => v / 1000;
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -164,6 +171,69 @@ export function buildMonoScene(state) {
   }];
 
   const { group } = buildMonoBlock({ workHeightMM, podestavby, herdblok, panelItems });
+
+  // §doplněno (vada "ramena se ve 3D nevykreslí") — napouštěcí ramena.
+  // state.arms je SDÍLENÉ pole se SEGMENTem (main.js/ui.js
+  // onAddArm/onArmPositionChange/onArmOffsetChange/onArmAngleChange), sem se
+  // čte přímo ze `state`, protože buildMonoScene(state) dostává celý stav.
+  //
+  // MONO zatím nemá ostrovní variantu (viz TODO v main.js rebuildScene()
+  // ~ř. 519 — MONO se chová jako 'single') — postaveno je tu proto jen
+  // umístění "u stěny": odsazení arm.offsetMM se měří OD ZADNÍ HRANY DESKY
+  // dopředu, stejný vzorec jako block.js computeArmPlacement (jednostranná
+  // větev, viz i18n klíč mono.armsNote). Rameno sedí NA DESCE (workHeightMM,
+  // stejná hodnota, jakou buildMonoScene výš předává do buildMonoBlock —
+  // nedopočítává se znovu z jiného zdroje), z-hloubka vychází z depthAMM
+  // (stejná hodnota, jaká jde výš do herdblok[0].depthMM).
+  // TODO(PREDANI.md úkol 6): až MONO dostane ostrovní variantu, přibude
+  // sem i druhá větev (odsazení od středu/spáry mezi stranami A/B) —
+  // ARM_CENTER_OFFSET_MIN/MAX/DEFAULT z arms.js, stejně jako u SEGMENTu.
+  const armsGroup = new THREE.Group();
+  armsGroup.name = 'ramena';
+  (state.arms || []).forEach((arm) => {
+    // Poloha po délce je poloha BODU (ne levá hrana) → zrcadlí se přes
+    // mirrorX(positionXMM, lengthMM) BEZ widthMM (viz JSDoc mirrorX výš,
+    // stejné pravidlo jako u panelItems). Nejdřív se ořízne do platného
+    // rozsahu 0..lengthMM — stejně jako block.js dělá pro SEGMENT.
+    const clampedXMM = clamp(Number(arm.positionXMM) || 0, 0, lengthMM);
+    const mirroredXMM = mirrorX(clampedXMM, lengthMM);
+
+    // Odsazení od zadní hrany — Z se zrcadlením OSY X NEMĚNÍ (viz zadání,
+    // bod 3), proto tu žádné zrcadlo není. Stejný vzorec jako block.js
+    // computeArmPlacement, jednostranná (wall) větev.
+    const offsetMM = clamp(
+      arm.offsetMM != null ? Number(arm.offsetMM) : ARM_BACK_OFFSET_DEFAULT,
+      ARM_BACK_OFFSET_MIN,
+      ARM_BACK_OFFSET_MAX
+    );
+    const zLocalMM = depthAMM - offsetMM;
+
+    const armMesh = createArmMesh(
+      {
+        ...arm,
+        positionXMM: clampedXMM,
+        // Úhel: zrcadlením osy X se mění i smysl otáčení kolem svislé osy Y
+        // (arms.js ~ř. 118: pivot.rotation.y = degToRad(arm.angleDeg)) —
+        // rameno natočené v pásu o +30° musí ve zrcadlené geometrii dostat
+        // −30°, jinak by mířilo na opačnou stranu, než uživatel zadal.
+        angleDeg: -(Number(arm.angleDeg) || 0),
+      },
+      { lengthMM, zLocalMM, baseDir: -1, workHeightM: mm(workHeightMM) }
+    );
+    // arms.js interně počítá group.position.x = lengthMM/2 − positionXMM —
+    // vzorec ušitý na CENTROVANÝ prostor block.js (SEGMENT), kde se `group`
+    // po přidání ramen dál neposouvá. mono-geometry.js ale staví v
+    // NEcentrovaném prostoru (x 0..lengthMM, viz hlavička mono-geometry.js)
+    // a celá `group` se navíc posune o -lengthMM/2 až NÍŽE (§krok 5) — kdyby
+    // se ponechala x spočtená uvnitř arms.js, posun by se ramenu započetl
+    // DVAKRÁT. Proto se x po vytvoření meshe PŘEPÍŠE přímo na souřadnici ve
+    // stejném (necentrovaném) prostoru, jaký používají podestavby/herdblok
+    // (mirroredXMM výš) — po společném posunu níž tak vyjde stejně jako u
+    // ostatních prvků.
+    armMesh.position.x = mm(mirroredXMM);
+    armsGroup.add(armMesh);
+  });
+  group.add(armsGroup);
 
   // §krok 5 zadání — mono-geometry.js staví od x=0 doprava (x=0 je LEVÝ konec
   // bloku, viz hlavička mono-geometry.js), zatímco SEGMENT (block.js) má blok

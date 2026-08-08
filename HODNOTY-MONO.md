@@ -469,19 +469,40 @@ neplatí.
 | Typ konce | Pořadí v ose X od kraje bloku |
 | --------- | ----------------------------- |
 | `svislaDeska` | 0–50 boční kryt, od 50 podestavby |
-| `svislaDeskaZkos` | 0–20 nic, 20–70 boční kryt, od 70 podestavby |
+| `svislaDeskaZkos` | 0–50 nic, 50–70 boční kryt (20 mm), od 70 podestavby |
+
+*Řádek pro `svislaDeskaZkos` platí za předpokladu, že na daném konci podestavba je.*
 
 
-### 7.5 Nos — svislá boční deska
+### 7.5 Nos — svislá boční deska a zkosení
 
-Tvar se zatím nestaví, ale platí tři omezení:
+Tvar je dodaný. Pro `svislaDeska` (vodopád) platí následující omezení:
 
 - Přední líc nosu je v ose Z na **0**, shodně s lícem desky.
 - Vnější líc nosu je v ose X na **0**, tedy v konci bloku.
+
+*Pro `svislaDeskaZkos` (zkosený vodopád) je roh useknutý — viz popis níže.*
+
 - Rovné čelo je dlouhé **50** u `svislaDeska` (vodopád), u `svislaDeskaZkos` (zkosený vodopád)
   **20 rovných + 50 zkosení pod 45°**.
 
-Zbytek půdorysného tvaru nosu není dodaný.
+**Tvar zkosení u `svislaDeskaZkos`** — potvrzeno 8. 8. 2026:
+
+- Zkosení **je POUZE V PŮDORYSU** — useknutý roh při pohledu shora. Ve svislém řezu
+  (pohled zepředu, pohled z boku) se nemění nic, čelo desky zůstává po celé délce
+  svislých 50 mm. **Žádná facetka ve svislém řezu neexistuje.** Tohle se zdůrazňuje,
+  protože na tom už dvakrát vzniklo nedorozumění.
+- Geometrie v ose X (levý konec je X = 0): vnější líc v prvních 50 mm od přední hrany chybí
+  (useknutý roh); začíná až od Z = 50 a pokračuje dozadu. Odtud zkosení pod 45° dopředu doprava do bodu X = 50, Z = 0,
+  tedy `END_CHAMFER_MM = 50`. Poté přední hrana rovně dál, po dalších 20 mm (`END_STRAIGHT_MM = 20`),
+  tedy na X = 70, kde začíná ovládací panel. Kontrola: 50 + 20 = 70, což je právě
+  `sideInsetMM('svislaDeskaZkos')`.
+- **Kterých rohů se zkosení týká:**
+  - U **varianty u stěny** (`single`): zkosené jsou **JEN PŘEDNÍ rohy**. Zadní roh (u stěny)
+    zůstává ostrý.
+  - U **varianty ostrov** (`island`): zkosené mohou být **VŠECHNY rohy**. Ostrov nemá
+    záda a obchází se po obou stranách, takže všechny čtyři rohy jsou stejně viditelné.
+
 
 ### 7.6 Převis se měří od konce panelu
 

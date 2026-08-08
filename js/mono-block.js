@@ -39,6 +39,27 @@ function readEndType(value) {
     : END_TYPES.VERTICAL_PLATE;
 }
 
+// --- zrcadlení osy X: pás čte polohy ZLEVA (mm od levé hrany bloku), ale
+// mono-geometry.js staví lokální x od 0 doprava beze změny a předává je
+// dál. Změřeno přes skutečnou kameru computeViews() (js/viewer.js): kamera
+// čelního i perspektivního pohledu se dívá ve směru +Z a KLADNÉ world X se
+// promítá VLEVO na obrazovce (ndcX < 0), ZÁPORNÉ world X VPRAVO — a tahle
+// kamera je sdílená se SEGMENTem, který ji čte správně (block.js dává
+// prvnímu segmentu — vlevo v pásu — nejvyšší +X), takže se měnit nesmí.
+// mono-geometry.js staví lokální x od 0 (vlevo v pásu) doprava; po
+// vystředění (group.position.x = -lengthMM/2, viz níž) by tak první
+// položka z pásu dostala NEJZÁPORNĚJŠÍ world X → vpravo na obrazovce misto
+// vlevo. Proto se PŘED voláním buildMonoBlock() zrcadlí každá souřadnice,
+// která nese polohu podél X, kolem středu bloku (lengthMM).
+//
+// Pro položku se ZAČÁTKEM (xMM = levá hrana v pásu) a šířkou widthMM vyjde
+// zrcadlený začátek jako lengthMM − (xMM + widthMM) — to je stejný vzorec
+// jako mirrorX(xMM, lengthMM, widthMM). Pro BODOVOU polohu (střed, žádná
+// šířka — panelItems) stačí vynechat widthMM (výchozí 0): lengthMM − xMM.
+function mirrorX(xMM, lengthMM, widthMM = 0) {
+  return lengthMM - xMM - widthMM;
+}
+
 /**
  * Sestaví pole `collar` pro buildHerdblokUsek ze state.mono.limec (MonoCollar,
  * viz zadání §1/§9): `back`/`left`/`right` → `{edge, heightMM}`. `front`
@@ -48,6 +69,14 @@ function readEndType(value) {
  * NEDUPLIKUJEME — tu už hlídá buildHerdblokUsek sám (mono-geometry.js), stačí
  * mu edge poslat a on si rozhodne, jestli něco postaví.
  *
+ * ZRCADLENÍ (viz mirrorX výš): `left`/`right` se tu PROHAZUJÍ. Pásové
+ * "vlevo" musí ve 3D vyjít na geometrické straně x = widthMM (ta po
+ * vystředění dostane kladné world X = vlevo na obrazovce, viz mirrorX) —
+ * to je strana, kterou buildHerdblokUsek staví pod edge:'right'. Stejná
+ * záměna, jakou níž dostává herdblok.leftEndType/rightEndType, takže
+ * podmínka "left/right jen na konci VERTICAL_PLATE" uvnitř buildHerdblokUsek
+ * i po záměně sedí na SPRÁVNÝ (odpovídající) konec.
+ *
  * @param {object} [limec] MonoCollar ze state.mono — může chybět (starší/cizí stav)
  * @returns {Array<{edge:'back'|'left'|'right', heightMM:number}>}
  */
@@ -56,8 +85,8 @@ function buildCollarSpec(limec) {
   const heightMM = l.heightMM ?? COLLAR_HEIGHT_DEFAULT_MM;
   const collar = [];
   if (l.back) collar.push({ edge: 'back', heightMM });
-  if (l.left) collar.push({ edge: 'left', heightMM });
-  if (l.right) collar.push({ edge: 'right', heightMM });
+  if (l.left) collar.push({ edge: 'right', heightMM }); // zrcadleno, viz JSDoc výš
+  if (l.right) collar.push({ edge: 'left', heightMM });  // zrcadleno, viz JSDoc výš
   return collar;
 }
 
@@ -95,29 +124,42 @@ export function buildMonoScene(state) {
   // Podestavby: geometrii zajímají jen SKUTEČNÉ skříňky (kind:'cabinet') —
   // 'gap' je úmyslně vynechané místo (most), layout ho vrací kvůli UI
   // (kreslí se šedě jako volný prostor), ale žádné těleso pro něj nevzniká.
+  // xMM se ZRCADLÍ (viz mirrorX výš) — layout dává xMM jako levou hranu v
+  // pásu, mirrorX ji převede na odpovídající levou hranu v prohozené
+  // geometrii.
   const podestavby = layout.podestavby
     .filter(({ item }) => item.kind === 'cabinet')
-    .map(({ xMM, widthMM }) => ({ xMM, widthMM }));
+    .map(({ xMM, widthMM }) => ({ xMM: mirrorX(xMM, lengthMM, widthMM), widthMM }));
 
   // Prvky panelu: computeMonoLayout() je vrací už oříznuté do použitelného
   // rozsahu (zadání §2); tady se jen převedou na tvar, který čeká
   // buildMonoBlock/buildPanelItem (kind/xMM/heightMM, xMM ABSOLUTNÍ po délce
   // bloku — na lokální souřadnici úseku je převádí až mono-geometry.js).
+  // xMM je poloha STŘEDU prvku (ZADANI-MONO-UI.md §1, MonoPanelItem.xMM), ne
+  // levá hrana — mirrorX se proto volá BEZ widthMM (bodové zrcadlení).
   const panelItems = layout.panelItems.map(({ item, xMM }) => ({
     kind: item.kind,
-    xMM,
+    xMM: mirrorX(xMM, lengthMM),
     heightMM: item.heightMM,
   }));
 
   // §krok 4 zadání — jediný úsek herdbloku přes celou délku bloku (fyzicky
   // existuje jen jedna deska/korpus/panel/lišta — přístroje se do něj jen
   // OSAZUJÍ, nekreslí se ve 3D samostatně, viz "Co se teď NEDĚLÁ").
+  //
+  // xMM se zrcadlí stejně jako u podestaveb (tady vyjde beze změny, protože
+  // úsek pokrývá celou délku 0..lengthMM, ale vzorec se používá pořád stejný
+  // — viz mirrorX výš). leftEndType/rightEndType se PROHAZUJÍ: pásové levé
+  // zakončení (leftEndType) skončí po zrcadlení na geometrické straně
+  // x = widthMM (kladné world X po vystředění = vlevo na obrazovce), tu ale
+  // buildHerdblokUsek staví jako svůj rightEndType — proto se sem posílá
+  // prohozeně (stejná záměna jako v buildCollarSpec výš).
   const herdblok = [{
-    xMM: 0,
+    xMM: mirrorX(0, lengthMM, lengthMM),
     widthMM: lengthMM,
     depthMM: depthAMM,
-    leftEndType,
-    rightEndType,
+    leftEndType: rightEndType,
+    rightEndType: leftEndType,
     collar: buildCollarSpec(monoState.limec),
   }];
 

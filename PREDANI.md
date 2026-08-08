@@ -258,7 +258,10 @@ než kdyby tam nebylo.
 
 **Zadavatel rozhodl: jedna průběžná deska** přes obě strany, hloubky A+B.
 Ne dvě desky proti sobě se spárou uprostřed. Boční panel jde od čela k čelu
-a zakrývá i mezeru mezi zády obou podestaveb (viz úkol 2).
+a zakrývá i mezeru mezi zády obou podestaveb (viz úkol 2). U ostrova s typem
+zakončení `svislaDeskaZkos` (zkosený vodopád) mohou být zkosené **všechny rohy**
+(nikoliv jen přední jako u varianty u stěny), protože ostrov obchází po obou
+stranách a všechny čtyři rohy jsou viditelné.
 
 Největší zbývající kus — sahá do `mono-geometry.js`, `mono-block.js`,
 `main.js`, `mono-ui.js` i `ui.js` naráz, takže se nedá rozdělit mezi
@@ -382,6 +385,11 @@ poslední odrážka. Geometrie je odblokovaná celá.**
   se NIKDY nepřejmenovávají, obchodní jméno žije jen v `js/i18n.js`.
 - **Zatažení panelu a lišty od boku:** 50 u vodopádu, 70 u zkoseného. Levý
   a pravý konec můžou mít různý typ, takže rozvržení nemusí být symetrické.
+- **Zkosení u zkoseného vodopádu — které rohy** (potvrzeno 8. 8. 2026):
+  U varianty u stěny (`single`) jsou zkosené **JEN přední rohy**; zadní roh
+  (u stěny) zůstává ostrý. U varianty ostrov (`island`) mohou být zkosené
+  **všechny rohy**, protože ostrov obchází po obou stranách a všechny čtyři
+  rohy jsou stejně viditelné.
 - **Nové položky se přidávají na KONEC řady** (`push`), ne na začátek.
 - **Prázdný prostor** v podestavbách se přidává **výhradně z palety** vlevo,
   ne z pruhu parametrů — z uživatelského hlediska je to prostě další

@@ -197,6 +197,36 @@ const PLUS_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
   + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M12 5v14"/><path d="M5 12h14"/></svg>';
 
+// Ovládání prohození dvou sousedních dlaždic (úkol 5, varianta A3 —
+// PREDANI.md). Cesta je DOSLOVA stejná jako u MONO (mono-ui.js, ICON_INNER.swap)
+// — dvě šipky proti sobě — protože jde o jednu sdílenou komponentu (třída
+// .strip-swap, css/style.css), ne dvě podobné, ale rozdílné.
+const SWAP_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+  + 'stroke-linecap="round" aria-hidden="true">'
+  + '<path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg>';
+
+/** Ovládání prohození dvou sousedních dlaždic — sedí PŘÍMO NA HRANICI mezi
+ *  dvěma dlaždicemi jako kruhový překryv (position:absolute v CSS), takže
+ *  nezabírá místo v toku a funguje i mezi dvěma libovolně úzkými dlaždicemi.
+ *  Volající ho připojuje jako DÍTĚ levé dlaždice páru (ta musí mít
+ *  position:relative — .strip-card i .mono-tile ji mají) s `left:100%`,
+ *  aby seděl přesně v mezeře. Stejná komponenta jako .strip-swap
+ *  v mono-ui.js (JEDNA sdílená CSS třída, ne dvě podobné). */
+function renderSwapControl(titleText, onClick) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'strip-swap';
+  btn.style.left = '100%';
+  btn.title = titleText;
+  btn.setAttribute('aria-label', titleText);
+  btn.innerHTML = SWAP_ICON_SVG;
+  btn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    onClick();
+  });
+  return btn;
+}
+
 export function setupUI(callbacks) {
   const els = {
     projectName: document.getElementById('project-name'),
@@ -892,8 +922,13 @@ export function setupUI(callbacks) {
 
   // --- vykreslení jedné karty segmentu v pásu (krok 3A) -----------------------------
   // Šířka karty se odvozuje od šířky segmentu, aby řada karet četla jako půdorys
-  // (§3.4 zadání). Přetahování se v této části NEDĚLÁ — pořadí mění jen ◀ ▶.
-  function renderSegmentCard(seg, index, total, state, fitInfo) {
+  // (§3.4 zadání). Přetahování se v této části NEDĚLÁ.
+  // Šipky ◀ ▶ na okrajích karty (dřív tady) přeuspořádání ovládaly — zadavatel
+  // je z karty odstranil (úkol 5, PREDANI.md): totéž ovládání jinde podle
+  // produktu bylo nekonzistentní. Nahradilo je sdílené ovládání .strip-swap
+  // v MEZEŘE mezi kartami, viz renderSwapControl a renderStripCards níže —
+  // karta samotná teď staví jen své tělo.
+  function renderSegmentCard(seg, state, fitInfo) {
     const li = document.createElement('li');
     li.className = 'strip-card';
     if (seg.id === state.selectedId) li.classList.add('selected');
@@ -902,22 +937,6 @@ export function setupUI(callbacks) {
 
     const px = Math.round(Math.min(270, 150 + Math.max(0, getSegmentWidthMM(seg) - 400) / 8));
     li.style.width = px + 'px';
-
-    // tři sourozenci — šipky přesunu na okrajích, tělo karty uprostřed
-    // (§3.2 zadání); tlačítka přesunu MUSÍ mít stopPropagation, jinak by
-    // klik na ně zároveň přepnul výběr karty přes klik na .strip-card-body.
-    const leftBtn = document.createElement('button');
-    leftBtn.type = 'button';
-    leftBtn.className = 'strip-card-move';
-    leftBtn.dataset.dir = '-1';
-    leftBtn.textContent = '◀';
-    leftBtn.title = t('segment.moveLeft');
-    leftBtn.disabled = index === 0;
-    leftBtn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      callbacks.onMoveSegment(seg.id, -1);
-    });
-    li.appendChild(leftBtn);
 
     const body = document.createElement('button');
     body.type = 'button';
@@ -935,19 +954,6 @@ export function setupUI(callbacks) {
     body.appendChild(widthSpan);
 
     li.appendChild(body);
-
-    const rightBtn = document.createElement('button');
-    rightBtn.type = 'button';
-    rightBtn.className = 'strip-card-move';
-    rightBtn.dataset.dir = '1';
-    rightBtn.textContent = '▶';
-    rightBtn.title = t('segment.moveRight');
-    rightBtn.disabled = index === total - 1;
-    rightBtn.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      callbacks.onMoveSegment(seg.id, 1);
-    });
-    li.appendChild(rightBtn);
 
     return li;
   }
@@ -1482,7 +1488,16 @@ export function setupUI(callbacks) {
     }
     segments.forEach((seg, index) => {
       const fitInfo = fitMap.get(seg.id) || { fits: true };
-      els.stripCards.appendChild(renderSegmentCard(seg, index, segments.length, state, fitInfo));
+      const card = renderSegmentCard(seg, state, fitInfo);
+      // Ovládání prohození (úkol 5, varianta A3) sedí v mezeře mezi kartami —
+      // je DÍTĚTEM levé karty páru (ta má position:relative), `left:100%`
+      // v CSS ho posadí přesně na hranici. Před první ani za poslední kartou
+      // žádné není (proto index < length - 1). Stejná komponenta jako
+      // .strip-swap v mono-ui.js, viz renderSwapControl výše.
+      if (index < segments.length - 1) {
+        card.appendChild(renderSwapControl(t('strip.swapNeighbors'), () => callbacks.onMoveSegment(seg.id, 1)));
+      }
+      els.stripCards.appendChild(card);
     });
 
     if (selectionChanged && state.selectedId != null) {

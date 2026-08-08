@@ -74,11 +74,14 @@ const ICON_INNER = {
     + '<circle cx="15" cy="14" r="1.4" fill="currentColor" stroke="none"/>',
   arm: '<path d="M7 21V8"/><path d="M7 8h9a3 3 0 0 1 3 3v2"/><path d="M19 13v3"/><path d="M4.5 21h5"/>',
   caret: '<path d="M6 9l6 6 6-6"/>',
-  // šipky přeuspořádání (§4 zadání, onMonoMove) — SEGMENT má na kartách
-  // textové glyfy ◀/▶ (renderSegmentCard v ui.js), tady jde o ikonové
-  // tlačítko jako koš vedle něj, proto vlastní SVG ve stejném stylu jako trash/caret.
-  moveLeft: '<path d="M15 6l-6 6 6 6"/>',
-  moveRight: '<path d="M9 6l6 6-6 6"/>',
+  // Ovládání prohození sousedních dlaždic (úkol 5/A3, PREDANI.md) — sdílené
+  // se SEGMENTem (ui.js), viz buildSwapControl níže a .strip-swap v CSS.
+  // Dva šipkové hroty proti sobě, doslova opsané z mockup-pas-varianty.html
+  // (varianta A3, .mk-gap-arrow).
+  swap: '<path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/>',
+  // Šipka náznaku „dráha pokračuje" u vodorovného posouvání (úkol 11/B1) —
+  // stejná ikona jako mockup varianty B1 (.mk-b1-fade svg).
+  chevronRight: '<path d="M9 6l6 6-6 6"/>',
 };
 
 /** Vytvoří <svg> se zadaným obsahem — innerHTML na SVG uzlu funguje ve všech
@@ -263,27 +266,40 @@ export function createMonoStrip({
     return btn;
   }
 
-  /** Šipka přeuspořádání položky v uspořádaném seznamu (Herdblok/Podestavby,
-   *  §4 zadání — onMonoMove). Sedí v pruhu parametrů vedle koše (zadavatel:
-   *  „do pruhu parametrů vybrané položky, vedle koše"). Modul nemá k dispozici
-   *  žádnou CSS třídu pro neutrální ikonové tlačítko (jen .mono-param-trash),
-   *  proto ji sdílí i tady — nejbližší existující tvar (viz hard pravidlo
-   *  o CSS třídách, nahlášeno v odpovědi).
-   *  Na kraji seznamu je šipka neaktivní VIZUÁLNĚ (.mono-dimmed, jediná
-   *  existující třída pro ztlumení) I FUNKČNĚ — vykreslí se jako prostý
-   *  <span> bez posluchače/role/tabIndex (makeEl, ne makeButtonLike), takže
-   *  na ni nejde kliknout ani se na ni dostat klávesnicí. */
-  function buildMoveButton(iconKey, titleText, disabled, onClick) {
-    // Neutrální třída, ne .mono-param-trash — ta nese --danger a šipky posunu
-    // by pak svítily stejně výstražně jako koš vedle nich.
-    const cls = ['mono-param-icon-btn', disabled ? 'mono-dimmed' : ''].filter(Boolean).join(' ');
-    const node = disabled ? makeEl('span', cls) : makeButtonLike('span', cls, onClick);
-    node.title = titleText;
-    if (disabled) node.setAttribute('aria-disabled', 'true');
-    node.appendChild(svg('0 0 24 24', ICON_INNER[iconKey], {
-      'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+  /** Ovládání prohození dvou sousedních dlaždic (úkol 5, varianta A3 —
+   *  PREDANI.md, mockup-pas-varianty.html). Nahrazuje dřívější šipky
+   *  ◀ ▶ v pruhu parametrů: sedí PŘÍMO NA HRANICI dvou dlaždic jako kruhový
+   *  překryv (position:absolute, viz .strip-swap v CSS) — nezabírá místo
+   *  v toku, takže funguje i mezi dvěma libovolně úzkými dlaždicemi a je
+   *  vidět BEZ výběru. Třída `strip-swap` (ne `mono-`) je ZÁMĚRNĚ sdílená
+   *  se SEGMENTem (ui.js) — jedna komponenta, jeden vzhled, viz zadání.
+   *  `leftId` je id levé položky dvojice; klik zavolá onMonoMove(layer,
+   *  leftId, +1), což prohodí levou položku s tou napravo od ní.
+   *  `boundaryMM` je mm pozice hranice (= xMM pravé položky) pro pct(). */
+  function buildSwapControl(layer, leftId, boundaryMM, lengthMM) {
+    const btn = makeButtonLike('span', 'strip-swap', () => callbacks.onMonoMove?.(layer, leftId, 1));
+    btn.style.left = `${pct(boundaryMM, lengthMM)}%`;
+    btn.title = tt('strip.swapNeighbors');
+    btn.appendChild(svg('0 0 24 24', ICON_INNER.swap, {
+      'stroke-width': '2.2', 'stroke-linecap': 'round',
     }));
-    return node;
+    return btn;
+  }
+
+  /** Vloží ovládání prohození mezi KAŽDOU dvojici sousedních položek
+   *  uspořádaného seznamu (`laid` = pole { item, xMM, widthMM, ... } ve
+   *  stejném pořadí, jako je vrací computeMonoLayout — §2 zadání). Před
+   *  první ani za poslední položkou žádné ovládání není (smyčka jde jen
+   *  po vnitřních hranicích). Statické dlaždice mimo seznam (koncová zóna,
+   *  „chybí N mm", volná plocha) se záměrně NEPOČÍTAJÍ — nejsou to položky,
+   *  se kterými by šlo cokoli prohodit. */
+  function appendSwapControls(scale, layer, laid, lengthMM) {
+    for (let i = 0; i < laid.length - 1; i += 1) {
+      const left = laid[i];
+      const right = laid[i + 1];
+      if (!left.item || !right.item) continue;
+      scale.appendChild(buildSwapControl(layer, left.item.id, right.xMM, lengthMM));
+    }
   }
 
   function paramField(labelText, controlEl) {
@@ -434,6 +450,11 @@ export function createMonoStrip({
       }));
     });
 
+    // Ovládání prohození jen na AKTIVNÍ (editovatelné) dráze — na ztlumeném
+    // kontextovém řádku (Panel/Ramena) by prohazovalo položky, které tam
+    // uživatel zrovna neupravuje (viz buildContextHerdblokRow, selectable:false).
+    if (selectable) appendSwapControls(scale, 'herdblok', layout.herdblok, lengthMM);
+
     if (layout.herdblokFreeMM > 0) {
       const freeStartMM = lengthMM - layout.herdblokFreeMM;
       scale.appendChild(buildTile({
@@ -491,6 +512,11 @@ export function createMonoStrip({
         onClick: selectable ? () => handleSelect('podestavby', item.id) : null,
       }));
     });
+
+    // Ovládání prohození jen na aktivní dráze (viz stejná poznámka výše
+    // u buildHerdblokScale). Koncové zóny a hlášení „chybí" mezi laid
+    // položky nepatří (appendSwapControls je čte jen z layout.podestavby).
+    if (selectable) appendSwapControls(scale, 'podestavby', layout.podestavby, lengthMM);
 
     if (layout.missingMM > 0) {
       // VOLBA 2A — nikdy se neztlumuje (dim se sem záměrně nepředává, viz
@@ -615,10 +641,10 @@ export function createMonoStrip({
       },
     )));
     bar.appendChild(fields);
-    bar.appendChild(buildMoveButton('moveLeft', tt('segment.moveLeft'), index === 0,
-      () => callbacks.onMonoMove?.('herdblok', item.id, -1)));
-    bar.appendChild(buildMoveButton('moveRight', tt('segment.moveRight'), index === layout.herdblok.length - 1,
-      () => callbacks.onMonoMove?.('herdblok', item.id, 1)));
+    // Šipky přeuspořádání odtud odešly na dlaždice (viz appendSwapControls
+    // v buildHerdblokScale) — úkol 5, PREDANI.md: pruh parametrů existuje
+    // až po výběru, ale přeuspořádání je operace nad ŘADOU a musí být
+    // vidět bez výběru.
     bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('herdblok', item.id)));
     return bar;
   }
@@ -665,10 +691,8 @@ export function createMonoStrip({
       }
 
       bar.appendChild(fields);
-      bar.appendChild(buildMoveButton('moveLeft', tt('segment.moveLeft'), index === 0,
-        () => callbacks.onMonoMove?.('podestavby', item.id, -1)));
-      bar.appendChild(buildMoveButton('moveRight', tt('segment.moveRight'), index === layout.podestavby.length - 1,
-        () => callbacks.onMonoMove?.('podestavby', item.id, 1)));
+      // Šipky přeuspořádání odtud odešly na dlaždice, viz stejná poznámka
+      // v buildHerdblokParamBar výše.
       bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('podestavby', item.id)));
     }
 
@@ -867,6 +891,52 @@ export function createMonoStrip({
   }
 
   // ---------------------------------------------------------------------------
+  // Vodorovné posouvání dráhy (úkol 11, varianta B1 — PREDANI.md,
+  // mockup-pas-varianty.html). Pravítko i obě dráhy leží v JEDNOM scroll
+  // kontejneru (.mono-track-scroll), takže se posouvají SPOLEČNĚ — kdyby se
+  // posouvala jen dráha a pravítko zůstalo, měřítko by přestalo sedět
+  // (tvrdá podmínka zadání). `.mono-track-viewport` je vnější obal, na
+  // kterém sedí zeslabující přechod + šipka (.mono-track-fade) jako
+  // NEPOSOUVANÝ překryv — kdyby byl uvnitř scroll kontejneru, odscrolloval
+  // by pryč spolu s obsahem, a to je proti smyslu náznaku „ještě něco je".
+  // overflow-y je EXPLICITNĚ hidden (past z PREDANI.md ČÁST A2: overflow-x:
+  // auto by jinak povýšilo i svislou osu na auto). Padding uvnitř scroll
+  // kontejneru (ne na .mono-panel) rezervuje místo pro koncovky Herdbloku,
+  // které přesahují za hranu dráhy (transform ∓52 %, -50 %) — kdyby ho
+  // neměl, levá koncovka by se při scrollLeft=0 utrhla do záporných
+  // souřadnic a nikdy by se k ní nedalo doscrollovat zpátky.
+  // ---------------------------------------------------------------------------
+  function buildTrackViewport(rows) {
+    const viewport = makeEl('div', 'mono-track-viewport');
+    const scroll = makeEl('div', 'mono-track-scroll');
+    rows.forEach((row) => scroll.appendChild(row));
+    viewport.appendChild(scroll);
+
+    const fade = makeEl('div', 'mono-track-fade');
+    fade.setAttribute('aria-hidden', 'true'); // čistě vizuální náznak, žádný text (viz mockup .mk-b1-fade)
+    fade.appendChild(svg('0 0 24 24', ICON_INNER.chevronRight, {
+      'stroke-width': '2.4', 'stroke-linecap': 'round',
+    }));
+    viewport.appendChild(fade);
+
+    return viewport;
+  }
+
+  /** Po vložení do živého DOM (viz renderAll) změří, jestli dráha skutečně
+   *  přetéká, a podle toho zapne/vypne třídu s náznakem (.mono-track-fade
+   *  se BEZ ní v CSS nezobrazuje — zbytečný náznak scrollování tam, kde
+   *  není co scrollovat, by jen matl). Musí běžet AŽ PO připojení k
+   *  els.body, jinak scrollWidth/clientWidth vrátí 0 (neplacovaný uzel). */
+  function updateTrackOverflowHints(root) {
+    root.querySelectorAll('.mono-track-viewport').forEach((viewport) => {
+      const scroll = viewport.querySelector('.mono-track-scroll');
+      if (!scroll) return;
+      const overflowing = scroll.scrollWidth > scroll.clientWidth + 1;
+      viewport.classList.toggle('mono-track-viewport-overflow', overflowing);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Sestavení čtyř panelů (Herdblok+Podestavby sdílejí jeden, přesně jako
   // v mockupu) a záložek.
   // ---------------------------------------------------------------------------
@@ -874,16 +944,18 @@ export function createMonoStrip({
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = !(activeTab === 'herdblok' || activeTab === 'podestavby');
 
-    panel.appendChild(buildRuler(lengthMM));
-    panel.appendChild(trackRow(tt('mono.tab.herdblok'), buildHerdblokScale(monoState, layout, lengthMM, {
-      selectable: activeTab === 'herdblok',
-      dim: activeTab !== 'herdblok',
-      showEndcaps: true,
-    })));
-    panel.appendChild(trackRow(tt('mono.tab.podestavby'), buildPodestavbyScale(layout, lengthMM, {
-      selectable: activeTab === 'podestavby',
-      dim: activeTab !== 'podestavby',
-    })));
+    panel.appendChild(buildTrackViewport([
+      buildRuler(lengthMM),
+      trackRow(tt('mono.tab.herdblok'), buildHerdblokScale(monoState, layout, lengthMM, {
+        selectable: activeTab === 'herdblok',
+        dim: activeTab !== 'herdblok',
+        showEndcaps: true,
+      })),
+      trackRow(tt('mono.tab.podestavby'), buildPodestavbyScale(layout, lengthMM, {
+        selectable: activeTab === 'podestavby',
+        dim: activeTab !== 'podestavby',
+      })),
+    ]));
 
     panel.appendChild(makeEl('p', 'mono-track-note', tt('mono.endZoneNote', {
       left: Math.round(layout.leftInsetMM), right: Math.round(layout.rightInsetMM),
@@ -899,9 +971,11 @@ export function createMonoStrip({
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = activeTab !== 'panel';
 
-    panel.appendChild(buildRuler(lengthMM));
-    panel.appendChild(buildContextHerdblokRow(monoState, layout, lengthMM));
-    panel.appendChild(trackRow(tt('mono.tab.panel'), buildPanelTrackScale(layout, lengthMM)));
+    panel.appendChild(buildTrackViewport([
+      buildRuler(lengthMM),
+      buildContextHerdblokRow(monoState, layout, lengthMM),
+      trackRow(tt('mono.tab.panel'), buildPanelTrackScale(layout, lengthMM)),
+    ]));
     panel.appendChild(makeEl('p', 'mono-track-note', tt('mono.panelNote')));
     panel.appendChild(buildPanelParamBar(layout));
 
@@ -912,9 +986,11 @@ export function createMonoStrip({
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = activeTab !== 'arms';
 
-    panel.appendChild(buildRuler(lengthMM));
-    panel.appendChild(buildContextHerdblokRow(monoState, layout, lengthMM));
-    panel.appendChild(trackRow(tt('arms.sectionTitle'), buildArmsTrackScale(state, lengthMM)));
+    panel.appendChild(buildTrackViewport([
+      buildRuler(lengthMM),
+      buildContextHerdblokRow(monoState, layout, lengthMM),
+      trackRow(tt('arms.sectionTitle'), buildArmsTrackScale(state, lengthMM)),
+    ]));
     panel.appendChild(makeEl('p', 'mono-track-note', tt('mono.armsNote')));
     panel.appendChild(buildArmsParamBar(state));
 
@@ -960,6 +1036,9 @@ export function createMonoStrip({
     els.body.appendChild(buildPanelPanel(state, monoState, layout, lengthMM));
     els.body.appendChild(buildLimecPanel(monoState));
     els.body.appendChild(buildArmsPanel(state, monoState, layout, lengthMM));
+
+    // Musí běžet AŽ PO připojení výše — viz komentář u updateTrackOverflowHints.
+    updateTrackOverflowHints(els.body);
 
     restoreFocus(focusInfo);
   }

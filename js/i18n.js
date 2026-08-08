@@ -80,6 +80,9 @@ const DICTS = {
     'strip.detailHint': 'Select a segment to edit it',
     'strip.collapse': 'Collapse assembly bar',
     'strip.expand': 'Expand assembly bar',
+    // Prohození sousedních dlaždic — sdílené ovládání SEGMENTu i MONO
+    // (úkol 5, varianta A3, PREDANI.md; .strip-swap v css/style.css).
+    'strip.swapNeighbors': 'Swap with neighbor',
     'capacity.hint': 'Used {used} / {total} mm',
 
     'segment.moveLeft': 'Move left',
@@ -436,6 +439,7 @@ const DICTS = {
     'strip.detailHint': 'Segment auswählen, um es zu bearbeiten',
     'strip.collapse': 'Leiste einklappen',
     'strip.expand': 'Leiste ausklappen',
+    'strip.swapNeighbors': 'Mit Nachbarn tauschen',
     'capacity.hint': 'Belegt {used} / {total} mm',
 
     'segment.moveLeft': 'Nach links verschieben',
@@ -793,6 +797,7 @@ const DICTS = {
     'strip.detailHint': 'Wybierz segment, aby go edytować',
     'strip.collapse': 'Zwiń pasek zestawu',
     'strip.expand': 'Rozwiń pasek zestawu',
+    'strip.swapNeighbors': 'Zamień z sąsiadem',
     'capacity.hint': 'Wykorzystano {used} / {total} mm',
 
     'segment.moveLeft': 'Przesuń w lewo',
@@ -1153,6 +1158,7 @@ const DICTS = {
     'strip.detailHint': 'Vyberte segment, který chcete upravit',
     'strip.collapse': 'Srolovat pás sestavy',
     'strip.expand': 'Rozbalit pás sestavy',
+    'strip.swapNeighbors': 'Prohodit se sousedem',
     'capacity.hint': 'Využito {used} / {total} mm',
 
     'segment.moveLeft': 'Posunout doleva',
@@ -1512,6 +1518,7 @@ const DICTS = {
     'strip.detailHint': 'Vyberte segment, ktorý chcete upraviť',
     'strip.collapse': 'Zrolovať pás zostavy',
     'strip.expand': 'Rozbaliť pás zostavy',
+    'strip.swapNeighbors': 'Prehodiť so susedom',
     'capacity.hint': 'Využité {used} / {total} mm',
 
     'segment.moveLeft': 'Posunúť doľava',

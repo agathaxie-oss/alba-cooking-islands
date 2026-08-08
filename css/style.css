@@ -1445,37 +1445,44 @@ body {
   white-space: nowrap;
 }
 
-.strip-card-move {
-  flex: 0 0 16px;
+/* ==========================================================================
+   OVLÁDÁNÍ PROHOZENÍ SOUSEDNÍCH DLAŽDIC — sdílená komponenta SEGMENTu i
+   MONO (úkol 5, varianta A3, PREDANI.md + mockup-pas-varianty.html). Dřív
+   šipky ◀ ▶ na okraji karty/dlaždice (zabíraly místo v toku, u MONO by
+   navíc porušily úměrnost dlaždic milimetrům) — nahrazeno JEDNÍM kruhovým
+   ovládáním, které sedí PŘESNĚ NA HRANICI dvou sousedů jako překryv.
+   position:absolute + `left` nastavený inline (viz ui.js/mono-ui.js) ho
+   vyjme z toku, takže nijak neodtlačuje dlaždice okolo — funguje tedy i na
+   libovolně úzké dlaždici. Rodič MUSÍ mít position:relative (.strip-card
+   i .mono-tile/.mono-scale ho už mají). Viditelné vždy, bez výběru.
+   ========================================================================== */
+.strip-swap {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  font-size: 11px;
-  line-height: 1;
-  color: var(--text-muted);
-  background: none;
-  border: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  color: var(--accent-dark);
+  box-shadow: var(--shadow);
   cursor: pointer;
 }
 
-.strip-card-move:first-child {
-  border-right: 1px solid var(--border);
-  border-radius: var(--radius) 0 0 var(--radius);
-}
-.strip-card-move:last-child {
-  border-left: 1px solid var(--border);
-  border-radius: 0 var(--radius) var(--radius) 0;
+.strip-swap svg {
+  width: 12px;
+  height: 12px;
 }
 
-.strip-card-move:hover:not(:disabled) {
-  background: var(--bg-panel-alt);
-  color: var(--accent-dark);
-}
-
-.strip-card-move:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
+.strip-swap:hover {
+  background: var(--accent-soft);
 }
 
 .strip-card-add {
@@ -2326,6 +2333,69 @@ body {
   display: none;
 }
 
+/* ==========================================================================
+   VODOROVNÉ POSOUVÁNÍ DRÁHY — úkol 11, varianta B1 (PREDANI.md +
+   mockup-pas-varianty.html). Řeší přeplněnou řadu (součet položek >
+   lengthMM), kdy poslední dlaždice a pravá koncovka Herdbloku (transform
+   ∓52 %) utíkají za okraj a bez posouvání se k nim nedá dostat.
+
+   .mono-track-viewport obaluje pravítko + OBĚ dráhy jako JEDEN celek —
+   .mono-track-scroll je jediný scroll kontejner pro všechny (pravítko se
+   MUSÍ posouvat spolu s dráhami, jinak měřítko přestane sedět, viz zadání).
+
+   overflow-y je EXPLICITNĚ hidden — past z PREDANI.md ČÁST A2: overflow-x:
+   auto by jinak prohlásil i svislou osu za auto a mohl by se objevit
+   nechtěný svislý posuvník.
+
+   Vodorovný i svislý padding NA SCROLL KONTEJNERU (ne na .mono-panel)
+   rezervuje místo pro koncovky Herdbloku, které přesahují za hranu dráhy
+   (translate ∓52 %, -50 %) — padding scroll kontejneru zůstává vidět i na
+   krajích scrollování (scrollLeft 0 i max), takže se koncovka nikdy
+   neutrhne do neexistujícího záporného scrollu. margin: 0 -24px ruší
+   vodorovný padding zděděný z .mono-panel, aby se netvořil dvojitý odstup
+   — vizuální pozice nuly mm zůstává stejná jako dřív, jen teď leží uvnitř
+   scrollované oblasti. */
+.mono-track-viewport {
+  position: relative;
+}
+
+.mono-track-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0 -24px;
+  padding: 10px 24px 14px;
+}
+
+/* Zeslabující přechod + šipka — NEPOSOUVANÝ náznak „dráha pokračuje",
+   proto je sourozenec .mono-track-scroll, ne jeho dítě (kdyby byl uvnitř,
+   odscrolloval by pryč spolu s obsahem). Čistě vizuální (aria-hidden,
+   žádný text) a viditelný jen tehdy, když dráha SKUTEČNĚ přetéká — viz
+   .mono-track-viewport-overflow, kterou zapíná updateTrackOverflowHints
+   v mono-ui.js po změření scrollWidth/clientWidth. */
+.mono-track-fade {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  background: linear-gradient(to right, transparent, var(--bg-panel) 80%);
+  color: var(--accent-dark);
+  pointer-events: none;
+}
+
+.mono-track-fade svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mono-track-viewport-overflow .mono-track-fade {
+  display: flex;
+}
+
 /* společné odsazení pravítka i drah, ať nula na všech řádcích sedí na
    stejném x — .mono-scale-label je pevný sloupec s popiskem řádku,
    .mono-scale je prostor, do kterého se kreslí dráha */
@@ -2778,41 +2848,6 @@ body {
 
 .mono-param-trash:hover {
   border-color: var(--danger);
-}
-
-/* Neutrální ikonové tlačítko v pruhu parametrů — stejný tvar jako koš, ale
-   bez jeho červené. Vzniklo pro šipky přeuspořádání: ty původně recyklovaly
-   .mono-param-trash a dědily z ní --danger, takže „posunout doleva" svítilo
-   stejně výstražně jako „smazat". Barvu nese jen akce, která doopravdy něco
-   ničí. */
-.mono-param-icon-btn {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-main);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.mono-param-icon-btn svg {
-  width: 15px;
-  height: 15px;
-}
-
-.mono-param-icon-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent-dark);
-}
-
-/* Ztlumená šipka na kraji seznamu není jen bledá — nesmí ani reagovat na
-   najetí myší, aby nepředstírala, že se dá kliknout. */
-.mono-param-icon-btn.mono-dimmed:hover {
-  border-color: var(--border);
-  color: var(--text-main);
-  cursor: default;
 }
 
 .mono-param-add {

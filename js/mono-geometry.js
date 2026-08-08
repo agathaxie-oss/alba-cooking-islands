@@ -239,10 +239,14 @@ function box(widthM, heightM, depthM, material) {
  * ÚKOL B zadání, čelo desky zůstává svislých DESK_FACE_HEIGHT_MM po celé
  * délce) — a JEN na PŘEDNÍCH rozích.
  *
- * PŘEDPOKLAD: přední roh se pozná podle dzIn > 0 (zadní rohy volá
- * buildHerdblokOutline s dzIn < 0) — tohle NENÍ dodané číslo/pravidlo, je to
- * odvozený předpoklad z toho, že zadavatel mluvil jen o "předním rohu";
- * zadní roh zůstává ostrý i u VERTICAL_PLATE_CHAMFER. Nahlášeno v přejímce.
+ * PRAVIDLO (potvrzeno 8. 8. 2026, HODNOTY-MONO.md § 7.5): u varianty u stěny
+ * (`single`) se zkosí JEN PŘEDNÍ rohy; zadní roh (u stěny) zůstává ostrý
+ * i u VERTICAL_PLATE_CHAMFER. U varianty ostrov (`island`) mohou být zkosené
+ * VŠECHNY rohy — avšak ostrovní varianta se dnes u MONO nestaví (chová se
+ * jako `single`, viz TODO v js/main.js kolem ř. 519); až se bude dělat
+ * úkol 6 v PREDANI.md, musí se sem doplnit větev pro ostrovní variantu.
+ * Detekce: přední roh se pozná podle dzIn > 0 — je to volba implementace,
+ * ne dodané číslo.
  *
  * Tvar zkoseného předního rohu (zadavatelem potvrzeno): od bodu na boční
  * hraně END_CHAMFER_MM (50) od rohu (směrem dovnitř, tj. dozadu), přes
@@ -255,7 +259,7 @@ function box(widthM, heightM, depthM, material) {
  * @param {string} type END_TYPES.*
  * @param {number} cornerX,cornerZ  souřadnice rohu (mm)
  * @param {number} dxIn,dzIn  jednotkový směr "dovnitř" od rohu; dzIn > 0
- *   určuje přední roh (viz PŘEDPOKLAD výš)
+ *   určuje přední roh (viz pravidlo výš)
  * @param {'fromX'|'fromZ'} from  ze které hrany se do rohu vchází při
  *   obchůzce obrysu (buildHerdblokOutline / noseOutline) — řídí pořadí dvou
  *   vrácených bodů, aby navazovaly na sousední hrany beze křížení: 'fromZ'
@@ -272,7 +276,7 @@ function cornerPoints(type, cornerX, cornerZ, dxIn, dzIn, from) {
     return from === 'fromZ' ? [sideEdgePoint, frontEdgePoint] : [frontEdgePoint, sideEdgePoint];
   }
   // ostrý 90° roh: END_TYPES.VERTICAL_PLATE vždy, VERTICAL_PLATE_CHAMFER na
-  // zadních rozích (dzIn <= 0, viz PŘEDPOKLAD výš)
+  // zadních rozích (dzIn <= 0, detekce dle pravidla výš)
   return [sharp];
 }
 

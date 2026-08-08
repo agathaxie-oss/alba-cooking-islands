@@ -48,13 +48,24 @@ i když server servíruje novou. Před KAŽDÝM ověřením:
 
 ```js
 (async () => {
-  for (const f of ['js/main.js','js/ui.js','js/mono-ui.js','js/mono-layout.js',
-                   'js/mono-geometry.js','js/mono-block.js','js/i18n.js',
-                   'css/style.css','index.html'])
+  for (const f of ['js/arms.js','js/block.js','js/catalog.js',
+                   'js/custom-dialog.js','js/device-manager.js',
+                   'js/floorplan.js','js/i18n.js','js/main.js',
+                   'js/materials.js','js/modules.js','js/mono-block.js',
+                   'js/mono-geometry.js','js/mono-layout.js',
+                   'js/mono-prototype.js','js/mono-ui.js','js/report.js',
+                   'js/ui.js','js/viewer.js','css/style.css','index.html'])
     await fetch('/'+f, {cache:'reload'}).catch(()=>{});
   location.reload();
 })()
 ```
+
+**Pozor:** Tento seznam je RUČNĚ VEDENÝ. Kdykoli přibude nový soubor v `js/`,
+musí se doplnit i sem — jinak se past vrátí. Příznakem neúplného proplchu je
+hlášení o chybějícím exportu (např. `SyntaxError: The requested module
+'./modules.js' does not provide an export named 'applyTopFeature'`) u modulu,
+který ten export prokazatelně má — v takovém případě je první podezřelý
+neúplný proplach keše, ne kód.
 
 ### Server
 
@@ -113,12 +124,15 @@ uživatelův Python, **nezabíjet** — použít `alba-konfigurator`.
 
 # ČÁST B — KDE TO STOJÍ
 
-Větev `mono-geometrie-a-osa-x` byla smazaná ze serveru i lokálně. Veškerá
-práce ze session je na lokální větvi `main`, poslední commit `11c8d2b`
-(6 commitů z 8. 8. 2026). Server má jedinou větev `main` na `c2efae0` a bez
-výslovného pokynu se **nikdy** nemění. **Práce probíhá výhradně lokálně: na
-`origin` ani na nasazenou aplikaci se nesmí sahat, dokud zadavatel výslovně
-neřekne jinak.** Pull request nevznikl.
+Větev `mono-geometrie-a-osa-x` byla smazaná ze serveru i lokálně.
+Veškerá práce ze session je na **lokální větvi `main`** — seznam
+commitů viz `git log`. Na `origin` **není odesláno nic**. Server
+má jedinou větev `main` na `c2efae0`, tedy na stavu před session.
+**Pull request nevznikl.**
+
+**Práce probíhá výhradně lokálně: na `origin` ani na
+nasazenou aplikaci se nesmí sahat, dokud zadavatel výslovně
+neřekne jinak.**
 
 Aplikace je interní a nenasazená, žádná uživatelská data → zpětná
 kompatibilita souborů se neřeší. Formát projektu je **verze 5**.
@@ -454,6 +468,28 @@ podestavbách obecně.
 - **Ověřit, jestli tutéž vadu nemá i SEGMENT.** Třída má prefix
   `mono-`, takže se týká jen MONO, ale stejné useknutí může být i v
   pásu SEGMENTu.
+
+## 12. Přeplněná položka se ve 3D kreslí za koncem bloku
+
+**NEŘEŠIT BEZ POKYNU — zadavatel to viděl a nechal tak.**
+
+- Když součet položek přesáhne délku bloku, poslední položka se
+  **ve 3D vykreslí dál za koncem bloku** a v pásu se označí jako
+  „nevejde se" (u SEGMENTu červeně, u MONO šrafovaně). Zadavatel to
+  8. 8. 2026 viděl na screenshotu a rozhodl: **nechat, jak to je.**
+  Uživatel si to vyřeší sám — buď zvětší rozměr bloku, nebo skříňku
+  smaže.
+- Vede se to tu jen jako **evidence pro případnou budoucí opravu**, ne
+  jako vada k řešení. Nikdo se do toho nemá pouštět, dokud zadavatel
+  neřekne.
+- Kdyby se to jednou řešit mělo, jsou dvě cesty a každá má cenu:
+  **nekreslit ji vůbec** — model pak vždy odpovídá tomu, co je
+  vyrobitelné, ale uživatel ve 3D nevidí, že něco přebývá; nebo
+  **kreslit ji odlišeně** (jinou barvou nebo průhledně) — přebytek je
+  vidět, ale model neodpovídá vyrobitelnému stavu a v tiskovém
+  dokumentu by to mohlo mást.
+- Týká se OBOU produktů. U SEGMENTu se přeplnění navíc hlásí i číslem
+  v hlavičce pásu („Využito 3600 / 3160 mm" červeně).
 
 ---
 

@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Varianty spodního pásu — MONO (šipky + přetékání)</title>
+<style>
+/* Proměnné 1:1 z css/style.css (stejná kopie, jakou používá mockup-mono.html),
+   ať se paleta nemůže rozejít s aplikací. */
+:root {
+  --bg-panel: #FEFEFE;
+  --bg-panel-alt: #EBECEC;
+  --bg-input: #F6F7F7;
+  --border: #D8D9D9;
+  --text-main: #2B2A29;
+  --text-muted: #5B5B5B;
+  --accent: #0083C6;
+  --accent-dark: #00639A;
+  --accent-darker: #004E78;
+  --accent-soft: rgba(0, 131, 198, 0.12);
+  --danger: #C0392B;
+  --warn: #B26A00;
+  --warn-soft: rgba(178, 106, 0, 0.12);
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(43, 42, 41, 0.12);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg-panel-alt);
+  color: var(--text-main);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+body { padding: 32px 24px 100px; }
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; }
+img, svg { display: block; }
+
+.mk-wrap { max-width: 1180px; margin: 0 auto; }
+
+/* ---------- úvod ---------- */
+.mk-intro {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin-bottom: 30px;
+  box-shadow: var(--shadow);
+}
+.mk-intro h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.mk-intro p { margin-bottom: 6px; color: var(--text-main); }
+.mk-intro .mk-intro-task { color: var(--text-muted); font-size: 12px; }
+.mk-intro b { color: var(--accent-dark); }
+
+/* ---------- sekce ---------- */
+.mk-section-head {
+  margin: 44px 0 6px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
+}
+.mk-section-head h2 { font-size: 15px; font-weight: 700; letter-spacing: 0.03em; }
+.mk-section-head p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+.mk-variant {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 22px 20px;
+  margin: 18px 0;
+}
+.mk-variant-h {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 4px;
+}
+.mk-variant-sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; }
+
+.mk-variant-desc {
+  margin-top: 14px;
+  font-size: 12.5px;
+  padding: 8px 12px;
+  background: var(--bg-panel-alt);
+  border-radius: 4px;
+}
+.mk-variant-desc b { color: var(--text-main); }
+.mk-variant-desc .mk-gets::before { content: "✓ Získává: "; font-weight: 700; color: var(--accent-dark); }
+.mk-variant-desc .mk-loses::before { content: "✗ Ztrácí: "; font-weight: 700; color: var(--danger); }
+.mk-variant-desc div + div { margin-top: 3px; }
+
+.mk-warn-box {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  color: var(--warn);
+}
+.mk-warn-box b { font-weight: 700; }
+
+.mk-detail-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 16px 0 8px;
+}
+
+/* ================= dráha / dlaždice — kopie mono- tříd z css/style.css ================= */
+
+.mono-scale-row { display: flex; align-items: stretch; }
+.mono-scale-label {
+  flex: 0 0 92px; width: 92px; padding-right: 8px;
+  display: flex; align-items: center; font-size: 12px;
+}
+.mono-scale { position: relative; flex: 0 0 auto; }
+.mono-ruler-row { height: 22px; margin-top: 10px; position: relative; }
+.mono-tick { position: absolute; top: 0; bottom: 0; left: 0; width: 0; }
+.mono-tick i {
+  position: absolute; top: 0; left: 0; transform: translateX(-0.5px);
+  width: 1px; height: 6px; background: var(--text-muted); display: block;
+}
+.mono-tick b {
+  position: absolute; top: 9px; left: 0; font-weight: 400; font-size: 10px;
+  color: var(--text-muted); white-space: nowrap;
+}
+.mono-tick.mk-end-tick i { background: var(--accent-dark); height: 9px; }
+.mono-tick.mk-end-tick b { color: var(--accent-dark); font-weight: 700; }
+
+.mono-track-row { height: 52px; margin-top: 6px; position: relative; }
+
+.mono-tile {
+  position: absolute; top: 4px; bottom: 4px;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  overflow: hidden; text-align: center; padding: 2px 3px;
+}
+.mono-tile-name { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+.mono-tile-size { font-size: 9.5px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
+.mono-tile-device, .mono-tile-cabinet { background: var(--bg-panel); }
+.mono-tile-surface { background: var(--bg-input); }
+.mono-tile-surface .mono-tile-name, .mono-tile-surface .mono-tile-size { color: var(--text-muted); }
+.mono-tile-gap {
+  color: var(--text-muted); background-color: var(--bg-panel);
+  background-image: repeating-linear-gradient(45deg, var(--border) 0 2px, transparent 2px 8px);
+}
+.mono-tile-endzone { background: var(--bg-panel-alt); border-color: var(--bg-panel-alt); color: var(--text-muted); }
+.mono-tile-endzone .mono-tile-size { font-size: 9.5px; margin-top: 0; }
+
+.mono-endcap {
+  position: absolute; top: 50%; display: flex; align-items: center; gap: 1px;
+  padding: 3px 4px; background: var(--bg-panel); border: 1px solid var(--accent);
+  border-radius: 5px; box-shadow: var(--shadow); color: var(--accent-dark); z-index: 2;
+}
+.mono-endcap-left { transform: translate(-52%, -50%); }
+.mono-endcap-right { transform: translate(52%, -50%); }
+.mono-endcap-glyph { width: 26px; height: 20px; }
+.mono-endcap-caret { width: 9px; height: 9px; color: var(--text-muted); }
+
+.mono-track-note { margin: 4px 0 0 92px; font-size: 10.5px; color: var(--text-muted); }
+
+/* ================= šipky přeuspořádání — SEKCE A, nové třídy pro tento mockup ================= */
+
+.mk-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-main); box-shadow: var(--shadow); z-index: 4;
+}
+.mk-arrow svg { width: 10px; height: 10px; }
+.mk-arrow:hover { border-color: var(--accent); color: var(--accent-dark); }
+.mk-arrow-left { left: 2px; }
+.mk-arrow-right { right: 2px; }
+
+/* A2 — schované, dokud se nenajede myší; obal .mk-a2-narrow drží hover stav */
+.mk-arrow-hoveronly { opacity: 0; pointer-events: none; transition: opacity .12s; }
+.mk-a2-narrow:hover .mk-arrow-hoveronly,
+.mk-a2-narrow.mk-force-hover .mk-arrow-hoveronly { opacity: 1; pointer-events: auto; }
+.mk-a2-narrow.mk-force-hover { outline: 2px dashed var(--accent); outline-offset: 2px; }
+
+/* A3 — ovládání v mezeře mezi dlaždicemi */
+.mk-gap-arrow {
+  position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%);
+  width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+  background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 50%;
+  color: var(--accent-dark); box-shadow: var(--shadow); z-index: 4;
+}
+.mk-gap-arrow svg { width: 12px; height: 12px; }
+.mk-gap-arrow:hover { background: var(--accent-soft); }
+
+/* ================= SEKCE B — přetékající dráha ================= */
+
+.mk-viewport {
+  position: relative;
+  width: 900px; max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel-alt);
+  padding: 16px 0 22px;
+}
+.mk-viewport-inner { padding: 0 24px; }
+
+/* B1 — skutečné vodorovné posouvání */
+.mk-b1-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;               /* viz upozornění u varianty */
+  padding-top: 14px; padding-bottom: 18px; /* rezerva, aby se koncovky neuřízly svisle */
+  position: relative;
+}
+.mk-b1-content { width: 1040px; padding: 0 24px; position: relative; }
+.mk-b1-fade {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 46px;
+  background: linear-gradient(to right, transparent, var(--bg-panel-alt) 85%);
+  pointer-events: none; z-index: 5;
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 4px;
+}
+.mk-b1-fade svg { width: 16px; height: 16px; color: var(--accent-dark); }
+.mk-b1-hint {
+  margin-top: 6px; font-size: 10.5px; color: var(--text-muted); text-align: center;
+}
+
+/* B2 — stlačené měřítko + šrafa "nevejde se" */
+.mk-hatch-overflow {
+  position: absolute; top: 0; bottom: 0;
+  background-color: var(--warn-soft);
+  background-image: repeating-linear-gradient(45deg, var(--warn) 0 2px, transparent 2px 8px);
+  border-left: 2px dashed var(--warn);
+  z-index: 0;
+}
+.mk-hatch-label {
+  position: absolute; top: -16px; font-size: 9.5px; color: var(--warn); font-weight: 600; white-space: nowrap;
+}
+
+/* B3 — druhá řada */
+.mk-wrap-row {
+  margin-top: 4px;
+  border-top: 2px dashed var(--warn);
+  padding-top: 6px;
+  position: relative;
+}
+.mk-wrap-row .mono-track-row { background: var(--warn-soft); border-radius: 4px; }
+.mk-wrap-badge {
+  position: absolute; left: -1px; top: -18px;
+  font-size: 9.5px; font-weight: 700; color: var(--warn);
+  background: var(--bg-panel-alt); padding: 0 4px;
+}
+
+/* ---------- popisek koncové zóny — úkol 7 ---------- */
+.mk-label-compare { display: flex; gap: 30px; align-items: flex-start; margin-top: 6px; }
+.mk-label-demo { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.mk-label-demo b { font-size: 11px; color: var(--text-muted); }
+.mk-clip-box {
+  width: 46px; height: 34px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-panel-alt); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 9.5px; color: var(--text-muted);
+}
+.mk-clip-box.mk-clip-broken { overflow: visible; }
+.mk-clip-broken span { display: block; white-space: nowrap; margin-left: -14px; }
+.mk-clip-fixed { font-size: 9.5px; }
+
+/* ---------- footer ---------- */
+.mk-note-strip { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="mk-wrap">
+
+  <div class="mk-intro">
+    <h1>Rozhodnutí o vzhledu spodního pásu ALBA MONO</h1>
+    <p>Tento mockup nekreslí produkční UI — je to pomůcka k výběru. Vyberte
+      <b>JEDNU variantu ze skupiny A</b> (šipky přeuspořádání dlaždic — úkol 5)
+      a <b>JEDNU variantu ze skupiny B</b> (přetékající dráha — úkol 11). Do
+      aplikace se sahá až po výběru.</p>
+    <p class="mk-intro-task">Data odpovídají doloženému screenshotu: blok 3200&nbsp;mm,
+      koncová zóna 70&nbsp;mm vlevo / 50&nbsp;mm vpravo (použitelných 3080&nbsp;mm).
+      Dráha Herdblok: Sporák plynový Lotus 22&nbsp;kW 800 · Fritéza Lotus 10&nbsp;l 400 ·
+      Grilovací deska Lotus 6&nbsp;kW 600 · Fritéza Lotus 10&nbsp;l 400 · Indukce Berner
+      5&nbsp;kW 500 · volná plocha 500 (součet 3200). Dráha Podestavby: Skříňka 600 ·
+      volný prostor 600 · Skříňka 600 · volný prostor 400 · Skříňka 480 · volný prostor 800
+      (součet 3480 — o 400&nbsp;mm víc, než je použitelných 3080&nbsp;mm).</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SEKCE A -->
+  <!-- ============================================================ -->
+  <div class="mk-section-head">
+    <h2>SEKCE A — šipky přeuspořádání dlaždic (úkol 5)</h2>
+    <p>Šipky patří na dlaždice v drahách Herdblok i Podestavby, viditelné bez
+      předchozího výběru. Úměrnost dlaždic milimetrům se nesmí porušit —
+      proto tři různé odpovědi na to, kam se šipky u úzkých dlaždic vejdou.</p>
+  </div>
+
+  <!-- ---------- A1 ---------- -->
+  <div class="mk-variant">
+    <div class="mk-variant-h">A1 — šipky uvnitř dlaždice, vždy vidět</div>
+    <div class="mk-variant-sub">Šipky sedí jako překryv u obou hran dlaždice. Text dlaždice se pod nimi zkracuje / mizí.</div>
+
+    <div class="mk-viewport"><div class="mk-viewport-inner">
+      <div class="mono-scale-row mono-ruler-row">
+        <div class="mono-scale-label"></div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tick" style="left:0px;"><i></i><b>0</b></div>
+          <div class="mono-tick" style="left:140.625px;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+          <div class="mono-tick" style="left:281.25px;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+          <div class="mono-tick" style="left:421.875px;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+          <div class="mono-tick" style="left:562.5px;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+          <div class="mono-tick" style="left:703.125px;"><i></i><b style="transform:translateX(-50%);">2500</b></div>
+          <div class="mono-tick mk-end-tick" style="left:900px;"><i></i><b style="transform:translateX(-100%);">3200</b></div>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Herdblok</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-device" style="left:0px; width:225px;">
+            <span class="mono-tile-name">Sporák Lotus 22 kW</span><span class="mono-tile-size">800 mm</span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device" style="left:225px; width:112.5px;">
+            <span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device" style="left:337.5px; width:168.75px;">
+            <span class="mono-tile-name">Grilovací deska</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device" style="left:506.25px; width:112.5px;">
+            <span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device" style="left:618.75px; width:140.625px;">
+            <span class="mono-tile-name">Indukce Berner</span><span class="mono-tile-size">500 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-surface" style="left:759.375px; width:140.625px;">
+            <span class="mono-tile-name">volná plocha</span><span class="mono-tile-size">500 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+          </div>
+          <span class="mono-endcap mono-endcap-left" style="left:0px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M1 5h16l6 6v7"/></svg></span></span>
+          <span class="mono-endcap mono-endcap-right" style="left:900px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M25 5H3v13"/></svg></span></span>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Podestavby</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-endzone" style="left:0px; width:19.6875px;"><span class="mono-tile-size">70</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:19.6875px; width:168.75px;">
+            <span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-gap" style="left:188.4375px; width:168.75px;">
+            <span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-cabinet" style="left:357.1875px; width:168.75px;">
+            <span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-gap" style="left:525.9375px; width:112.5px;">
+            <span class="mono-tile-name">volný</span><span class="mono-tile-size">400</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-cabinet" style="left:638.4375px; width:135px;">
+            <span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">480 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-gap" style="left:773.4375px; width:126.5625px;">
+            <span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">800 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="mk-note-strip">Poznámka: dráha je zde vykreslená bez ořezu (o tom je sekce B) — jde jen o to, kam se šipky vejdou.</p>
+    </div></div>
+
+    <div class="mk-detail-label">Detail — dlaždice 400 mm a 100 mm vedle sebe</div>
+    <div style="display:flex; gap:16px; align-items:flex-end;">
+      <div class="mono-scale" style="width:240px; height:52px; position:relative;">
+        <div class="mono-tile mono-tile-device" style="left:0; width:240px; top:0; bottom:0;">
+          <span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span>
+          <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+          <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+        </div>
+      </div>
+      <div class="mono-scale" style="width:60px; height:52px; position:relative;">
+        <div class="mono-tile mono-tile-surface" style="left:0; width:60px; top:0; bottom:0;">
+          <span class="mono-tile-size">100</span>
+          <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+          <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+        </div>
+      </div>
+      <span style="font-size:11px; color:var(--text-muted); align-self:center;">← u 100 mm se obě šipky téměř dotýkají a popisek „100" zmizí úplně pod nimi</span>
+    </div>
+
+    <div class="mk-variant-desc">
+      <div class="mk-gets">okamžitě viditelné a jednoznačné ovládání na každé dlaždici, žádný extra krok (hover/výběr).</div>
+      <div class="mk-loses">u úzkých dlaždic (~100 mm) šipky spolykají celý popisek a u sebe navzájem téměř splynou — v podestavbách s krátkými mezerami je to časté.</div>
+    </div>
+  </div>
+
+  <!-- ---------- A2 ---------- -->
+  <div class="mk-variant">
+    <div class="mk-variant-h">A2 — šipky od minimální šířky, u úzkých na hover</div>
+    <div class="mk-variant-sub">Široká dlaždice má šipky stále vidět; úzká (pod ~150 mm) je ukáže až při najetí myší.</div>
+
+    <div class="mk-viewport"><div class="mk-viewport-inner">
+      <div class="mono-scale-row mono-ruler-row">
+        <div class="mono-scale-label"></div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tick" style="left:0px;"><i></i><b>0</b></div>
+          <div class="mono-tick" style="left:140.625px;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+          <div class="mono-tick" style="left:281.25px;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+          <div class="mono-tick" style="left:421.875px;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+          <div class="mono-tick" style="left:562.5px;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+          <div class="mono-tick" style="left:703.125px;"><i></i><b style="transform:translateX(-50%);">2500</b></div>
+          <div class="mono-tick mk-end-tick" style="left:900px;"><i></i><b style="transform:translateX(-100%);">3200</b></div>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Herdblok</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-device" style="left:0px; width:225px;">
+            <span class="mono-tile-name">Sporák Lotus 22 kW</span><span class="mono-tile-size">800 mm</span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device mk-a2-narrow" style="left:225px; width:112.5px;">
+            <span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span>
+            <span class="mk-arrow mk-arrow-left mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device" style="left:337.5px; width:168.75px;">
+            <span class="mono-tile-name">Grilovací deska</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device mk-a2-narrow" style="left:506.25px; width:112.5px;">
+            <span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span>
+            <span class="mk-arrow mk-arrow-left mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-device" style="left:618.75px; width:140.625px;">
+            <span class="mono-tile-name">Indukce Berner</span><span class="mono-tile-size">500 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-surface" style="left:759.375px; width:140.625px;">
+            <span class="mono-tile-name">volná plocha</span><span class="mono-tile-size">500 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+          </div>
+          <span class="mono-endcap mono-endcap-left" style="left:0px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M1 5h16l6 6v7"/></svg></span></span>
+          <span class="mono-endcap mono-endcap-right" style="left:900px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M25 5H3v13"/></svg></span></span>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Podestavby</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-endzone" style="left:0px; width:19.6875px;"><span class="mono-tile-size">70</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:19.6875px; width:168.75px;">
+            <span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-gap" style="left:188.4375px; width:168.75px;">
+            <span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-cabinet" style="left:357.1875px; width:168.75px;">
+            <span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-gap mk-a2-narrow" style="left:525.9375px; width:112.5px;">
+            <span class="mono-tile-name">volný</span><span class="mono-tile-size">400</span>
+            <span class="mk-arrow mk-arrow-left mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-cabinet" style="left:638.4375px; width:135px;">
+            <span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">480 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+          <div class="mono-tile mono-tile-gap" style="left:773.4375px; width:126.5625px;">
+            <span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">800 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="mk-note-strip">Zkuste najet myší na dlaždice „Fritéza 400 mm" nebo „volný 400" — šipky se opravdu objeví jen tehdy.</p>
+    </div></div>
+
+    <div class="mk-detail-label">Detail — široká dlaždice (vždy) vs. úzká dlaždice (skrytá / při hoveru)</div>
+    <div style="display:flex; gap:20px; align-items:flex-end; flex-wrap:wrap;">
+      <div>
+        <div class="mono-scale" style="width:240px; height:52px; position:relative;">
+          <div class="mono-tile mono-tile-device" style="left:0; width:240px; top:0; bottom:0;">
+            <span class="mono-tile-name">Grilovací deska</span><span class="mono-tile-size">600 mm</span>
+            <span class="mk-arrow mk-arrow-left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </div>
+        <div style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:4px;">≥150 mm — šipky trvale</div>
+      </div>
+      <div>
+        <div class="mono-scale mk-a2-narrow" style="width:60px; height:52px; position:relative;">
+          <div class="mono-tile mono-tile-surface" style="left:0; width:60px; top:0; bottom:0;">
+            <span class="mono-tile-size">100</span>
+            <span class="mk-arrow mk-arrow-left mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </div>
+        <div style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:4px;">100 mm — najeďte myší</div>
+      </div>
+      <div>
+        <div class="mono-scale mk-a2-narrow mk-force-hover" style="width:60px; height:52px; position:relative;">
+          <div class="mono-tile mono-tile-surface" style="left:0; width:60px; top:0; bottom:0;">
+            <span class="mono-tile-size">100</span>
+            <span class="mk-arrow mk-arrow-left mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span class="mk-arrow mk-arrow-right mk-arrow-hoveronly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>
+          </div>
+        </div>
+        <div style="font-size:10px; color:var(--text-muted); text-align:center; margin-top:4px;">100 mm — stav při hoveru (natvrdo)</div>
+      </div>
+    </div>
+
+    <div class="mk-variant-desc">
+      <div class="mk-gets">u širokých dlaždic stejná okamžitá čitelnost jako A1, ale úzké dlaždice si podrží popisek — nic se nespolkne natrvalo.</div>
+      <div class="mk-loses">na úzké dlaždici není bez najetí myší vidět, že přeuspořádání vůbec jde — na dotykovém ovládání (bez hoveru) je prakticky nedostupné.</div>
+    </div>
+  </div>
+
+  <!-- ---------- A3 ---------- -->
+  <div class="mk-variant">
+    <div class="mk-variant-h">A3 — šipky v mezeře mezi dlaždicemi</div>
+    <div class="mk-variant-sub">Jedno ovládání na každém rozhraní dvou sousedních dlaždic — prohodí je. Nesedí na dlaždici, takže se šířkou nic neztrácí.</div>
+
+    <div class="mk-viewport"><div class="mk-viewport-inner">
+      <div class="mono-scale-row mono-ruler-row">
+        <div class="mono-scale-label"></div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tick" style="left:0px;"><i></i><b>0</b></div>
+          <div class="mono-tick" style="left:140.625px;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+          <div class="mono-tick" style="left:281.25px;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+          <div class="mono-tick" style="left:421.875px;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+          <div class="mono-tick" style="left:562.5px;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+          <div class="mono-tick" style="left:703.125px;"><i></i><b style="transform:translateX(-50%);">2500</b></div>
+          <div class="mono-tick mk-end-tick" style="left:900px;"><i></i><b style="transform:translateX(-100%);">3200</b></div>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Herdblok</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-device" style="left:0px; width:225px;"><span class="mono-tile-name">Sporák Lotus 22 kW</span><span class="mono-tile-size">800 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:225px; width:112.5px;"><span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:337.5px; width:168.75px;"><span class="mono-tile-name">Grilovací deska</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:506.25px; width:112.5px;"><span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:618.75px; width:140.625px;"><span class="mono-tile-name">Indukce Berner</span><span class="mono-tile-size">500 mm</span></div>
+          <div class="mono-tile mono-tile-surface" style="left:759.375px; width:140.625px;"><span class="mono-tile-name">volná plocha</span><span class="mono-tile-size">500 mm</span></div>
+          <span class="mono-endcap mono-endcap-left" style="left:0px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M1 5h16l6 6v7"/></svg></span></span>
+          <span class="mono-endcap mono-endcap-right" style="left:900px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M25 5H3v13"/></svg></span></span>
+
+          <span class="mk-gap-arrow" style="left:225px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:337.5px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:506.25px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:618.75px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:759.375px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Podestavby</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-endzone" style="left:0px; width:19.6875px;"><span class="mono-tile-size">70</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:19.6875px; width:168.75px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:188.4375px; width:168.75px;"><span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:357.1875px; width:168.75px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:525.9375px; width:112.5px;"><span class="mono-tile-name">volný</span><span class="mono-tile-size">400</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:638.4375px; width:135px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">480 mm</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:773.4375px; width:126.5625px;"><span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">800 mm</span></div>
+
+          <span class="mk-gap-arrow" style="left:19.6875px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:188.4375px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:357.1875px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:525.9375px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:638.4375px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+          <span class="mk-gap-arrow" style="left:773.4375px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+        </div>
+      </div>
+      <p class="mk-note-strip">Ovládání sedí přesně na hranici dvou dlaždic — na krajní hraně (začátek/konec dráhy) žádné není, přirozeně tak, jak požaduje zadání.</p>
+    </div></div>
+
+    <div class="mk-detail-label">Detail — několik úzkých dlaždic za sebou</div>
+    <div class="mono-scale" style="width:610px; height:52px; position:relative;">
+      <div class="mono-tile mono-tile-cabinet" style="left:0px; width:180px; top:0; bottom:0;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">300</span></div>
+      <div class="mono-tile mono-tile-gap" style="left:180px; width:60px; top:0; bottom:0;"><span class="mono-tile-size">100</span></div>
+      <div class="mono-tile mono-tile-cabinet" style="left:240px; width:150px; top:0; bottom:0;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">250</span></div>
+      <div class="mono-tile mono-tile-gap" style="left:390px; width:60px; top:0; bottom:0;"><span class="mono-tile-size">100</span></div>
+      <div class="mono-tile mono-tile-cabinet" style="left:450px; width:90px; top:0; bottom:0;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">150</span></div>
+      <span class="mk-gap-arrow" style="left:180px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+      <span class="mk-gap-arrow" style="left:240px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+      <span class="mk-gap-arrow" style="left:390px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+      <span class="mk-gap-arrow" style="left:450px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 7l-4 5 4 5"/><path d="M16 7l4 5-4 5"/></svg></span>
+    </div>
+
+    <div class="mk-variant-desc">
+      <div class="mk-gets">funguje stejně na dlaždici 500 mm i 100 mm — škáluje na libovolnou šířku, žádný speciální stav pro úzké dlaždice.</div>
+      <div class="mk-loses">u řady úzkých dlaždic za sebou (100 mm mezery) se ovládací puntíky shlukují blízko sebe a hůř se mezi nimi míří myší; ovládání navíc opticky nepatří k žádné konkrétní dlaždici, jen k dvojici.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- doplněk: úkol 7 — popisek levé koncové zóny -->
+  <!-- ============================================================ -->
+  <div class="mk-section-head">
+    <h2>Doplněk — čitelný popisek koncové zóny (úkol 7)</h2>
+    <p>Samostatná drobná oprava, patří do stejné dráhy: dnes se popisek levé
+      koncové zóny v aplikaci ořezává. Reprodukce přesně podle hlášení
+      („0 m" místo „50 mm") a jak má vypadat správně.</p>
+  </div>
+  <div class="mk-variant">
+    <div class="mk-label-compare">
+      <div class="mk-label-demo">
+        <b>DNES — oříznuto</b>
+        <div class="mk-clip-box mk-clip-broken"><span>0 m</span></div>
+      </div>
+      <div class="mk-label-demo">
+        <b>SPRÁVNĚ — celý text</b>
+        <div class="mk-clip-box"><span class="mk-clip-fixed">50 mm</span></div>
+      </div>
+      <div class="mk-label-demo">
+        <b>V TÉTO KONFIGURACI (70 mm vlevo)</b>
+        <div class="mk-clip-box"><span class="mk-clip-fixed">70 mm</span></div>
+      </div>
+    </div>
+    <p class="mk-note-strip">Pozor — nesrovnalost v zadání: PREDANI.md §7 cituje hlášení s levou
+      zónou 50&nbsp;mm („0 m" → „50 mm"), ale doložený screenshot má levou zónu
+      70&nbsp;mm. Obojí je zde ukázáno: prostřední ukázka reprodukuje doslova
+      číslo z hlášení, pravá odpovídá datům této konfigurace. V obou případech
+      jde o stejnou opravu — text se nesmí oříznout, ať je hodnota jakákoli.</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SEKCE B -->
+  <!-- ============================================================ -->
+  <div class="mk-section-head">
+    <h2>SEKCE B — přetékající dráha (úkol 11)</h2>
+    <p>Podestavby (3480 mm) jsou o 400 mm delší než použitelných 3080 mm.
+      Poslední dlaždice a pravá koncovka Herdbloku (transform ∓52 %) utíkají
+      za okraj — dráha nemá vodorovné posouvání a není vidět, že tam ještě
+      něco je. Prostor „viditelné okno" je zde záměrně pevných 900 px, aby
+      přetečení bylo opravdu vidět, ne skryté v širší stránce.</p>
+  </div>
+
+  <!-- ---------- B1 ---------- -->
+  <div class="mk-variant">
+    <div class="mk-variant-h">B1 — vodorovné posouvání s viditelným náznakem</div>
+    <div class="mk-variant-sub">Dráha se dá posunout doprava; vpravo je stálý stín/šipka signalizující, že obsah pokračuje.</div>
+
+    <div class="mk-viewport" style="padding:16px 0 8px;">
+      <div class="mk-b1-scroll">
+        <div class="mk-b1-content">
+          <div class="mono-scale-row mono-ruler-row">
+            <div class="mono-scale-label"></div>
+            <div class="mono-scale" style="width:900px;">
+              <div class="mono-tick" style="left:0px;"><i></i><b>0</b></div>
+              <div class="mono-tick" style="left:140.625px;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+              <div class="mono-tick" style="left:281.25px;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+              <div class="mono-tick" style="left:421.875px;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+              <div class="mono-tick" style="left:562.5px;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+              <div class="mono-tick" style="left:703.125px;"><i></i><b style="transform:translateX(-50%);">2500</b></div>
+              <div class="mono-tick mk-end-tick" style="left:900px;"><i></i><b style="transform:translateX(-100%);">3200</b></div>
+            </div>
+          </div>
+
+          <div class="mono-scale-row mono-track-row">
+            <div class="mono-scale-label">Herdblok</div>
+            <div class="mono-scale" style="width:900px;">
+              <div class="mono-tile mono-tile-device" style="left:0px; width:225px;"><span class="mono-tile-name">Sporák Lotus 22 kW</span><span class="mono-tile-size">800 mm</span></div>
+              <div class="mono-tile mono-tile-device" style="left:225px; width:112.5px;"><span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span></div>
+              <div class="mono-tile mono-tile-device" style="left:337.5px; width:168.75px;"><span class="mono-tile-name">Grilovací deska</span><span class="mono-tile-size">600 mm</span></div>
+              <div class="mono-tile mono-tile-device" style="left:506.25px; width:112.5px;"><span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span></div>
+              <div class="mono-tile mono-tile-device" style="left:618.75px; width:140.625px;"><span class="mono-tile-name">Indukce Berner</span><span class="mono-tile-size">500 mm</span></div>
+              <div class="mono-tile mono-tile-surface" style="left:759.375px; width:140.625px;"><span class="mono-tile-name">volná plocha</span><span class="mono-tile-size">500 mm</span></div>
+              <span class="mono-endcap mono-endcap-left" style="left:0px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M1 5h16l6 6v7"/></svg></span></span>
+              <span class="mono-endcap mono-endcap-right" style="left:900px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M25 5H3v13"/></svg></span></span>
+            </div>
+          </div>
+
+          <div class="mono-scale-row mono-track-row">
+            <div class="mono-scale-label">Podestavby</div>
+            <div class="mono-scale" style="width:900px;">
+              <div class="mono-tile mono-tile-endzone" style="left:0px; width:19.6875px;"><span class="mono-tile-size">70</span></div>
+              <div class="mono-tile mono-tile-cabinet" style="left:19.6875px; width:168.75px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span></div>
+              <div class="mono-tile mono-tile-gap" style="left:188.4375px; width:168.75px;"><span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">600 mm</span></div>
+              <div class="mono-tile mono-tile-cabinet" style="left:357.1875px; width:168.75px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span></div>
+              <div class="mono-tile mono-tile-gap" style="left:525.9375px; width:112.5px;"><span class="mono-tile-name">volný</span><span class="mono-tile-size">400</span></div>
+              <div class="mono-tile mono-tile-cabinet" style="left:638.4375px; width:135px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">480 mm</span></div>
+              <div class="mono-tile mono-tile-gap" style="left:773.4375px; width:225px;"><span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">800 mm</span></div>
+              <div class="mono-tile mono-tile-endzone" style="left:998.4375px; width:14.0625px;"><span class="mono-tile-size">50</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="mk-b1-fade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+      <div class="mk-b1-hint">← posuňte dráhu doprava (scrollbar / trackpad) — poslední skříňka a koncová zóna 50 mm jsou za náznakem →</div>
+    </div>
+
+    <div class="mk-warn-box"><b>Pozor:</b> <code>overflow-x: auto</code> automaticky mění i
+      <code>overflow-y</code> z <code>visible</code> na <code>auto</code> — bez zásahu by tak mohl
+      přibýt nechtěný svislý posuvník nebo by se uřízly koncovky, které svisle
+      přesahují přes okraj řádku dráhy (transform ∓52 %, −50 %). Zde je to
+      ošetřené záměrnou rezervou nahoře/dole (<code>padding-top/bottom</code>)
+      kolem posouvaného obsahu a explicitním <code>overflow-y: hidden</code>.</div>
+
+    <div class="mk-variant-desc">
+      <div class="mk-gets">nic nezmizí — ke každé položce se lze dostat, řešení je jediné pro libovolně dlouhé přetečení.</div>
+      <div class="mk-loses">přidává nový druh ovládání (scrollbar) do plochy, která dosud žádné nepotřebovala, a vyžaduje ošetření svislé osy, jinak vznikne druhá, nechtěná past.</div>
+    </div>
+  </div>
+
+  <!-- ---------- B2 ---------- -->
+  <div class="mk-variant">
+    <div class="mk-variant-h">B2 — měřítko se stlačí, aby se vešlo všechno</div>
+    <div class="mk-variant-sub">Pravítko dál platí pro blok (0–3200), ale škála se zhustí tak, aby se vlezl i přebytek — ten se za koncovou značkou kreslí šrafovaně jako „nevejde se".</div>
+
+    <div class="mk-viewport"><div class="mk-viewport-inner" style="position:relative;">
+      <div class="mono-scale-row mono-ruler-row">
+        <div class="mono-scale-label"></div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tick" style="left:0px;"><i></i><b>0</b></div>
+          <div class="mono-tick" style="left:125px;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+          <div class="mono-tick" style="left:250px;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+          <div class="mono-tick" style="left:375px;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+          <div class="mono-tick" style="left:500px;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+          <div class="mono-tick" style="left:625px;"><i></i><b style="transform:translateX(-50%);">2500</b></div>
+          <div class="mono-tick" style="left:750px;"><i></i><b style="transform:translateX(-50%);">3000</b></div>
+          <div class="mono-tick mk-end-tick" style="left:800px;"><i></i><b style="transform:translateX(-50%);">3200 (konec bloku)</b></div>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Herdblok</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-device" style="left:0px; width:200px;"><span class="mono-tile-name">Sporák Lotus 22 kW</span><span class="mono-tile-size">800</span></div>
+          <div class="mono-tile mono-tile-device" style="left:200px; width:100px;"><span class="mono-tile-name">Fritéza</span><span class="mono-tile-size">400</span></div>
+          <div class="mono-tile mono-tile-device" style="left:300px; width:150px;"><span class="mono-tile-name">Grilovací deska</span><span class="mono-tile-size">600</span></div>
+          <div class="mono-tile mono-tile-device" style="left:450px; width:100px;"><span class="mono-tile-name">Fritéza</span><span class="mono-tile-size">400</span></div>
+          <div class="mono-tile mono-tile-device" style="left:550px; width:125px;"><span class="mono-tile-name">Indukce</span><span class="mono-tile-size">500</span></div>
+          <div class="mono-tile mono-tile-surface" style="left:675px; width:125px;"><span class="mono-tile-name">volná plocha</span><span class="mono-tile-size">500</span></div>
+          <span class="mono-endcap mono-endcap-left" style="left:0px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M1 5h16l6 6v7"/></svg></span></span>
+          <span class="mono-endcap mono-endcap-right" style="left:800px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M25 5H3v13"/></svg></span></span>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Podestavby</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mk-hatch-overflow" style="left:800px; width:100px;"><span class="mk-hatch-label">nevejde se (400 mm)</span></div>
+          <div class="mono-tile mono-tile-endzone" style="left:0px; width:17.5px;"><span class="mono-tile-size">70</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:17.5px; width:150px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:167.5px; width:150px;"><span class="mono-tile-name">volný</span><span class="mono-tile-size">600</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:317.5px; width:150px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:467.5px; width:100px;"><span class="mono-tile-name">volný</span><span class="mono-tile-size">400</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:567.5px; width:120px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">480</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:687.5px; width:200px;"><span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">800</span></div>
+          <div class="mono-tile mono-tile-endzone" style="left:887.5px; width:12.5px;"><span class="mono-tile-size">50</span></div>
+        </div>
+      </div>
+      <p class="mk-note-strip">„volný prostor 800" viditelně přechází přes koncovou značku 3200 — část skříně by fyzicky nesedla na blok.</p>
+    </div></div>
+
+    <div class="mk-variant-desc">
+      <div class="mk-gets">nic neuteče z obrazovky, žádné nové ovládání (scrollbar) ani druhý řádek — přetečení je čitelné na první pohled jako šrafa.</div>
+      <div class="mk-loses">u velkého přetečení se dlaždice zmenší natolik, že se čísla a názvy přestanou vejít; měřítko navíc přestává být „1 px = pořád stejně mm" napříč projekty, což ztěžuje srovnání dvou bloků vedle sebe.</div>
+    </div>
+  </div>
+
+  <!-- ---------- B3 ---------- -->
+  <div class="mk-variant">
+    <div class="mk-variant-h">B3 — přetékající položky se zalomí do druhé řady</div>
+    <div class="mk-variant-sub">Co se nevejde do řádku dráhy, pokračuje pod ním ve druhém řádku se zvýrazněným orámováním.</div>
+
+    <div class="mk-viewport"><div class="mk-viewport-inner">
+      <div class="mono-scale-row mono-ruler-row">
+        <div class="mono-scale-label"></div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tick" style="left:0px;"><i></i><b>0</b></div>
+          <div class="mono-tick" style="left:140.625px;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+          <div class="mono-tick" style="left:281.25px;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+          <div class="mono-tick" style="left:421.875px;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+          <div class="mono-tick" style="left:562.5px;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+          <div class="mono-tick" style="left:703.125px;"><i></i><b style="transform:translateX(-50%);">2500</b></div>
+          <div class="mono-tick mk-end-tick" style="left:900px;"><i></i><b style="transform:translateX(-100%);">3200</b></div>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Herdblok</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-device" style="left:0px; width:225px;"><span class="mono-tile-name">Sporák Lotus 22 kW</span><span class="mono-tile-size">800 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:225px; width:112.5px;"><span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:337.5px; width:168.75px;"><span class="mono-tile-name">Grilovací deska</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:506.25px; width:112.5px;"><span class="mono-tile-name">Fritéza 10 l</span><span class="mono-tile-size">400 mm</span></div>
+          <div class="mono-tile mono-tile-device" style="left:618.75px; width:140.625px;"><span class="mono-tile-name">Indukce Berner</span><span class="mono-tile-size">500 mm</span></div>
+          <div class="mono-tile mono-tile-surface" style="left:759.375px; width:140.625px;"><span class="mono-tile-name">volná plocha</span><span class="mono-tile-size">500 mm</span></div>
+          <span class="mono-endcap mono-endcap-left" style="left:0px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M1 5h16l6 6v7"/></svg></span></span>
+          <span class="mono-endcap mono-endcap-right" style="left:900px;"><span class="mono-endcap-glyph"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M25 5H3v13"/></svg></span></span>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mono-track-row">
+        <div class="mono-scale-label">Podestavby</div>
+        <div class="mono-scale" style="width:900px;">
+          <div class="mono-tile mono-tile-endzone" style="left:0px; width:19.6875px;"><span class="mono-tile-size">70</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:19.6875px; width:168.75px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:188.4375px; width:168.75px;"><span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:357.1875px; width:168.75px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">600 mm</span></div>
+          <div class="mono-tile mono-tile-gap" style="left:525.9375px; width:112.5px;"><span class="mono-tile-name">volný</span><span class="mono-tile-size">400</span></div>
+          <div class="mono-tile mono-tile-cabinet" style="left:638.4375px; width:135px;"><span class="mono-tile-name">Skříňka</span><span class="mono-tile-size">480 mm</span></div>
+        </div>
+      </div>
+
+      <div class="mono-scale-row mk-wrap-row">
+        <div class="mono-scale-label" style="color:var(--warn); font-weight:600;">pokračování</div>
+        <div class="mono-scale mono-track-row" style="width:900px; margin-top:0;">
+          <span class="mk-wrap-badge">Podestavby — přetékající zbytek (400 mm nad rámec bloku)</span>
+          <div class="mono-tile mono-tile-gap" style="left:0px; width:225px;"><span class="mono-tile-name">volný prostor</span><span class="mono-tile-size">800 mm</span></div>
+          <div class="mono-tile mono-tile-endzone" style="left:225px; width:14.0625px;"><span class="mono-tile-size">50</span></div>
+        </div>
+      </div>
+      <p class="mk-note-strip">Zalomeno na hranici dlaždice — žádná dlaždice se nedělí napůl mezi řádky.</p>
+    </div></div>
+
+    <div class="mk-warn-box"><b>Pozor:</b> pás MONO má dnes pevnou výšku 268 px. Druhý řádek dráhy
+      (dalších ~58 px včetně odsazení) se do toho nevejde — buď se musí najít
+      místo zmenšením něčeho jiného v pásu, nebo se pevná výška pásu musí
+      zvednout (a to je zásah do rozvržení celé aplikace, ne jen téhle dráhy).</div>
+
+    <div class="mk-variant-desc">
+      <div class="mk-gets">vše zůstává čitelné v plné velikosti (žádné zmenšování jako B2) a nic se neschovává za scrollbar jako B1 — přetečení je vidět rovnou bez interakce.</div>
+      <div class="mk-loses">láme pevnou výšku pásu, kterou dnes drží celé rozvržení aplikace (viewport/sidebar); u velkého přetečení (víc než jedna dlaždice navíc) by mohly být potřeba i tři a víc řádků.</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

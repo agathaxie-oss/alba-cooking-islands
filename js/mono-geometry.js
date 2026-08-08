@@ -112,16 +112,15 @@ export function sideInsetMM(endType) {
 }
 
 // --- svislá boční deska ("nos"/vodopád) — délka rovného čela, PODLE TYPU KONCE
-// Analogicky k END_SIDE_INSET_MM/sideInsetMM: rozměr je DODANÝ (HODNOTY-MONO.md
-// §7.5) jen pro END_TYPES.VERTICAL_PLATE — 50 mm rovného čela. Pro
-// VERTICAL_PLATE_CHAMFER je čelo 20 mm rovné + 50 mm zkosení pod 45°, což
-// není jedno číslo, a mapa proto pro něj hodnotu nemá.
-// ZÁKLADNÍ (rovný, nezkosený) tvar vodopádu/nosu už buildHerdblokUsek staví
-// (viz 'vodopad-levy'/'vodopad-pravy' níž), ale s tloušťkou
-// SIDE_PLATE_THICKNESS_MM (20) — TENHLE rozměr (délku rovného čela v
-// půdorysu) zatím nepoužívá žádná funkce. Zůstává evidence pro BUDOUCÍ
-// půdorysné zkosení (VERTICAL_PLATE_CHAMFER, hák cornerPoints), kdy vodopád
-// přestane být prostý obdélník.
+// PŮVODNÍ evidence rozměru (HODNOTY-MONO.md §7.5): 50 mm rovného čela u
+// END_TYPES.VERTICAL_PLATE. OPRAVA (ÚKOL A tohohle kola): nos musí vyplnit
+// CELÉ zatažení sideInsetMM(endType) — 50 u VERTICAL_PLATE, 70 u
+// VERTICAL_PLATE_CHAMFER — ne jen "rovné čelo". buildHerdblokUsek (přes
+// noseOutline níž) proto šířku nosu čte přímo ze sideInsetMM(), NE odsud.
+// Tahle mapa/funkce se dál NEPOUŽÍVÁ nikde v modulu — ponecháno jen jako
+// evidence dodaného čísla (50 mm rovného čela je navíc obsažené i v
+// END_STRAIGHT_MM/END_CHAMFER_MM níž), ke zvážení smazání při příštím
+// úklidu (nahlášeno v přejímce).
 export const NOSE_FRONT_MM = {
   [END_TYPES.VERTICAL_PLATE]: 50,
 };
@@ -133,13 +132,12 @@ export function noseFrontMM(endType) {
 
 // --- pracovní deska ----------------------------------------------------------
 export const DESK_OVERHANG_FRONT_MM = 30;   // přesah desky přes podestavbu vpředu
-export const DESK_OVERHANG_SIDE_MM = 25;    // TODO: vodopád (buildHerdblokUsek,
-// 'vodopad-levy'/'vodopad-pravy' níž) už boční tvar staví, ale s tloušťkou
-// SIDE_PLATE_THICKNESS_MM (20), ne s touhle hodnotou — tuhle konstantu
-// nepoužívá. Nejasné, jestli je DESK_OVERHANG_SIDE_MM stejná věc jako
-// tloušťka vodopádu (a je to tedy stará/nahrazená hodnota), nebo jiný rozměr
-// (např. přesah desky NAD vodopádem) — nedomýšlím, zůstává jen evidence,
-// nahlášeno v přejímce.
+export const DESK_OVERHANG_SIDE_MM = 25;    // TODO: dál nepoužito. Nos (vodopád,
+// buildHerdblokUsek) po opravě ÚKOLU A vyplňuje CELÉ zatažení sideInsetMM
+// (50/70), žádná samostatná "tloušťka nosu" už v modelu není — takže
+// DESK_OVERHANG_SIDE_MM (25) není tloušťka vodopádu ani nic jiného v modulu
+// nepočítá. Nejasné, co přesně popisuje (možná přesah desky NAD nosem,
+// jinam neumístěný) — nedomýšlím, zůstává jen evidence, nahlášeno v přejímce.
 export const DESK_OVERHANG_BACK_MM = 25;    // přesah desky přes korpus vzadu
 export const DESK_SHEET_MM = 2;             // síla plechu desky — zatím jen evidence
 export const DESK_EDGE_RETURN_MM = 20;      // zahnutí hrany desky dovnitř — zatím evidence
@@ -167,14 +165,34 @@ export const LEG_INSET_MM = 50;  // odsazení nožičky od rohu (boční i čeln
 // podestaveb (computeSideCovers níže), volající si je nevybírá.
 export const SIDE_COVER_THICK_MM = 50;
 export const SIDE_COVER_THIN_MM = 20;
-export const SIDE_PLATE_THICKNESS_MM = 20; // tloušťka boku / svislé desky (budoucí "nos")
+export const SIDE_PLATE_THICKNESS_MM = 20; // OPRAVA: PŘESTALO SE POUŽÍVAT pro nos —
+// dřívější verze stavěla vodopád jako kvádr téhle tloušťky, což byla chyba
+// zadání (souosá stěna s korpusem/deskou na x=0/x=widthMM, viz ÚKOL A níž).
+// Nos teď vyplňuje celé sideInsetMM(endType) (buildHerdblokUsek, noseOutline
+// níž), tahle konstanta se v modulu dál nepoužívá — ponecháno jen jako
+// evidence, ke zvážení smazání (nahlášeno v přejímce).
 
 // --- zakončení herdbloku (půdorys) ---------------------------------------------
-export const END_STRAIGHT_MM = 20;  // TODO: rovná část zakončení — zatím se nepoužívá,
-// viz "Co se teď NEDĚLÁ" (půdorysné zkosení rohu není dodané).
-export const END_CHAMFER_MM = 50;   // TODO: zkosená část — zatím se nepoužívá.
+// Půdorysné zkosení PŘEDNÍHO rohu u VERTICAL_PLATE_CHAMFER (viz cornerPoints
+// níž): od boční hrany rovně END_CHAMFER_MM (50) dozadu→dopředu, zkosení pod
+// CHAMFER_ANGLE_DEG (45°) do bodu na přední hraně, pak přední hrana rovně
+// END_STRAIGHT_MM (20) dál, než začne ovládací panel. Používá je
+// cornerPoints() a přes ni buildHerdblokOutline i noseOutline() (nos musí
+// mít TENTÝŽ půdorys jako obrys desky — je to týž monolit).
+export const END_STRAIGHT_MM = 20;  // rovná část zakončení u předního rohu, za zkosením
+export const END_CHAMFER_MM = 50;   // zkosená část (délka nohy zkosení v X i v Z)
 export const END_TOTAL_MM = END_STRAIGHT_MM + END_CHAMFER_MM; // 70, odvozeno
-export const CHAMFER_ANGLE_DEG = 45; // TODO: zatím se nepoužívá.
+// Kontrola, která END_STRAIGHT_MM/END_CHAMFER_MM zamyká k zatažení bloku:
+// součet MUSÍ dát přesně sideInsetMM(VERTICAL_PLATE_CHAMFER) (70) — jinak by
+// nos (ÚKOL A) a zkosený roh obrysu (ÚKOL B) popisovaly každý jiný tvar.
+console.assert(
+  END_TOTAL_MM === END_SIDE_INSET_MM[END_TYPES.VERTICAL_PLATE_CHAMFER],
+  'END_STRAIGHT_MM + END_CHAMFER_MM musí sedět se sideInsetMM(VERTICAL_PLATE_CHAMFER)'
+);
+export const CHAMFER_ANGLE_DEG = 45; // potvrzeno zadavatelem; stejná délka nohy
+// (END_CHAMFER_MM) v X i v Z v cornerPoints() dává 45° automaticky — tahle
+// konstanta se přímo v aritmetice zkosení nepoužívá, jen dokládá/zamyká ten
+// předpoklad rovných nohou zkosení.
 
 // Převis — měřeno od konce OVLÁDACÍHO PANELU, ne od konce bloku (viz
 // checkSupport). Zvýšeno z 500 na 1200 na pokyn zadavatele 5. 8. 2026; je to
@@ -216,27 +234,45 @@ function box(widthM, heightM, depthM, material) {
 /**
  * Vrátí body JEDNOHO rohu obrysu podle typu zakončení.
  *
- * V TÉHLE VERZI jsou OBĚ varianty ostrý 90° roh — půdorysný tvar zkosení
- * (bok/"nos" u svislaDeskaZkos) není dodaný, viz "Co se teď NEDĚLÁ". Funkce
- * si ale drží stejnou signaturu/strukturu jako dřív, aby šla větev pro
- * VERTICAL_PLATE_CHAMFER doplnit beze změny volajících (buildHerdblokOutline).
+ * END_TYPES.VERTICAL_PLATE zůstává ostrý 90° roh. END_TYPES.VERTICAL_PLATE_CHAMFER
+ * má zkosený roh VÝHRADNĚ V PŮDORYSU (žádná facetka ve svislém řezu — viz
+ * ÚKOL B zadání, čelo desky zůstává svislých DESK_FACE_HEIGHT_MM po celé
+ * délce) — a JEN na PŘEDNÍCH rozích.
+ *
+ * PŘEDPOKLAD: přední roh se pozná podle dzIn > 0 (zadní rohy volá
+ * buildHerdblokOutline s dzIn < 0) — tohle NENÍ dodané číslo/pravidlo, je to
+ * odvozený předpoklad z toho, že zadavatel mluvil jen o "předním rohu";
+ * zadní roh zůstává ostrý i u VERTICAL_PLATE_CHAMFER. Nahlášeno v přejímce.
+ *
+ * Tvar zkoseného předního rohu (zadavatelem potvrzeno): od bodu na boční
+ * hraně END_CHAMFER_MM (50) od rohu (směrem dovnitř, tj. dozadu), přes
+ * zkosení pod CHAMFER_ANGLE_DEG (45°), do bodu na přední hraně END_CHAMFER_MM
+ * od rohu (směrem dovnitř, do strany). Přední hrana pak pokračuje rovně dál
+ * po END_STRAIGHT_MM (20), než začne ovládací panel — kontrolu
+ * END_CHAMFER_MM + END_STRAIGHT_MM === sideInsetMM(VERTICAL_PLATE_CHAMFER)
+ * (50+20=70) zamyká console.assert u END_TOTAL_MM výš.
  *
  * @param {string} type END_TYPES.*
  * @param {number} cornerX,cornerZ  souřadnice rohu (mm)
- * @param {number} dxIn,dzIn  jednotkový směr "dovnitř" (zatím nevyužito, drženo
- *   pro budoucí zkosenou variantu)
- * @param {'fromX'|'fromZ'} from  ze které hrany se do rohu vchází (zatím
- *   nevyužito, drženo pro budoucí zkosenou variantu)
+ * @param {number} dxIn,dzIn  jednotkový směr "dovnitř" od rohu; dzIn > 0
+ *   určuje přední roh (viz PŘEDPOKLAD výš)
+ * @param {'fromX'|'fromZ'} from  ze které hrany se do rohu vchází při
+ *   obchůzce obrysu (buildHerdblokOutline / noseOutline) — řídí pořadí dvou
+ *   vrácených bodů, aby navazovaly na sousední hrany beze křížení: 'fromZ'
+ *   (vchází se po boční hraně) vrátí nejdřív bod na boční hraně, 'fromX'
+ *   (vchází se po přední hraně) nejdřív bod na přední hraně.
+ * @returns {Array<{x:number, z:number}>} jeden bod (ostrý roh), nebo dva
+ *   (zkosený přední roh u VERTICAL_PLATE_CHAMFER)
  */
 function cornerPoints(type, cornerX, cornerZ, dxIn, dzIn, from) {
   const sharp = { x: cornerX, z: cornerZ };
-  if (type === END_TYPES.VERTICAL_PLATE_CHAMFER) {
-    // TODO: půdorysné zkosení rohu (bok/"nos") není dodané — viz "Co se teď
-    // NEDĚLÁ". Až přijde tvar, doplní se tu větev vracející víc bodů
-    // (analogicky k dřívější "zkosené vlně"), beze změny volajících.
-    return [sharp];
+  if (type === END_TYPES.VERTICAL_PLATE_CHAMFER && dzIn > 0) {
+    const sideEdgePoint = { x: cornerX, z: cornerZ + END_CHAMFER_MM * dzIn };
+    const frontEdgePoint = { x: cornerX + END_CHAMFER_MM * dxIn, z: cornerZ };
+    return from === 'fromZ' ? [sideEdgePoint, frontEdgePoint] : [frontEdgePoint, sideEdgePoint];
   }
-  // END_TYPES.VERTICAL_PLATE — ostrý 90° roh
+  // ostrý 90° roh: END_TYPES.VERTICAL_PLATE vždy, VERTICAL_PLATE_CHAMFER na
+  // zadních rozích (dzIn <= 0, viz PŘEDPOKLAD výš)
   return [sharp];
 }
 
@@ -260,6 +296,40 @@ export function buildHerdblokOutline({ widthMM, depthMM, frontZMM = 0, leftEndTy
   const frontLeft = cornerPoints(leftEndType, 0, frontZMM, +1, +1, 'fromZ');
 
   return [...frontLeft, ...frontRight, ...backRight, ...backLeft];
+}
+
+/**
+ * Půdorys JEDNOHO nosu (vodopádu) v LOKÁLNÍCH souřadnicích úseku — stejná
+ * datová struktura jako buildHerdblokOutline (pole {x,z} v mm). Nos je TÝŽ
+ * MONOLIT jako obrys desky na daném konci (viz ÚKOL A zadání k tomuhle
+ * kolu), proto se přední roh počítá přes STEJNOU cornerPoints() se stejnou
+ * konvencí dxIn/dzIn/from jako frontLeft/frontRight v buildHerdblokOutline —
+ * u svislaDeskaZkos tak vyjde useknutý přední roh, u svislaDeska ostrý.
+ *
+ * Nos zabírá CELÉ zatažení sideInsetMM(endType) od daného boku (50 u
+ * svislaDeska, 70 u svislaDeskaZkos) a celou hloubku (z 0..depthMM) — výšku
+ * (Y) si řeší až volající (buildHerdblokUsek), tahle funkce vrací jen
+ * půdorys.
+ *
+ * @param {string} endType END_TYPES.*
+ * @param {'left'|'right'} side
+ * @param {number} widthMM  šířka CELÉHO úseku (na 'right' se od ní odečítá)
+ * @param {number} depthMM
+ * @returns {Array<{x:number, z:number}>}
+ */
+function noseOutline(endType, side, widthMM, depthMM) {
+  const insetMM = sideInsetMM(endType);
+  if (side === 'left') {
+    // roh (0,0) — stejná souřadnice/orientace jako frontLeft v buildHerdblokOutline
+    const corner = cornerPoints(endType, 0, 0, +1, +1, 'fromZ');
+    return [...corner, { x: insetMM, z: 0 }, { x: insetMM, z: depthMM }, { x: 0, z: depthMM }];
+  }
+  // roh (widthMM,0) — stejná souřadnice/orientace jako frontRight v
+  // buildHerdblokOutline, ale s 'fromZ' (ne 'fromX' jako tam): polygon nosu
+  // se obchází od boční hrany k přední, aby vyšel nekřížený (ověřeno na
+  // testovacím bloku v přejímce).
+  const corner = cornerPoints(endType, widthMM, 0, -1, +1, 'fromZ');
+  return [...corner, { x: widthMM - insetMM, z: 0 }, { x: widthMM - insetMM, z: depthMM }, { x: widthMM, z: depthMM }];
 }
 
 /** Postaví THREE.Shape (v rovině X/Z, viz rotace při extruzi) z obrysu. */
@@ -500,36 +570,49 @@ export function buildHerdblokUsek(usek) {
   const panelMat = createPanelMaterial();
 
   // --- deska: obrysová deska, y (HERDBLOK_HEIGHT_MM − DESK_FACE_HEIGHT_MM)..HERDBLOK_HEIGHT_MM,
-  // z 0..depthMM (plný půdorys), x 0..width. Čelo svislé, BEZ FACETKY —
-  // TODO: sražení čela desky u svislaDeskaZkos není dodané, viz "Co se teď NEDĚLÁ".
+  // z 0..depthMM (plný půdorys), x 0..width. Čelo (svislý řez) zůstává
+  // ROVNÉ po celé délce, BEZ FACETKY — zkosení u svislaDeskaZkos je
+  // VÝHRADNĚ PŮDORYSNÉ (useknutý PŘEDNÍ roh shora, viz ÚKOL B zadání a
+  // cornerPoints výš); buildHerdblokOutline ho automaticky promítne i sem,
+  // žádná další úprava tady není potřeba.
   const deskOutlineArgs = { widthMM, depthMM, frontZMM: 0, leftEndType, rightEndType };
   const desk = buildOutlineSlab(deskOutlineArgs, HERDBLOK_HEIGHT_MM, DESK_FACE_HEIGHT_MM, stainless);
   desk.name = 'deska';
   group.add(desk);
 
+  // --- zatažení od boku pro korpus/panel/lištu/nos — NENÍ symetrické, závisí
+  // na typu KAŽDÉHO konce zvlášť (viz zadání bod 2, ÚKOL A). Spočteno JEDNOU
+  // tady, používá ho korpus (níž), panel, lišta i nos.
+  const leftInsetMM = sideInsetMM(leftEndType);
+  const rightInsetMM = sideInsetMM(rightEndType);
+
   // --- korpus herdbloku: kvádr pod deskou, y 0..PANEL_HEIGHT_MM,
-  // z (PANEL_SETBACK_MM+PANEL_GAP_MM)..(depthMM-DESK_OVERHANG_BACK_MM), x 0..width.
+  // z (PANEL_SETBACK_MM+PANEL_GAP_MM)..(depthMM-DESK_OVERHANG_BACK_MM),
+  // x leftInsetMM..(width-rightInsetMM). OPRAVA (ÚKOL A): dřív šel korpus
+  // 0..width, souosý s deskou i nosem na x=0/x=width (z-fighting vada).
+  // Korpus se teď zatahuje STEJNĚ jako panel a lišta, takže ho nos podle
+  // zadání "zakryje celý".
   const corpusFrontZ = PANEL_SETBACK_MM + PANEL_GAP_MM; // 26
   const corpusBackZ = depthMM - DESK_OVERHANG_BACK_MM;  // 825 při depthMM 850
   const corpusDepthMM = corpusBackZ - corpusFrontZ;
-  const corpus = box(mm(widthMM), mm(PANEL_HEIGHT_MM), mm(corpusDepthMM), stainless);
+  const corpusWidthMM = widthMM - leftInsetMM - rightInsetMM;
+  // TODO: pro widthMM < leftInsetMM+rightInsetMM vyjde corpusWidthMM záporné
+  // — stejná mez jako u panelWidthMM níž, tak úzký úsek zadání nepředpokládá.
+  const corpus = box(mm(corpusWidthMM), mm(PANEL_HEIGHT_MM), mm(corpusDepthMM), stainless);
   corpus.position.set(
-    mm(widthMM) / 2,
+    mm(leftInsetMM + corpusWidthMM / 2),
     mm(PANEL_HEIGHT_MM) / 2,
     mm(corpusFrontZ + corpusDepthMM / 2)
   );
   corpus.name = 'korpus';
   group.add(corpus);
 
-  // --- ovládací panel: x sideInsetMM(leftEndType)..(width-sideInsetMM(rightEndType)),
-  // y LISTA_HEIGHT_MM..PANEL_HEIGHT_MM, z PANEL_SETBACK_MM..(PANEL_SETBACK_MM+20).
-  // Zatažení od boku NENÍ symetrické — levý a pravý konec mohou mít různý typ
-  // zakončení, proto se počítá zvlášť pro každou stranu (viz zadání, bod 2).
+  // --- ovládací panel: x leftInsetMM..(width-rightInsetMM) (spočteno výš u
+  // korpusu, používá ho i lišta a nos), y LISTA_HEIGHT_MM..PANEL_HEIGHT_MM,
+  // z PANEL_SETBACK_MM..(PANEL_SETBACK_MM+20).
   // Hloubka panelu (20 mm) nemá vlastní pojmenovanou konstantu v zadání —
   // je to literální rozměr odvozený z rozsahu z 25–45 (bod 4 zadání).
   const PANEL_DEPTH_MM = 20;
-  const leftInsetMM = sideInsetMM(leftEndType);
-  const rightInsetMM = sideInsetMM(rightEndType);
   const panelWidthMM = widthMM - leftInsetMM - rightInsetMM;
   // TODO: pro widthMM < leftInsetMM+rightInsetMM vyjde panelWidthMM záporné —
   // takhle úzký úsek herdbloku zadání nepředpokládá, neošetřuje se (prototyp).
@@ -559,37 +642,33 @@ export function buildHerdblokUsek(usek) {
   group.add(lista);
 
   // Panel ani lišta NEJSOU po celé délce — na obou koncích chybí
-  // sideInsetMM(leftEndType) / sideInsetMM(rightEndType), tam by zůstal
-  // vidět holý korpus a schod vůči přesahující desce (deska jde 0..depthMM,
-  // korpus jen corpusFrontZ..corpusBackZ, viz výš). Přesně tenhle schod
-  // zakrývá VODOPÁD.
+  // leftInsetMM / rightInsetMM, tam by zůstal vidět holý korpus a schod
+  // vůči přesahující desce (deska jde 0..depthMM, korpus teď JEN
+  // leftInsetMM..width-rightInsetMM, viz výš). Přesně tenhle schod zakrývá
+  // VODOPÁD ("nos").
   //
-  // --- vodopád: svislá boční deska/deska "přetéká" přes bok herdbloku a
-  // zakrývá ho CELÝ — přes CELOU výšku herdbloku (HERDBLOK_HEIGHT_MM, tedy
-  // od spodní hrany herdbloku po horní rovinu desky) a CELOU hloubku
-  // (z 0..depthMM), NE zúžený pruh, NE jen čelo (zadání, vodopád). Tloušťka
-  // SIDE_PLATE_THICKNESS_MM (20) na obou koncích.
+  // --- vodopád/nos: OPRAVA (ÚKOL A) — dřív kvádr tloušťky
+  // SIDE_PLATE_THICKNESS_MM, to byla chyba zadání (souosá stěna s
+  // deskou/korpusem na x=0/x=width → z-fighting, a nos byl navíc příliš
+  // úzký). Nos teď vyplňuje CELÉ zatažení sideInsetMM(endType) v X (50 u
+  // svislaDeska, 70 u svislaDeskaZkos — NE SIDE_PLATE_THICKNESS_MM), CELOU
+  // hloubku (z 0..depthMM) a Y JEN PO SPODNÍ LÍC DESKY
+  // (0..HERDBLOK_HEIGHT_MM − DESK_FACE_HEIGHT_MM) — nezasahuje do desky nad
+  // tím, se kterou spolu tvoří jednu průběžnou plochu bez souosé stěny.
   //
-  // V TÉTO VERZI je bok ROVNÝ (obdélníkový půdorys) na OBOU typech
-  // zakončení — půdorysné zkosení pro VERTICAL_PLATE_CHAMFER (viz
-  // cornerPoints, NOSE_FRONT_MM/noseFrontMM) přijde v samostatném kroku,
-  // proto se tu leftEndType/rightEndType k rozlišení tvaru nepoužívá.
-  //
-  // TODO: pro widthMM < 2×SIDE_PLATE_THICKNESS_MM by se levý a pravý
-  // vodopád překrývaly — tak úzký úsek herdbloku zadání nepředpokládá,
-  // neošetřuje se (prototyp, stejně jako panelWidthMM výš).
+  // Půdorys nosu je TENTÝŽ monolit jako obrys desky na daném konci (ÚKOL B):
+  // u svislaDeska prostý obdélník, u svislaDeskaZkos useknutý PŘEDNÍ roh —
+  // noseOutline() proto počítá roh přes STEJNOU cornerPoints() jako
+  // buildHerdblokOutline.
+  const NOSE_TOP_Y_MM = HERDBLOK_HEIGHT_MM - DESK_FACE_HEIGHT_MM; // 240 — spodní líc desky
   [
-    { name: 'vodopad-levy', xFromMM: 0 },
-    { name: 'vodopad-pravy', xFromMM: widthMM - SIDE_PLATE_THICKNESS_MM },
-  ].forEach(({ name, xFromMM }) => {
-    const vodopad = box(mm(SIDE_PLATE_THICKNESS_MM), mm(HERDBLOK_HEIGHT_MM), mm(depthMM), stainless);
-    vodopad.position.set(
-      mm(xFromMM + SIDE_PLATE_THICKNESS_MM / 2),
-      mm(HERDBLOK_HEIGHT_MM) / 2,
-      mm(depthMM) / 2
-    );
-    vodopad.name = name;
-    group.add(vodopad);
+    { name: 'vodopad-levy', endType: leftEndType, side: 'left' },
+    { name: 'vodopad-pravy', endType: rightEndType, side: 'right' },
+  ].forEach(({ name, endType, side }) => {
+    const outline = noseOutline(endType, side, widthMM, depthMM);
+    const nose = slabFromOutline(outline, NOSE_TOP_Y_MM, NOSE_TOP_Y_MM, stainless);
+    nose.name = name;
+    group.add(nose);
   });
 
   // --- prvky panelu (zásuvky apod.): xMM je LOKÁLNÍ souřadnice ÚSEKU (viz

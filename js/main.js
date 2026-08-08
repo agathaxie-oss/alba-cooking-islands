@@ -63,6 +63,9 @@ import {
 // rozvržení pásů MONO (viz ZADANI-MONO-UI.md) — onMonoFillPodestavby a
 // onMonoAdd('panel', …) z ní čtou missingMM/usableFromMM/usableToMM, samy si
 // polohy nedopočítávají (soubor píše souběžně jiný člověk, viz zadání).
+// §ÚKOL MONO OSTROV — computeMonoLayout(state, side = 'A') teď bere i stranu
+// (druhý parametr, výchozí 'A' pro zpětnou slučitelnost) — main.js ji volá
+// se stranou příslušného handleru (viz onMonoAdd/onMonoFillPodestavby níže).
 import { computeMonoLayout } from './mono-layout.js';
 import {
   createCamera,
@@ -112,23 +115,30 @@ function sanitizeMonoEndType(value) {
   return value === 'svislaDeskaZkos' ? 'svislaDeskaZkos' : 'svislaDeska';
 }
 
-// §ÚKOL MONO §10 (balík A5) — verze formátu uloženého souboru. SPEC v4 měla
-// natvrdo 4 a applyConfig() při jiné hodnotě soubor tvrdě odmítala (viz
-// dřívější kontrola níže) — ZADANI-MONO-UI.md §0 tohle RUŠÍ: aplikace je
-// interní/nenasazená, soubor se kvůli verzi už NIKDY neodmítá. Konstanta tu
-// zůstává (jediné místo, kde se číslo objevuje natvrdo), ale slouží už jen
-// k zápisu při ukládání a k informativnímu hlášení při načtení starší verze.
-const CONFIG_VERSION = 5;
+// §ÚKOL MONO OSTROV — verze formátu uloženého souboru. v4→v5 (balík A5)
+// přidala herdblok/podestavby/panelItems/limec; v5→v6 (ostrovní varianta)
+// štěpí herdblok/podestavby/panelItems na nezávislé strany A/B (viz
+// state.mono níže) — SPEC v4 měla natvrdo 4 a applyConfig() při jiné
+// hodnotě soubor tvrdě odmítala (viz dřívější kontrola níže), ale
+// ZADANI-MONO-UI.md §0 tohle RUŠÍ: aplikace je interní/nenasazená, soubor
+// se kvůli verzi už NIKDY neodmítá. Konstanta tu zůstává (jediné místo, kde
+// se číslo objevuje natvrdo), ale slouží už jen k zápisu při ukládání
+// a k informativnímu hlášení při načtení starší verze.
+const CONFIG_VERSION = 6;
 
 // §ÚKOL MONO §1/§10 (balík A5) — sanitizace nových seznamů state.mono
-// (herdblok/podestavby/panelItems/limec). Stejné pravidlo jako
+// (herdblok*/podestavby*/panelItems*/limec). Stejné pravidlo jako
 // sanitizeMonoEndType výše a sanitizeSegment níže: špatná/chybějící hodnota
 // se OŘEŽE nebo nahradí výchozí, soubor se kvůli ní NIKDY neodmítá. id se
 // bere ze SDÍLENÉHO čítače nextId (stejně jako segmenty/ramena) — dnešní kód
 // si id z uloženého souboru vůbec nepamatuje (sanitizeSegment i sanitizace
 // ramen níže přidělují nové id bez ohledu na raw.id), takže žádné ruční
 // „posunutí nextId za nejvyšší načtené id" není potřeba: kolize nemůže
-// nastat, dokud VŠECHNY seznamy (staré i nové) čerpají id výhradně odsud.
+// nastat, dokud VŠECHNY seznamy (staré i nové, strana A i strana B) čerpají
+// id výhradně odsud. §ÚKOL MONO OSTROV — POZOR: applyConfig() teď musí projít
+// OBĚ strany (herdblok*A*/*B* atd.) sanitizací, jinak by seznam strany B
+// zůstal nesanitizovaný (tichá ztráta dat) A nextId by se za jeho položky
+// neposunul (viz applyConfig níže).
 
 const MONO_SURFACE_WIDTH_DEFAULT_MM = 400;      // §4 zadání — „rozumná výchozí šířka"
 const MONO_ITEM_FRONT_OFFSET_DEFAULT_MM = 100;  // HODNOTY-MONO.md — pristrojOdPredniHranyStandard
@@ -238,18 +248,26 @@ const state = {
   // SEGMENT se NEPOUŽÍVÁ (SEGMENT tahle pole nikdy nečte ani nezobrazuje),
   // ale drží se vždy (přírůstková pole, viz serializeConfig/applyConfig
   // níže) — jednodušší než mít `state.mono` jen podmíněně přítomné.
-  // leftEndType/rightEndType: jediné povolené hodnoty jsou 'svislaDeska' a
-  // 'svislaDeskaZkos' (viz mono-geometry.js END_TYPES).
-  // herdblok/podestavby/panelItems: uspořádané seznamy, výchozí prázdné —
-  // POLOHY se z nich odvozují až computeMonoLayout() (mono-layout.js), tady
-  // se neukládají (§1 zadání, „Rozvržení se NEUKLÁDÁ").
-  // limec: viz defaultMonoCollar() výše.
+  // leftEndType/rightEndType: SDÍLENÉ pro obě strany bloku, beze změny.
+  // jediné povolené hodnoty jsou 'svislaDeska' a 'svislaDeskaZkos' (viz
+  // mono-geometry.js END_TYPES).
+  // §ÚKOL MONO OSTROV — herdblok/podestavby/panelItems mají teď KAŽDÉ
+  // NEZÁVISLÝ obsah pro stranu A a stranu B (přípona A/B), stejně jako
+  // segmentsA/segmentsB u SEGMENTu — žádné zrcadlení, žádné sdílení. U
+  // varianty 'single' se strana B nikdy nepoužije a zůstává prázdná.
+  // Uspořádané seznamy, výchozí prázdné — POLOHY se z nich odvozují až
+  // computeMonoLayout(state, side) (mono-layout.js), tady se neukládají
+  // (§1 zadání, „Rozvržení se NEUKLÁDÁ").
+  // limec: SDÍLENÝ pro obě strany, beze změny — viz defaultMonoCollar() výše.
   mono: {
     leftEndType: 'svislaDeska',
     rightEndType: 'svislaDeska',
-    herdblok: [],
-    podestavby: [],
-    panelItems: [],
+    herdblokA: [],
+    herdblokB: [],
+    podestavbyA: [],
+    podestavbyB: [],
+    panelItemsA: [],
+    panelItemsB: [],
     limec: defaultMonoCollar(),
   },
   dimensions: { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: 900 },
@@ -350,14 +368,27 @@ function findSegment(id) {
   return null;
 }
 
-// §ÚKOL MONO §4 (balík A5) — najde položku MONO podle vrstvy a id. `layer`
-// 'panel' čte state.mono.panelItems (jméno pole, ne vrstvy, se liší — stejná
-// nesrovnalost je v i18n klíčích mono.tab.panel/mono.panelNote, viz zadání).
-function findMonoItem(layer, id) {
-  const list = layer === 'herdblok' ? state.mono.herdblok
-    : layer === 'podestavby' ? state.mono.podestavby
-    : layer === 'panel' ? state.mono.panelItems
-    : null;
+// §ÚKOL MONO OSTROV — vrátí PŘÍMO odkaz na pole dané MONO vrstvy (herdblok/
+// podestavby/panel — `layer`, ne jméno pole; `layer` 'panel' čte
+// panelItems*, stejná nesrovnalost jako dřív, je i v i18n klíčích
+// mono.tab.panel/mono.panelNote, viz zadání) NA DANÉ STRANĚ (A/B).
+// Neznámá/chybějící `side` spadne na 'A' — stejné pravidlo jako
+// u computeMonoLayout/computeMonoChecks (mono-layout.js) a u getSideList()
+// pro segmenty výše. Vrací odkaz, ne kopii — volající do něj smí zapisovat
+// (push/splice), stejně jako getSideList().
+function getMonoList(layer, side) {
+  const s = side === 'B' ? 'B' : 'A';
+  if (layer === 'herdblok') return s === 'B' ? state.mono.herdblokB : state.mono.herdblokA;
+  if (layer === 'podestavby') return s === 'B' ? state.mono.podestavbyB : state.mono.podestavbyA;
+  if (layer === 'panel') return s === 'B' ? state.mono.panelItemsB : state.mono.panelItemsA;
+  return null;
+}
+
+// §ÚKOL MONO §4 (balík A5) — najde položku MONO podle vrstvy, strany a id.
+// §ÚKOL MONO OSTROV — přibyl parametr `side` (výchozí 'A', stejné pravidlo
+// jako u getMonoList výše).
+function findMonoItem(layer, id, side = 'A') {
+  const list = getMonoList(layer, side);
   return list ? list.find((item) => item.id === id) || null : null;
 }
 
@@ -674,15 +705,21 @@ function serializeConfig() {
     productType: state.productType,
     // §ÚKOL MONO §10 — přírůstkové pole vedle productType (viz applyConfig
     // níže: čte se tolerantně, chybějící/neplatná hodnota nikdy soubor
-    // neodmítne). v4→v5: přibyly herdblok/podestavby/panelItems/limec —
-    // seznamy se kopírují položku po položce (stejný vzorec jako
-    // segmentsA/segmentsB/arms níže), limec je jediný objekt.
+    // neodmítne). v4→v5: přibyly herdblok/podestavby/panelItems/limec.
+    // v5→v6 (§ÚKOL MONO OSTROV): herdblok/podestavby/panelItems se štěpí na
+    // nezávislé strany A/B (přípona v názvu pole) — leftEndType/rightEndType
+    // a limec zůstávají SDÍLENÉ, beze změny. Seznamy se kopírují položku po
+    // položce (stejný vzorec jako segmentsA/segmentsB/arms níže), limec je
+    // jediný objekt.
     mono: {
       leftEndType: state.mono.leftEndType,
       rightEndType: state.mono.rightEndType,
-      herdblok: state.mono.herdblok.map((item) => ({ ...item })),
-      podestavby: state.mono.podestavby.map((item) => ({ ...item })),
-      panelItems: state.mono.panelItems.map((item) => ({ ...item })),
+      herdblokA: state.mono.herdblokA.map((item) => ({ ...item })),
+      herdblokB: state.mono.herdblokB.map((item) => ({ ...item })),
+      podestavbyA: state.mono.podestavbyA.map((item) => ({ ...item })),
+      podestavbyB: state.mono.podestavbyB.map((item) => ({ ...item })),
+      panelItemsA: state.mono.panelItemsA.map((item) => ({ ...item })),
+      panelItemsB: state.mono.panelItemsB.map((item) => ({ ...item })),
       limec: { ...state.mono.limec },
     },
     variant: state.variant,
@@ -862,6 +899,24 @@ function applyConfig(config) {
   // hned pod tímto blokem — viz rawMonoHerdblokCount/rawMonoPodestavbyCount.
   const rawMono = config.mono && typeof config.mono === 'object' ? config.mono : {};
 
+  // §ÚKOL MONO OSTROV — v6 čte herdblok/podestavby/panelItems ze stran A/B
+  // (přípona v názvu pole, viz serializeConfig výše). Starší soubor verze 5
+  // (a dřívější balík A5) má pole BEZ přípony — to je dnešní obsah, který
+  // patřil VÝHRADNĚ straně A (varianta 'island' u MONO tehdy neexistovala) —
+  // proto padá jako záloha na stranu A, když přípona chybí. Strana B u
+  // takového staršího souboru logicky neexistuje, zůstává prázdná (viz níže
+  // rawHerdblokB/rawPodestavbyB/rawPanelItemsB — bez zálohy na neexistující
+  // pole).
+  const rawHerdblokA = Array.isArray(rawMono.herdblokA) ? rawMono.herdblokA
+    : Array.isArray(rawMono.herdblok) ? rawMono.herdblok : [];
+  const rawHerdblokB = Array.isArray(rawMono.herdblokB) ? rawMono.herdblokB : [];
+  const rawPodestavbyA = Array.isArray(rawMono.podestavbyA) ? rawMono.podestavbyA
+    : Array.isArray(rawMono.podestavby) ? rawMono.podestavby : [];
+  const rawPodestavbyB = Array.isArray(rawMono.podestavbyB) ? rawMono.podestavbyB : [];
+  const rawPanelItemsA = Array.isArray(rawMono.panelItemsA) ? rawMono.panelItemsA
+    : Array.isArray(rawMono.panelItems) ? rawMono.panelItems : [];
+  const rawPanelItemsB = Array.isArray(rawMono.panelItemsB) ? rawMono.panelItemsB : [];
+
   if (!Array.isArray(rawSegmentsA) && !Array.isArray(rawSegmentsB) && !Array.isArray(config.arms)) {
     alert(t('alert.invalidConfig'));
     return;
@@ -869,7 +924,7 @@ function applyConfig(config) {
 
   // Kontrola prázdné konfigurace (žádný segment, rameno ani MONO obsah) musí
   // proběhnout NAD SUROVÝMI poli konfigurace (config.segmentsA/B, config.arms,
-  // config.mono.herdblok/podestavby), ne nad už sanitizovanými — sanitizace
+  // config.mono.herdblok*/podestavby*), ne nad už sanitizovanými — sanitizace
   // segmentů níže (sanitizeSegment → getCatalogEntry) totiž potřebuje mít
   // katalog z importu už sloučený (viz importCatalog níže), a to sloučení
   // smí proběhnout až PO týhle kontrole: odmítnutý soubor (return) tak
@@ -885,9 +940,12 @@ function applyConfig(config) {
   // SEGMENTu), ale klidně obsazený herdblok/řadu podestaveb. Bez týhle
   // podmínky by takový validní MONO soubor spadl do „prázdná konfigurace" a
   // dostal alert.emptyConfig, přestože §0 zadání říká, že se soubor kvůli
-  // obsahu nikdy neodmítá.
-  const rawMonoHerdblokCount = Array.isArray(rawMono.herdblok) ? rawMono.herdblok.length : 0;
-  const rawMonoPodestavbyCount = Array.isArray(rawMono.podestavby) ? rawMono.podestavby.length : 0;
+  // obsahu nikdy neodmítá. §ÚKOL MONO OSTROV — počítá se napříč OBĚMA
+  // stranami (A+B), jinak by soubor s obsahem jen na straně B (ostrov, kde
+  // uživatel začal editovat od strany B) omylem spadl do „prázdná
+  // konfigurace".
+  const rawMonoHerdblokCount = rawHerdblokA.length + rawHerdblokB.length;
+  const rawMonoPodestavbyCount = rawPodestavbyA.length + rawPodestavbyB.length;
   if (rawSegmentsACount === 0 && rawSegmentsBCount === 0 && rawArmsCount === 0
       && rawMonoHerdblokCount === 0 && rawMonoPodestavbyCount === 0) {
     alert(t('alert.emptyConfig'));
@@ -905,8 +963,9 @@ function applyConfig(config) {
   // §ÚKOL MONO — stejné pravidlo/stejná fáze jako productType výše: tolerantní
   // validace, žádné odmítnutí souboru. Chybějící/neplatná hodnota (nebo
   // úplně chybějící config.mono u starších/cizích souborů) spadne na výchozí
-  // 'svislaDeska' na obou koncích. herdblok/podestavby/panelItems/limec se
-  // doplní NÍŽ, až po sloučení katalogu z importu (viz komentář tam).
+  // 'svislaDeska' na obou koncích (SDÍLENÉ pro obě strany, §ÚKOL MONO OSTROV
+  // se jich netýká). herdblok*/podestavby*/panelItems*/limec se doplní NÍŽ,
+  // až po sloučení katalogu z importu (viz komentář tam).
   const monoConfig = {
     leftEndType: sanitizeMonoEndType(rawMono.leftEndType),
     rightEndType: sanitizeMonoEndType(rawMono.rightEndType),
@@ -931,14 +990,19 @@ function applyConfig(config) {
   // (MonoDevice.type = klíč katalogu, viz sanitizeMonoDevice), proto se
   // sanitizuje AŽ TEĎ, po sloučení katalogu z importu výše — stejný důvod
   // jako u segmentsA/B. Chybějící seznam = prázdné pole, chybějící limec =
-  // výchozí objekt (defaultMonoCollar) — starý soubor verze 4 nemá žádné
-  // z těchto polí a musí se přesto načíst beze chyby.
-  monoConfig.herdblok = (Array.isArray(rawMono.herdblok) ? rawMono.herdblok : [])
-    .map(sanitizeMonoDevice).filter(Boolean);
-  monoConfig.podestavby = (Array.isArray(rawMono.podestavby) ? rawMono.podestavby : [])
-    .map(sanitizeMonoCabinet).filter(Boolean);
-  monoConfig.panelItems = (Array.isArray(rawMono.panelItems) ? rawMono.panelItems : [])
-    .map(sanitizeMonoPanelItem).filter(Boolean);
+  // výchozí objekt (defaultMonoCollar) — starý soubor verze 4/5 nemá žádné
+  // z těchto polí (nebo je má bez přípony A/B, viz rawHerdblokA/
+  // rawPodestavbyA/rawPanelItemsA výše) a musí se přesto načíst beze chyby.
+  // §ÚKOL MONO OSTROV — OBĚ strany (A i B) se musí projít sanitizací, i když
+  // je strana B typicky prázdná (u staršího souboru vždy) — jinak by
+  // položky strany B tiše zmizely A nextId by se za ně neposunul (viz
+  // komentář u CONFIG_VERSION/sanitizeMonoDevice výše).
+  monoConfig.herdblokA = rawHerdblokA.map(sanitizeMonoDevice).filter(Boolean);
+  monoConfig.herdblokB = rawHerdblokB.map(sanitizeMonoDevice).filter(Boolean);
+  monoConfig.podestavbyA = rawPodestavbyA.map(sanitizeMonoCabinet).filter(Boolean);
+  monoConfig.podestavbyB = rawPodestavbyB.map(sanitizeMonoCabinet).filter(Boolean);
+  monoConfig.panelItemsA = rawPanelItemsA.map(sanitizeMonoPanelItem).filter(Boolean);
+  monoConfig.panelItemsB = rawPanelItemsB.map(sanitizeMonoPanelItem).filter(Boolean);
   monoConfig.limec = sanitizeMonoCollar(rawMono.limec);
 
   const arms = Array.isArray(config.arms)
@@ -1290,18 +1354,37 @@ const ui = setupUI({
   // onArmAngleChange výše (§4 zadání: „nezakládat pro ně nové").
   //
   // Polohy si žádný z nich nepočítá sám — kde je potřebují (onMonoFillPodestavby,
-  // onMonoAdd('panel', …)), čtou je z computeMonoLayout(state) (viz komentář
-  // u importu computeMonoLayout na začátku souboru a §2 zadání). Nové
-  // položky se sanitizují přes STEJNÉ funkce jako při načtení souboru
+  // onMonoAdd('panel', …)), čtou je z computeMonoLayout(state, side) (viz
+  // komentář u importu computeMonoLayout na začátku souboru a §2 zadání).
+  // Nové položky se sanitizují přes STEJNÉ funkce jako při načtení souboru
   // (sanitizeMonoDevice/sanitizeMonoCabinet/sanitizeMonoPanelItem/
   // sanitizeMonoCollar) — jediná definice pravidel, žádná duplikace.
+  //
+  // §ÚKOL MONO OSTROV — onMonoAdd/onMonoRemove/onMonoUpdate/onMonoMove/
+  // onMonoSelect/onMonoFillPodestavby teď umí i STRANU (A/B), viz
+  // state.mono.herdblokA/B apod. výše. `side` je u KAŽDÉHO z nich POSLEDNÍ
+  // parametr s výchozí hodnotou 'A' — vždy AŽ ZA layer/id/kind/patch/dir, ne
+  // před ně ani mezi ně. Důvod: výchozí hodnota parametru v JS se použije,
+  // jen když volající argument NEPŘEDÁ VŮBEC (chybí na konci seznamu
+  // argumentů) — kdyby `side` stálo dřív, dnešní volání z mono-ui.js
+  // (onMonoAdd('herdblok', kind), onMonoUpdate('podestavby', id, patch)…,
+  // vždy BEZ strany) by se posunula o jednu pozici a poslední skutečně
+  // předaný argument (kind/patch/dir) by omylem přistál v `side` — funkce by
+  // dostala nesmyslnou hodnotu tam, kde ji dnes vůbec nečeká. Trailing
+  // pozice je jediná, která nechá VŠECHNA dnešní volání bez třetího/čtvrtého
+  // argumentu fungovat úplně beze změny, a zároveň dá agentovi od pásu
+  // jednotné místo, kam stranu doplnit ve všech šesti handlerech stejně.
   onMonoEndTypeChange(side, endType) {
+    // POZOR: tohle `side` je 'left'|'right' (strana ZAKONČENÍ bloku), NE
+    // strana ostrova (A/B) — leftEndType/rightEndType jsou SDÍLENÉ pole
+    // (viz state.mono výše), tenhle handler proto novou stranu ostrova
+    // nedostává a nepotřebuje.
     const value = sanitizeMonoEndType(endType);
     if (side === 'right') state.mono.rightEndType = value;
     else state.mono.leftEndType = value;
     rebuildBlock();
   },
-  onMonoAdd(layer, kind) {
+  onMonoAdd(layer, kind, side = 'A') {
     // VADA (nahlásil zadavatel) — „Skříňky se přidávají zprava místo zleva.
     // Je to nepřirozené." computeMonoLayout (mono-layout.js, layoutSequential)
     // klade herdblok/podestavby KUMULATIVNĚ v POŘADÍ POLE od x=0, resp. od
@@ -1326,52 +1409,47 @@ const ui = setupUI({
     // zaplňuje missingMM na KONCI použitelného rozsahu (zbytek řady vpravo od
     // poslední položky), takže tam zůstává push (přidání na konec pole =
     // přesně tam, kde chybějící úsek je).
+    const list = getMonoList(layer, side);
+    if (!list) return; // neznámá vrstva — tiché no-op, žádný pád (stejné pravidlo jako jinde v MONO)
     if (layer === 'herdblok') {
-      state.mono.herdblok.push(sanitizeMonoDevice({ type: kind }));
+      list.push(sanitizeMonoDevice({ type: kind }));
     } else if (layer === 'podestavby') {
-      state.mono.podestavby.push(sanitizeMonoCabinet({ kind }));
+      list.push(sanitizeMonoCabinet({ kind }));
     } else if (layer === 'panel') {
       // §2 zadání — panelItems jsou POLOHY, ne pořadí („polohy, ne pořadí"
       // v §1 zadání) — computeMonoLayout je nekumuluje podle indexu v poli,
       // takže push/unshift tu na výsledné vykreslení nemá žádný vliv; push
       // necháván jako neutrální/výchozí volba. Nová poloha se ČTE z
-      // computeMonoLayout (usableFromMM je vždy uvnitř použitelného rozsahu
-      // panelu), nedopočítává se ručně.
-      const layout = computeMonoLayout(state);
-      state.mono.panelItems.push(sanitizeMonoPanelItem({ kind, xMM: layout.usableFromMM }));
-    } else {
-      return; // neznámá vrstva — tiché no-op, žádný pád (stejné pravidlo jako jinde v MONO)
+      // computeMonoLayout PRO STEJNOU STRANU (usableFromMM je vždy uvnitř
+      // použitelného rozsahu panelu té strany), nedopočítává se ručně.
+      const layout = computeMonoLayout(state, side === 'B' ? 'B' : 'A');
+      list.push(sanitizeMonoPanelItem({ kind, xMM: layout.usableFromMM }));
     }
     rebuildBlock();
   },
-  onMonoRemove(layer, id) {
-    const list = layer === 'herdblok' ? state.mono.herdblok
-      : layer === 'podestavby' ? state.mono.podestavby
-      : layer === 'panel' ? state.mono.panelItems
-      : null;
+  onMonoRemove(layer, id, side = 'A') {
+    const list = getMonoList(layer, side);
     if (!list) return;
     const idx = list.findIndex((item) => item.id === id);
     if (idx === -1) return;
     list.splice(idx, 1);
     rebuildBlock();
   },
-  onMonoUpdate(layer, id, patch) {
+  onMonoUpdate(layer, id, patch, side = 'A') {
     // patch = „dílčí objekt polí" (§4 zadání) — stejný vzorec jako
     // onEditCustom výše (Object.assign nad nalezenou položkou); jednotlivé
     // hodnoty validuje vstupní prvek v mono-ui.js (rozsahy posuvníků/
     // číselníků), stejně jako custom-dialog.js validuje výsledek pro
     // onEditCustom, než ho sem main.js dostane.
-    const item = findMonoItem(layer, id);
+    const item = findMonoItem(layer, id, side);
     if (!item || !patch || typeof patch !== 'object') return;
     Object.assign(item, patch);
     rebuildBlock();
   },
-  onMonoMove(layer, id, dir) {
+  onMonoMove(layer, id, dir, side = 'A') {
     // dir: -1 | +1, jen 'herdblok'/'podestavby' (§4 zadání) — stejný vzorec
     // jako onMoveSegment výše.
-    const list = layer === 'herdblok' ? state.mono.herdblok
-      : layer === 'podestavby' ? state.mono.podestavby
-      : null;
+    const list = layer === 'herdblok' || layer === 'podestavby' ? getMonoList(layer, side) : null;
     if (!list) return;
     const idx = list.findIndex((item) => item.id === id);
     const newIdx = idx + dir;
@@ -1380,25 +1458,31 @@ const ui = setupUI({
     list.splice(newIdx, 0, item);
     rebuildBlock();
   },
-  onMonoFillPodestavby() {
+  onMonoFillPodestavby(side = 'A') {
     // tlačítko „Doplnit" — dorovná řadu jednou skříňkou o šířce missingMM
-    // (§4 zadání); missingMM se ČTE z computeMonoLayout, nedopočítává se tu.
-    const layout = computeMonoLayout(state);
+    // (§4 zadání); missingMM se ČTE z computeMonoLayout PRO STEJNOU STRANU,
+    // nedopočítává se tu.
+    const s = side === 'B' ? 'B' : 'A';
+    const layout = computeMonoLayout(state, s);
     if (layout.missingMM <= 0) return;
-    state.mono.podestavby.push(sanitizeMonoCabinet({ kind: 'cabinet', widthMM: layout.missingMM }));
+    getMonoList('podestavby', s).push(sanitizeMonoCabinet({ kind: 'cabinet', widthMM: layout.missingMM }));
     rebuildBlock();
   },
   onMonoCollarChange(patch) {
+    // limec je SDÍLENÝ pro obě strany (§ÚKOL MONO OSTROV zadání), beze
+    // změny — nedostává parametr `side`.
     state.mono.limec = sanitizeMonoCollar({ ...state.mono.limec, ...patch });
     rebuildBlock();
   },
-  onMonoSelect(layer, id) {
+  onMonoSelect(layer, id, side = 'A') {
     // §3 zadání — výběr (zvýraznění dlaždice) je VNITŘNÍ stav mono-ui.js
     // (`selected`), NENÍ součástí `state`; MONO navíc nemá ve 3D scéně žádné
     // vybíratelné prvky (mono-block.js: `selectable` je vždy prázdné pole,
     // přístroje se ve 3D nekreslí, §0 zadání). Handler tu je jen proto, aby
     // main.js odpovídal §4 zadání jménem i počtem callbacků — dnes žádná
-    // stavová změna, žádný rebuildBlock().
+    // stavová změna, žádný rebuildBlock(). `side` (výchozí 'A') je tu jen
+    // pro konzistenci podpisu s ostatními handlery výše — dnešní prázdné
+    // tělo ho nepoužívá.
   },
   onMonoTabChange(tab) {
     // §4/§8 zadání — aktivní záložka pásu je vlastní stav ui.js
@@ -1508,12 +1592,21 @@ const ui = setupUI({
     // `type === 'mono'` — u nově založeného SEGMENT projektu by šlo o
     // zbytečné čerpání z nextId pro pole, které se u SEGMENTu nikdy
     // nezobrazí ani neuloží k ničemu užitečnému.
+    //
+    // §ÚKOL MONO OSTROV — rozhodnutí zadavatele: předvyplnění platí VÝHRADNĚ
+    // pro stranu A (přesně dnešní chování, jen přejmenované pole). Strana B
+    // začíná vždy prázdná, i u nově založeného ostrovního MONO projektu —
+    // uživatel si ji naplní sám stejně jako prázdný SEGMENT ostrov
+    // (segmentsB výše je taky []).
     state.mono = {
       leftEndType: 'svislaDeska',
       rightEndType: 'svislaDeska',
-      herdblok: [],
-      podestavby: state.productType === 'mono' ? createDefaultMonoPodestavby() : [],
-      panelItems: [],
+      herdblokA: [],
+      herdblokB: [],
+      podestavbyA: state.productType === 'mono' ? createDefaultMonoPodestavby() : [],
+      podestavbyB: [],
+      panelItemsA: [],
+      panelItemsB: [],
       limec: defaultMonoCollar(),
     };
 

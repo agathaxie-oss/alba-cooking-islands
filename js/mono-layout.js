@@ -5,6 +5,11 @@
 // odsud pokaždé znovu. Je to JEDINÉ místo, které tohle počítá; mono-ui.js,
 // mono-block.js ani main.js si polohy nepočítají samy (viz zadání §1).
 //
+// §ÚKOL MONO OSTROV — computeMonoLayout/computeMonoChecks berou druhý
+// parametr `side` ('A'|'B', výchozí 'A'): strany A a B mají NEZÁVISLÝ obsah
+// (state.mono.herdblokA/B, podestavbyA/B, panelItemsA/B — jako segmentsA/
+// segmentsB u SEGMENTu), ale SDÍLENÝ leftEndType/rightEndType/limec.
+//
 // Modul je ČISTÝ: žádný DOM, žádné 'three', žádný import z main.js/ui.js.
 // Smí importovat jen z mono-geometry.js — odtud bere sideInsetMM() a
 // checkSupport(), zatažení od boku (50/70) se tu NEDUPLIKUJE natvrdo.
@@ -75,19 +80,37 @@ function layoutSequential(items, startMM, limitMM) {
   return { laid, endMM: cursor };
 }
 
+/** Tolerantní čtení strany — jediné povolené hodnoty jsou 'A' a 'B'; cokoli
+ *  jiného (chybějící parametr, překlep, cizí hodnota) spadne na 'A'. Stejné
+ *  pravidlo jako u readEndType výše — neplatný vstup nikdy nespadne, jen
+ *  tiše dostane rozumnou výchozí hodnotu. */
+function readSide(side) {
+  return side === 'B' ? 'B' : 'A';
+}
+
 /**
- * Spočítá rozvržení celého pásu MONO ze state.mono — herdblok od x = 0,
- * podestavby od sideInsetMM(leftEndType), panelItems ořezané do stejného
- * použitelného rozsahu (viz zadání §1 a §2). Odolné vůči chybějícímu
+ * Spočítá rozvržení celého pásu MONO ze state.mono PRO JEDNU STRANU
+ * (`side`: 'A' nebo 'B') — herdblok od x = 0, podestavby od
+ * sideInsetMM(leftEndType), panelItems ořezané do stejného použitelného
+ * rozsahu (viz zadání §1 a §2). `leftEndType`/`rightEndType` jsou SDÍLENÉ
+ * mezi stranami (viz main.js state.mono), takže `usableFromMM`/
+ * `usableToMM` vycházejí stejně pro obě strany — liší se jen obsah
+ * herdblok/podestavby/panelItems, který se čte z `herdblok${side}` /
+ * `podestavby${side}` / `panelItems${side}`. Odolné vůči chybějícímu
  * state.mono/state.dimensions, prázdným polím i nesmyslným šířkám — nikdy
- * nespadne ani nevrátí NaN.
+ * nespadne ani nevrátí NaN. Neznámá `side` (§ÚKOL MONO OSTROV zadání) spadne
+ * na 'A', ne na pád — viz readSide().
  *
  * @param {object} state
+ * @param {'A'|'B'} [side='A'] — 'A' je POVINNÁ výchozí hodnota: bez ní by
+ *   se rozbila dnešní volání computeMonoLayout(state) v mono-block.js
+ *   a mono-ui.js (jiní agenti, do těchto souborů se nesahá).
  * @returns {object} přesně tvar popsaný v ZADANI-MONO-UI.md §2
  */
-export function computeMonoLayout(state) {
+export function computeMonoLayout(state, side = 'A') {
   const monoState = (state && state.mono) || {};
   const dims = (state && state.dimensions) || {};
+  const s = readSide(side);
 
   const lengthMM = toPositiveMM(dims.lengthMM);
   const leftEndType = readEndType(monoState.leftEndType);
@@ -98,9 +121,9 @@ export function computeMonoLayout(state) {
   const usableFromMM = leftInsetMM;
   const usableToMM = lengthMM - rightInsetMM;
 
-  const herdblokItems = Array.isArray(monoState.herdblok) ? monoState.herdblok : [];
-  const podestavbyItems = Array.isArray(monoState.podestavby) ? monoState.podestavby : [];
-  const panelItemsRaw = Array.isArray(monoState.panelItems) ? monoState.panelItems : [];
+  const herdblokItems = Array.isArray(monoState[`herdblok${s}`]) ? monoState[`herdblok${s}`] : [];
+  const podestavbyItems = Array.isArray(monoState[`podestavby${s}`]) ? monoState[`podestavby${s}`] : [];
+  const panelItemsRaw = Array.isArray(monoState[`panelItems${s}`]) ? monoState[`panelItems${s}`] : [];
 
   // --- herdblok: klade se od x = 0, limit je celá délka bloku ---------------
   const herdblokLayout = layoutSequential(herdblokItems, 0, lengthMM);
@@ -147,14 +170,17 @@ export function computeMonoLayout(state) {
  * fyzického těla herdbloku, ne jednotlivé přístroje uvnitř.
  *
  * @param {object} state
+ * @param {'A'|'B'} [side='A'] — stejné pravidlo jako u computeMonoLayout
+ *   výše (POVINNÁ výchozí hodnota kvůli dnešním voláním bez druhého
+ *   parametru v mono-block.js/mono-ui.js).
  * @returns {{ overhangLeftMM:number, overhangRightMM:number, maxBridgeMM:number, ok:boolean }}
  */
-export function computeMonoChecks(state) {
+export function computeMonoChecks(state, side = 'A') {
   const monoState = (state && state.mono) || {};
   const leftEndType = readEndType(monoState.leftEndType);
   const rightEndType = readEndType(monoState.rightEndType);
 
-  const layout = computeMonoLayout(state);
+  const layout = computeMonoLayout(state, side);
 
   const podestavby = layout.podestavby
     .filter((p) => !p.item || p.item.kind !== 'gap')

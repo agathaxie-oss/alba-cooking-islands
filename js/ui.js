@@ -406,9 +406,20 @@ export function setupUI(callbacks) {
   /** Paleta pro MONO — samostatná větev volaná z renderPaletteList (viz níže),
    *  aby SEGMENT větev pod ní zůstala nedotčená (§8 bod 5 zadání). Záložky
    *  'limec' a 'arms' paletu skrývají celou (ramena se přidávají z pruhu
-   *  parametrů pásu, límce nemají žádnou přidatelnou položku). */
-  function renderMonoPaletteList() {
-    paletteEls.badge.hidden = true; // MONO nemá cílovou stranu jako ostrovní SEGMENT
+   *  parametrů pásu, límce nemají žádnou přidatelnou položku).
+   *  `state` — nově potřebný u ostrova, aby paleta poznala cílovou stranu
+   *  (state.editSide) přesně jako ostrovní SEGMENT (§4 ZADANI-MONO-OSTROV.md). */
+  function renderMonoPaletteList(state) {
+    // U ostrova se odznak cílové strany chová STEJNĚ jako u SEGMENTu (§4
+    // zadání) — dřív byl natvrdo skrytý s poznámkou „MONO nemá cílovou stranu
+    // jako ostrovní SEGMENT", to už u `island` neplatí.
+    const isIsland = !!state && state.variant === 'island';
+    const targetSide = isIsland ? state.editSide : 'A';
+    paletteEls.badge.hidden = !isIsland;
+    if (isIsland) {
+      paletteEls.badge.textContent = t('palette.targetSide', { side: targetSide });
+      paletteEls.badge.title = t('palette.targetSideTitle', { side: targetSide });
+    }
 
     const paletteHidden = monoActiveTab === 'limec' || monoActiveTab === 'arms';
     paletteEls.section.hidden = paletteHidden;
@@ -431,7 +442,7 @@ export function setupUI(callbacks) {
         const iconKey = (def.topFeature && def.topFeature.type) || 'none';
         paletteEls.list.appendChild(paletteRow(
           iconKey, def, name, widthText,
-          () => callbacks.onMonoAdd?.('herdblok', def.id),
+          () => callbacks.onMonoAdd?.('herdblok', def.id, targetSide),
           false,
         ));
         hasCatalogRows = true;
@@ -450,7 +461,7 @@ export function setupUI(callbacks) {
     }
     specials.forEach((sp) => {
       paletteEls.list.appendChild(paletteRow(
-        sp.key, null, sp.name, '—', () => callbacks.onMonoAdd?.(layer, sp.kind), false,
+        sp.key, null, sp.name, '—', () => callbacks.onMonoAdd?.(layer, sp.kind, targetSide), false,
       ));
     });
 
@@ -470,7 +481,7 @@ export function setupUI(callbacks) {
     // kapacity) — samostatná větev, SEGMENT pod ní zůstává beze změny
     // (§8 bod 5 zadání, stejný princip jako přepnutí v renderStrip výše).
     if (currentProductType === 'mono') {
-      renderMonoPaletteList();
+      renderMonoPaletteList(state);
       return;
     }
 

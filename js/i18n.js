@@ -162,6 +162,7 @@ const DICTS = {
     'mono.collar.on': 'yes',
     'mono.collar.off': 'no',
     'mono.collar.chamferNote': 'The side collar is not drawn on a chamfered end.',
+    'mono.collar.islandNote': "Island units have no back edge, so the back collar isn't offered.",
 
     'strip.editSideTitle': 'Edit side {side} — also turns the view',
 
@@ -519,6 +520,7 @@ const DICTS = {
     'mono.collar.on': 'ja',
     'mono.collar.off': 'nein',
     'mono.collar.chamferNote': 'An einem abgeschrägten Ende wird die seitliche Aufkantung nicht gezeichnet.',
+    'mono.collar.islandNote': 'Der Insel fehlt eine Rückseite, daher gibt es keine hintere Aufkantung.',
 
     'strip.editSideTitle': 'Seite {side} bearbeiten — dreht auch die Ansicht',
 
@@ -877,6 +879,7 @@ const DICTS = {
     'mono.collar.on': 'tak',
     'mono.collar.off': 'nie',
     'mono.collar.chamferNote': 'Na ściętym końcu rant boczny nie jest rysowany.',
+    'mono.collar.islandNote': 'Wyspa nie ma tyłu, dlatego tylny rant nie jest oferowany.',
 
     'strip.editSideTitle': 'Edytuj stronę {side} — obraca też widok',
 
@@ -1238,6 +1241,7 @@ const DICTS = {
     'mono.collar.on': 'ano',
     'mono.collar.off': 'ne',
     'mono.collar.chamferNote': 'Na zkoseném konci se boční límec nekreslí.',
+    'mono.collar.islandNote': 'U ostrova se zadní límec nenabízí, ostrov nemá záda.',
 
     'strip.editSideTitle': 'Upravovat stranu {side} — otočí i pohled',
 
@@ -1598,6 +1602,7 @@ const DICTS = {
     'mono.collar.on': 'áno',
     'mono.collar.off': 'nie',
     'mono.collar.chamferNote': 'Na skosenom konci sa bočný límec nekreslí.',
+    'mono.collar.islandNote': 'Ostrov nemá zadnú stranu, preto sa zadný límec neponúka.',
 
     'strip.editSideTitle': 'Upravovať stranu {side} — otočí aj pohľad',
 

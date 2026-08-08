@@ -45,6 +45,11 @@ import {
 import {
   t, getLang, setLang, onLangChange, LANGS, PRODUCT_NAMES,
 } from './i18n.js';
+// --- pás MONO (balík A7, §8 zadání ZADANI-MONO-UI.md) — CELÝ spodní pás pro
+// MONO kreslí mono-ui.js, ui.js se na něj jen přepíná (viz getMonoStrip níže
+// a větev na začátku renderStrip). Modul píše souběžně jiný člověk podle
+// smlouvy v §3 zadání — tady se proti ní jen importuje.
+import { createMonoStrip } from './mono-ui.js';
 
 export const STORAGE_KEY = 'nerez-blok-config-v3';
 
@@ -215,6 +220,14 @@ export function setupUI(callbacks) {
     stripCards: document.getElementById('strip-cards'),
     stripEmpty: document.getElementById('strip-empty'),
     stripDetail: document.getElementById('strip-detail'),
+    // .strip-body nemá vlastní id (jen třídu) — dohledává se přes #assembly-strip,
+    // aby balík A7 nemusel sahat do index.html kvůli přidání id (§8 zadání).
+    stripBody: document.querySelector('#assembly-strip .strip-body'),
+    // #mono-strip-body zakládá souběžně jiný člověk do index.html (§7 zadání) —
+    // v okamžiku běhu tohohle kódu ještě nemusí existovat, proto se čte
+    // tolerantně (getElementById vrátí null, nikdy nespadne) a všude, kde se
+    // dál používá, se ošetřuje (viz renderStrip a getMonoStrip).
+    monoStripBody: document.getElementById('mono-strip-body'),
 
     viewButtons: Array.from(document.querySelectorAll('[data-view]')),
     sideSwitch: document.getElementById('side-switch'),
@@ -247,6 +260,41 @@ export function setupUI(callbacks) {
   function renderProductTypeChip() {
     if (!els.projectTypeChip) return;
     els.projectTypeChip.textContent = PRODUCT_NAMES[currentProductType] || '';
+  }
+
+  // --- pás MONO (balík A7, §8 zadání) — líná instance: modul mono-ui.js se
+  // vytvoří až při první potřebě, aby se u projektů SEGMENT vůbec nezaložil.
+  // `monoActiveTab` je lokální kopie aktivní záložky pásu MONO (NE state!) —
+  // hlásí ji callback onMonoTabChange (§4 zadání) a čte ji renderMonoPaletteList
+  // (§8 bod 5). Výchozí hodnota 'herdblok' kopíruje výchozí stav mono-ui.js (§3).
+  let monoStrip = null;
+  let monoActiveTab = 'herdblok';
+
+  function getMonoStrip() {
+    if (!monoStrip) {
+      monoStrip = createMonoStrip({
+        els: { tabs: els.stripTabs, body: els.monoStripBody },
+        t,
+        // Callbacky MONO jsou obsahem main.js (§4 zadání) — ui.js je jen
+        // PROPOUŠTÍ (proto spread), kromě onMonoTabChange: tu si ui.js
+        // ukusuje pro sebe (filtr palety, §8 bod 5) a teprve pak posílá dál.
+        callbacks: {
+          ...callbacks,
+          onMonoTabChange: (tab) => {
+            monoActiveTab = tab;
+            renderPaletteList();
+            callbacks.onMonoTabChange?.(tab);
+          },
+        },
+        // Vrací čitelné jméno přístroje z katalogu podle strojového klíče.
+        // Když přístroj není v katalogu (byl smazán), vrací klíč nezměněný.
+        deviceName: (typeKey) => {
+          const entry = getCatalogEntry(typeKey);
+          return entry ? getEntryDisplayName(entry) : typeKey;
+        },
+      });
+    }
+    return monoStrip;
   }
 
   // --- pás sestavy (krok 3A redesignu) — stav záložky/srolování žije jen
@@ -309,12 +357,92 @@ export function setupUI(callbacks) {
     return li;
   }
 
+  // --- paleta MONO (balík A7, §8 bod 5 zadání) — obsah řídí aktivní záložka
+  // pásu (monoActiveTab), NE cílová strana/kapacita jako u SEGMENTu. Klíč
+  // objektu = záložka, `kind` je druhý parametr onMonoAdd(layer, kind) přesně
+  // podle §4 zadání. 'limec' a 'arms' tu záměrně chybí — ty paletu skrývají.
+  const MONO_TAB_SPECIALS = {
+    herdblok: [{ key: 'surface', i18nKey: 'mono.item.surface', kind: 'surface' }],
+    podestavby: [
+      { key: 'cabinet', i18nKey: 'mono.item.cabinet', kind: 'cabinet' },
+      { key: 'gap', i18nKey: 'mono.item.gap', kind: 'gap' },
+    ],
+    panel: [
+      { key: 'socket230', i18nKey: 'mono.panel.socket230', kind: 'socket230' },
+      { key: 'socketCEE', i18nKey: 'mono.panel.socketCEE', kind: 'socketCEE' },
+    ],
+  };
+
+  /** Paleta pro MONO — samostatná větev volaná z renderPaletteList (viz níže),
+   *  aby SEGMENT větev pod ní zůstala nedotčená (§8 bod 5 zadání). Záložky
+   *  'limec' a 'arms' paletu skrývají celou (ramena se přidávají z pruhu
+   *  parametrů pásu, límce nemají žádnou přidatelnou položku). */
+  function renderMonoPaletteList() {
+    paletteEls.badge.hidden = true; // MONO nemá cílovou stranu jako ostrovní SEGMENT
+
+    const paletteHidden = monoActiveTab === 'limec' || monoActiveTab === 'arms';
+    paletteEls.section.hidden = paletteHidden;
+    if (paletteHidden) return;
+
+    const query = norm(paletteEls.search ? paletteEls.search.value : '');
+    const layer = (monoActiveTab === 'podestavby' || monoActiveTab === 'panel') ? monoActiveTab : 'herdblok';
+
+    paletteEls.list.innerHTML = '';
+    let hasCatalogRows = false;
+
+    if (layer === 'herdblok') {
+      getCatalogVisible().filter((def) => !query
+        || norm(getEntryDisplayName(def)).includes(query)
+        || norm(def.catalogCode).includes(query)).forEach((def) => {
+        const name = getEntryDisplayName(def);
+        const widthText = def.widthAdjustable
+          ? t('catalog.widthFrom', { mm: def.minWidthMM })
+          : t('catalog.widthExact', { mm: def.widthMM });
+        const iconKey = (def.topFeature && def.topFeature.type) || 'none';
+        paletteEls.list.appendChild(paletteRow(
+          iconKey, def, name, widthText,
+          () => callbacks.onMonoAdd?.('herdblok', def.id),
+          false,
+        ));
+        hasCatalogRows = true;
+      });
+    }
+
+    const specials = (MONO_TAB_SPECIALS[layer] || [])
+      .map((sp) => ({ ...sp, name: t(sp.i18nKey) }))
+      .filter((sp) => !query || norm(sp.name).includes(query));
+
+    if (hasCatalogRows && specials.length > 0) {
+      const sep = document.createElement('li');
+      sep.className = 'palette-sep';
+      sep.setAttribute('aria-hidden', 'true');
+      paletteEls.list.appendChild(sep);
+    }
+    specials.forEach((sp) => {
+      paletteEls.list.appendChild(paletteRow(
+        sp.key, null, sp.name, '—', () => callbacks.onMonoAdd?.(layer, sp.kind), false,
+      ));
+    });
+
+    const nothingMatched = paletteEls.list.children.length === 0 && !!query;
+    paletteEls.empty.hidden = !nothingMatched;
+    if (nothingMatched) paletteEls.empty.textContent = t('palette.noResults');
+  }
+
   /** Překreslí jen obsah <ul id="palette-list"> podle aktuálního stavu
    *  aplikace a hodnoty vyhledávacího pole. Vyhledávací pole samo se
    *  nikdy nepřekresluje (uživatel by ztratil kurzor). */
   function renderPaletteList() {
     const state = lastPaletteState;
     if (!state || !paletteEls.list) return;
+
+    // MONO má úplně jinou logiku palety (podle záložky pásu, ne strany a
+    // kapacity) — samostatná větev, SEGMENT pod ní zůstává beze změny
+    // (§8 bod 5 zadání, stejný princip jako přepnutí v renderStrip výše).
+    if (currentProductType === 'mono') {
+      renderMonoPaletteList();
+      return;
+    }
 
     const isIsland = state.variant === 'island';
     const targetSide = isIsland ? state.editSide : 'A';
@@ -1410,9 +1538,22 @@ export function setupUI(callbacks) {
     if (grid) els.stripDetail.appendChild(grid);
   }
 
-  /** Vykreslí celý pás sestavy — záložky, kapacitu, karty a detail (§3.3–§3.8). */
+  /** Vykreslí celý pás sestavy — záložky, kapacitu, karty a detail (§3.3–§3.8).
+   *  U MONO se hned na začátku přepne na mono-ui.js (§8 bod 3 zadání) a funkce
+   *  skončí — zbytek dole je výhradně SEGMENT a MONO se ho nesmí dotknout. */
   function renderStrip(state) {
+    // lastStripState se nastavuje bez ohledu na typ produktu — čte ho i
+    // handler tlačítka „Nový projekt" (viz newProjectBtn výše), ať MONO
+    // nezůstane s hodnotou null jen kvůli dřívějšímu návratu níže.
     lastStripState = state;
+
+    const isMono = currentProductType === 'mono';
+    els.assemblyStrip.classList.toggle('strip-mono', isMono);
+    if (els.stripBody) els.stripBody.hidden = isMono;
+    if (els.monoStripBody) els.monoStripBody.hidden = !isMono;
+    if (els.stripCapacity) els.stripCapacity.hidden = isMono;
+    if (isMono) { getMonoStrip().render(state); return; }
+
     const isIsland = state.variant === 'island';
 
     // activeTab (mimo 'arms') se vždy řídí EDITOVANOU stranou — pohled
@@ -1548,8 +1689,14 @@ export function setupUI(callbacks) {
       if (els.startScreenOverlay) els.startScreenOverlay.hidden = true;
     },
     setProductType(type) {
+      // reset() shazuje lokální stav pásu MONO (aktivní záložka, výběr) —
+      // smí se zavolat jen při SKUTEČNÉ změně typu (§8 bod 4 zadání), jinak
+      // by každé volání se stejným typem uživateli zahodilo rozpracovaný
+      // výběr v pásu (setProductType volá main.js po každém rebuildBlock()).
+      const changed = type !== currentProductType;
       currentProductType = type;
       renderProductTypeChip();
+      if (changed) monoStrip?.reset();
     },
   };
 }

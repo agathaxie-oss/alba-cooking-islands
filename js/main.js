@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { setupEnvironment, createFloorMaterial, createBackgroundTexture } from './materials.js';
 import { buildBlock } from './block.js';
+import { buildMonoScene } from './mono-block.js';
 import {
   NEUTRAL_TYPE,
   CUSTOM_TYPE,
@@ -48,6 +49,21 @@ import {
   ARM_CENTER_OFFSET_DEFAULT,
 } from './arms.js';
 import { getById as getCatalogEntry, getCatalog, importCatalog } from './catalog.js';
+// §ÚKOL MONO §1/§10 (balík A5) — konstanty pro výchozí hodnoty/meze nových
+// polí state.mono. Zdroj pravdy zůstává mono-geometry.js, main.js si čísla
+// NEDUPLIKUJE (na rozdíl od řetězců END_TYPES o pár řádků níž, kde je
+// duplikace záměrná kvůli formátu souboru — viz sanitizeMonoEndType).
+import {
+  PODESTAVBA_WIDTH_DEFAULT_MM,
+  COLLAR_HEIGHT_MIN_MM,
+  COLLAR_HEIGHT_MAX_MM,
+  COLLAR_HEIGHT_DEFAULT_MM,
+} from './mono-geometry.js';
+// §ÚKOL MONO §2/§4 — computeMonoLayout je JEDINÁ funkce, která smí počítat
+// rozvržení pásů MONO (viz ZADANI-MONO-UI.md) — onMonoFillPodestavby a
+// onMonoAdd('panel', …) z ní čtou missingMM/usableFromMM/usableToMM, samy si
+// polohy nedopočítávají (soubor píše souběžně jiný člověk, viz zadání).
+import { computeMonoLayout } from './mono-layout.js';
 import {
   createCamera,
   createControls,
@@ -85,6 +101,126 @@ function sanitizeBodyStyle(def, value) {
     : ['closed'];
   return allowed.includes(value) ? value : allowed[0];
 }
+// §ÚKOL MONO — typ zakončení (levý/pravý konec bloku ALBA MONO), tolerantní
+// validace stejná jako u ostatních polí výše: neplatná/chybějící hodnota
+// spadne na výchozí 'svislaDeska', soubor se kvůli tomu NIKDY neodmítá.
+// Povolené hodnoty jsou VÝHRADNĚ 'svislaDeska' a 'svislaDeskaZkos' (řetězce
+// se ukládají do souboru projektu — musí se přesně shodovat s
+// mono-geometry.js END_TYPES; literály se drží přímo tady, mono-block.js/
+// main.js na mono-geometry.js záměrně nezávisí přes společnou konstantu).
+function sanitizeMonoEndType(value) {
+  return value === 'svislaDeskaZkos' ? 'svislaDeskaZkos' : 'svislaDeska';
+}
+
+// §ÚKOL MONO §10 (balík A5) — verze formátu uloženého souboru. SPEC v4 měla
+// natvrdo 4 a applyConfig() při jiné hodnotě soubor tvrdě odmítala (viz
+// dřívější kontrola níže) — ZADANI-MONO-UI.md §0 tohle RUŠÍ: aplikace je
+// interní/nenasazená, soubor se kvůli verzi už NIKDY neodmítá. Konstanta tu
+// zůstává (jediné místo, kde se číslo objevuje natvrdo), ale slouží už jen
+// k zápisu při ukládání a k informativnímu hlášení při načtení starší verze.
+const CONFIG_VERSION = 5;
+
+// §ÚKOL MONO §1/§10 (balík A5) — sanitizace nových seznamů state.mono
+// (herdblok/podestavby/panelItems/limec). Stejné pravidlo jako
+// sanitizeMonoEndType výše a sanitizeSegment níže: špatná/chybějící hodnota
+// se OŘEŽE nebo nahradí výchozí, soubor se kvůli ní NIKDY neodmítá. id se
+// bere ze SDÍLENÉHO čítače nextId (stejně jako segmenty/ramena) — dnešní kód
+// si id z uloženého souboru vůbec nepamatuje (sanitizeSegment i sanitizace
+// ramen níže přidělují nové id bez ohledu na raw.id), takže žádné ruční
+// „posunutí nextId za nejvyšší načtené id" není potřeba: kolize nemůže
+// nastat, dokud VŠECHNY seznamy (staré i nové) čerpají id výhradně odsud.
+
+const MONO_SURFACE_WIDTH_DEFAULT_MM = 400;      // §4 zadání — „rozumná výchozí šířka"
+const MONO_ITEM_FRONT_OFFSET_DEFAULT_MM = 100;  // HODNOTY-MONO.md — pristrojOdPredniHranyStandard
+const MONO_ITEM_GUARD_DEFAULT_MM = 50;          // HODNOTY-MONO.md — pristrojOchrannePoleMin
+const MONO_PANEL_ITEM_HEIGHT_DEFAULT_MM = 100;  // §1 zadání — MonoPanelItem.heightMM výchozí
+// Bez zadané horní meze pro bodyStyle skříňky — volím 'closed' jako výchozí
+// (první v povoleném výčtu, stejná konvence jako sanitizeBodyStyle výše,
+// kde neznámá hodnota taky spadne na allowed[0]).
+const MONO_CABINET_BODY_STYLES = ['closed', 'doors', 'open'];
+// Zadání nedává horní mez pro šířky/odsazení/polohy MONO položek — tohle číslo
+// je jen POJISTKA proti nesmyslné hodnotě z cizího/poškozeného souboru (aby
+// pravítko pásu v mono-ui.js nedostalo miliardy mm), ne požadavek specifikace.
+const MONO_SAFETY_MAX_MM = 20000;
+
+function sanitizeMonoCabinetBodyStyle(value) {
+  return MONO_CABINET_BODY_STYLES.includes(value) ? value : 'closed';
+}
+
+/** Kladné konečné číslo v [0, max], jinak `fallback` — společný vzorec pro
+ *  šířky/odsazení nových polí MONO (widthMM/frontOffsetMM/guardMM/heightMM). */
+function sanitizeMonoPositiveNumber(value, fallback, max = MONO_SAFETY_MAX_MM) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? clamp(n, 0, max) : fallback;
+}
+
+// MonoDevice (§1 zadání) — type je klíč katalogu NEBO 'surface'. Katalog se
+// čte JEN kvůli výchozí šířce chybějícího pole — přístroje samotné se ve 3D
+// nekreslí (§0 zadání), takže na rozdíl od sanitizeSegment se tu neznámý
+// katalogový klíč nezavrhuje, jen mu chybí zdroj výchozí šířky a spadne na
+// MONO_SURFACE_WIDTH_DEFAULT_MM.
+function sanitizeMonoDevice(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = nextId++;
+  const type = typeof raw.type === 'string' && raw.type.trim() ? raw.type : 'surface';
+  const def = type !== 'surface' ? getCatalogEntry(type) : null;
+  const widthMM = sanitizeMonoPositiveNumber(raw.widthMM, def ? def.widthMM : MONO_SURFACE_WIDTH_DEFAULT_MM);
+  const frontOffsetMM = sanitizeMonoPositiveNumber(raw.frontOffsetMM, MONO_ITEM_FRONT_OFFSET_DEFAULT_MM);
+  const guardMM = sanitizeMonoPositiveNumber(raw.guardMM, MONO_ITEM_GUARD_DEFAULT_MM);
+  return { id, type, widthMM, frontOffsetMM, guardMM };
+}
+
+// MonoCabinet (§1 zadání) — kind:'gap' nemá bodyStyle/plinth/finish (jen
+// widthMM): jde o úmyslně vynechaný most v řadě podestaveb, ne o skříňku.
+function sanitizeMonoCabinet(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = nextId++;
+  const widthMM = sanitizeMonoPositiveNumber(raw.widthMM, PODESTAVBA_WIDTH_DEFAULT_MM);
+  if (raw.kind === 'gap') {
+    return { id, kind: 'gap', widthMM };
+  }
+  return {
+    id,
+    kind: 'cabinet',
+    widthMM,
+    bodyStyle: sanitizeMonoCabinetBodyStyle(raw.bodyStyle),
+    plinth: sanitizePlinth(raw.plinth),
+    finish: sanitizeFinish(raw.finish),
+  };
+}
+
+// MonoPanelItem (§1 zadání) — xMM je ABSOLUTNÍ poloha po délce bloku, NENÍ
+// tu oříznutá do použitelného rozsahu panelu — to dělá až computeMonoLayout()
+// při vykreslení (§1/§2 zadání), protože rozsah závisí na AKTUÁLNÍM
+// leftEndType/rightEndType, který se může po uložení souboru změnit.
+function sanitizeMonoPanelItem(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = nextId++;
+  const kind = raw.kind === 'socketCEE' ? 'socketCEE' : 'socket230';
+  const xMM = clamp(Number(raw.xMM) || 0, 0, MONO_SAFETY_MAX_MM);
+  const heightMM = sanitizeMonoPositiveNumber(raw.heightMM, MONO_PANEL_ITEM_HEIGHT_DEFAULT_MM);
+  return { id, kind, xMM, heightMM };
+}
+
+// MonoCollar (§1 zadání) — jediný objekt, ne seznam položek; chybí-li
+// config.mono.limec celé (starší soubor verze 4), vrátí se rovnou výchozí
+// objekt (žádné id — límec není položka seznamu, nepotřebuje ho).
+function sanitizeMonoCollar(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    back: !!r.back,
+    left: !!r.left,
+    right: !!r.right,
+    heightMM: clamp(Number(r.heightMM) || COLLAR_HEIGHT_DEFAULT_MM, COLLAR_HEIGHT_MIN_MM, COLLAR_HEIGHT_MAX_MM),
+    // výchozí true (§1 zadání) — na rozdíl od back/left/right (výchozí false)
+    // se chybějící pole NESMÍ zaměnit s explicitně uloženým false.
+    alignSide: r.alignSide === undefined ? true : !!r.alignSide,
+  };
+}
+
+function defaultMonoCollar() {
+  return { back: false, left: false, right: false, heightMM: COLLAR_HEIGHT_DEFAULT_MM, alignSide: true };
+}
 
 // --- stav aplikace -----------------------------------------------------------
 
@@ -98,6 +234,24 @@ const state = {
   // řady tak neznamená změnu formátu uloženého souboru). 'segment' = dnešní
   // typ, výchozí i pro starší/cizí soubory bez tohoto pole (viz applyConfig).
   productType: 'segment', // 'segment' | 'mono'
+  // §ÚKOL MONO — celý datový model produktu ALBA MONO (§1 zadání). U produktu
+  // SEGMENT se NEPOUŽÍVÁ (SEGMENT tahle pole nikdy nečte ani nezobrazuje),
+  // ale drží se vždy (přírůstková pole, viz serializeConfig/applyConfig
+  // níže) — jednodušší než mít `state.mono` jen podmíněně přítomné.
+  // leftEndType/rightEndType: jediné povolené hodnoty jsou 'svislaDeska' a
+  // 'svislaDeskaZkos' (viz mono-geometry.js END_TYPES).
+  // herdblok/podestavby/panelItems: uspořádané seznamy, výchozí prázdné —
+  // POLOHY se z nich odvozují až computeMonoLayout() (mono-layout.js), tady
+  // se neukládají (§1 zadání, „Rozvržení se NEUKLÁDÁ").
+  // limec: viz defaultMonoCollar() výše.
+  mono: {
+    leftEndType: 'svislaDeska',
+    rightEndType: 'svislaDeska',
+    herdblok: [],
+    podestavby: [],
+    panelItems: [],
+    limec: defaultMonoCollar(),
+  },
   dimensions: { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: 900 },
   variant: 'single', // 'single' | 'island'
   segmentsA: [],
@@ -156,6 +310,31 @@ function createDefaultSegmentsA() {
 }
 state.segmentsA = createDefaultSegmentsA();
 
+// §ÚKOL MONO — PŘÁNÍ zadavatele: nový projekt MONO nezačíná s prázdnou řadou
+// podestaveb (viz PREDANI-2026-08-05-VECER.md „Co zbývá" bod 3 — prázdná
+// řada rovnou hlásí „chybí 2400 mm" a působí to jako chyba), ale s
+// předvyplněnou trojicí Skříňka 600 / volný prostor 600 / Skříňka 600.
+// Zbytek řady zůstává NEDOPLNĚNÝ ZÁMĚRNĚ — computeMonoLayout dopočítá
+// missingMM na konci použitelného rozsahu a UI to nahlásí jako „chybí N mm"
+// (mono.missing), přesně jako u ručně sestavované řady; tlačítko „Doplnit"
+// (onMonoFillPodestavby) zbytek dorovná stejně, jako by ho uživatel nechal
+// prázdný od začátku.
+//
+// Stejná konvence jako createDefaultSegmentsA()/defaultMonoCollar() výše —
+// JEDNO místo pro výchozí hodnoty, ať se při případné budoucí změně
+// nerozejdou. Položky se skládají přes sanitizeMonoCabinet(), NE ručním
+// literálem — bodyStyle/plinth/finish tak dostanou stejnou výchozí hodnotu
+// jako všude jinde v souboru (closed / DEFAULT_PLINTH / DEFAULT_FINISH) a
+// id se přiděluje ze sdíleného čítače nextId, stejně jako zbytek souboru
+// (sanitizeMonoCabinet uvnitř dělá `nextId++`).
+function createDefaultMonoPodestavby() {
+  return [
+    sanitizeMonoCabinet({ kind: 'cabinet', widthMM: 600 }),
+    sanitizeMonoCabinet({ kind: 'gap', widthMM: 600 }),
+    sanitizeMonoCabinet({ kind: 'cabinet', widthMM: 600 }),
+  ];
+}
+
 // --- helpery pro práci se dvěma nezávislými stranami -------------------------
 
 function getSideList(side) {
@@ -169,6 +348,17 @@ function findSegment(id) {
   seg = state.segmentsB.find((s) => s.id === id);
   if (seg) return { seg, side: 'B' };
   return null;
+}
+
+// §ÚKOL MONO §4 (balík A5) — najde položku MONO podle vrstvy a id. `layer`
+// 'panel' čte state.mono.panelItems (jméno pole, ne vrstvy, se liší — stejná
+// nesrovnalost je v i18n klíčích mono.tab.panel/mono.panelNote, viz zadání).
+function findMonoItem(layer, id) {
+  const list = layer === 'herdblok' ? state.mono.herdblok
+    : layer === 'podestavby' ? state.mono.podestavby
+    : layer === 'panel' ? state.mono.panelItems
+    : null;
+  return list ? list.find((item) => item.id === id) || null : null;
 }
 
 /** Vytvoří novou instanci katalogového segmentu (§3.1–3.3, §7.1 SPEC v3;
@@ -322,8 +512,19 @@ function rebuildScene() {
     disposeGroup(blockGroup);
   }
 
-  const dims = { ...state.dimensions, variant: state.variant };
-  const result = buildBlock(state.segmentsA, state.segmentsB, state.arms, dims);
+  // §ÚKOL MONO — volba typu bloku (úvodní obrazovka) teď skutečně přepíná,
+  // co se staví ve 3D (dřív šlo jen o evidenci v state.productType).
+  let result;
+  if (state.productType === 'mono') {
+    // TODO: varianta 'island' se u MONO zatím neřeší — chová se jako
+    // 'single' (buildMonoScene čte jen state.dimensions/state.mono, variantu
+    // vůbec nebere v potaz). Až MONO jednou dostane ostrovní variantu,
+    // přibude větev i tady.
+    result = buildMonoScene(state);
+  } else {
+    const dims = { ...state.dimensions, variant: state.variant };
+    result = buildBlock(state.segmentsA, state.segmentsB, state.arms, dims);
+  }
   blockGroup = result.group;
   selectable = result.selectable;
   state.builtDimensions = result.dimensions;
@@ -468,9 +669,22 @@ function usedCatalogTypes() {
 function serializeConfig() {
   const usedTypes = usedCatalogTypes();
   return {
-    version: 4,
+    version: CONFIG_VERSION,
     projectName: state.projectName,
     productType: state.productType,
+    // §ÚKOL MONO §10 — přírůstkové pole vedle productType (viz applyConfig
+    // níže: čte se tolerantně, chybějící/neplatná hodnota nikdy soubor
+    // neodmítne). v4→v5: přibyly herdblok/podestavby/panelItems/limec —
+    // seznamy se kopírují položku po položce (stejný vzorec jako
+    // segmentsA/segmentsB/arms níže), limec je jediný objekt.
+    mono: {
+      leftEndType: state.mono.leftEndType,
+      rightEndType: state.mono.rightEndType,
+      herdblok: state.mono.herdblok.map((item) => ({ ...item })),
+      podestavby: state.mono.podestavby.map((item) => ({ ...item })),
+      panelItems: state.mono.panelItems.map((item) => ({ ...item })),
+      limec: { ...state.mono.limec },
+    },
     variant: state.variant,
     environment: state.environment,
     dimensions: { ...state.dimensions },
@@ -630,38 +844,52 @@ function applyConfig(config) {
     return;
   }
 
-  // SPEC v4 — soubor musí být v aktuálním formátu (version 4); jiná nebo
-  // chybějící verze se odmítne stejně jako neplatný soubor. Tahle kontrola
-  // musí proběhnout jako úplně první — dřív, než se cokoli v aplikaci nebo
-  // v katalogu změní (viz sloučení importovaného katalogu níže).
-  if (config.version !== 4) {
-    alert(t('alert.invalidConfig'));
-    return;
+  // §ÚKOL MONO §0/§10 (balík A5) — SPEC v4 tu měla tvrdé odmítnutí při jiné
+  // verzi (config.version !== 4). ZADANI-MONO-UI.md §0 tohle RUŠÍ: „soubor
+  // se NIKDY neodmítne" platí teď i pro verzi samotnou, ne jen pro
+  // jednotlivé hodnoty — starý soubor verze 4 (bez herdblok/podestavby/
+  // panelItems/limec) se musí načíst BEZE CHYBY, jen s novými poli na
+  // výchozích hodnotách (viz sanitizace state.mono níže). Verze se dál čte
+  // jen informativně, nic tu už nevede k `return`.
+  if (config.version !== CONFIG_VERSION) {
+    console.warn(`Soubor má verzi formátu ${config.version}, aktuální je ${CONFIG_VERSION} — načítá se tolerantně.`);
   }
 
   const rawSegmentsA = config.segmentsA;
   const rawSegmentsB = config.segmentsB;
+  // §ÚKOL MONO §10 — čte se už TADY (dřív, než dřívější umístění o pár řádků
+  // níž u productType), aby ho šlo použít i v kontrole prázdné konfigurace
+  // hned pod tímto blokem — viz rawMonoHerdblokCount/rawMonoPodestavbyCount.
+  const rawMono = config.mono && typeof config.mono === 'object' ? config.mono : {};
 
   if (!Array.isArray(rawSegmentsA) && !Array.isArray(rawSegmentsB) && !Array.isArray(config.arms)) {
     alert(t('alert.invalidConfig'));
     return;
   }
 
-  // Kontrola prázdné konfigurace (žádný segment ani rameno) musí proběhnout
-  // NAD SUROVÝMI poli konfigurace (config.segmentsA/B, config.arms), ne nad
-  // už sanitizovanými — sanitizace segmentů níže (sanitizeSegment →
-  // getCatalogEntry) totiž potřebuje mít katalog z importu už sloučený (viz
-  // importCatalog níže), a to sloučení smí proběhnout až PO týhle kontrole:
-  // odmítnutý soubor (return) tak nezanechá žádnou stopu v katalogu uživatele
-  // ani v localStorage. Pole, která nejsou pole (chybí/jsou cizího typu), se
-  // počítají jako 0 prvků.
+  // Kontrola prázdné konfigurace (žádný segment, rameno ani MONO obsah) musí
+  // proběhnout NAD SUROVÝMI poli konfigurace (config.segmentsA/B, config.arms,
+  // config.mono.herdblok/podestavby), ne nad už sanitizovanými — sanitizace
+  // segmentů níže (sanitizeSegment → getCatalogEntry) totiž potřebuje mít
+  // katalog z importu už sloučený (viz importCatalog níže), a to sloučení
+  // smí proběhnout až PO týhle kontrole: odmítnutý soubor (return) tak
+  // nezanechá žádnou stopu v katalogu uživatele ani v localStorage. Pole,
+  // která nejsou pole (chybí/jsou cizího typu), se počítají jako 0 prvků.
   // Pozn.: soubor s neprázdnými poli, ale se všemi prvky nepoužitelnými (po
   // sanitizaci níže samé null), touhle kontrolou projde a katalog se sloučí,
   // i když nakonec nevznikne žádný segment — neškodné, řešit to netřeba.
   const rawSegmentsACount = Array.isArray(rawSegmentsA) ? rawSegmentsA.length : 0;
   const rawSegmentsBCount = Array.isArray(rawSegmentsB) ? rawSegmentsB.length : 0;
   const rawArmsCount = Array.isArray(config.arms) ? config.arms.length : 0;
-  if (rawSegmentsACount === 0 && rawSegmentsBCount === 0 && rawArmsCount === 0) {
+  // §ÚKOL MONO §10 — MONO projekt typicky nemá žádný segment/rameno (ty patří
+  // SEGMENTu), ale klidně obsazený herdblok/řadu podestaveb. Bez týhle
+  // podmínky by takový validní MONO soubor spadl do „prázdná konfigurace" a
+  // dostal alert.emptyConfig, přestože §0 zadání říká, že se soubor kvůli
+  // obsahu nikdy neodmítá.
+  const rawMonoHerdblokCount = Array.isArray(rawMono.herdblok) ? rawMono.herdblok.length : 0;
+  const rawMonoPodestavbyCount = Array.isArray(rawMono.podestavby) ? rawMono.podestavby.length : 0;
+  if (rawSegmentsACount === 0 && rawSegmentsBCount === 0 && rawArmsCount === 0
+      && rawMonoHerdblokCount === 0 && rawMonoPodestavbyCount === 0) {
     alert(t('alert.emptyConfig'));
     return;
   }
@@ -673,6 +901,16 @@ function applyConfig(config) {
   // kontrol/sloučení je opravená chyba (odmítnutý soubor nesmí zanechat
   // stopu v katalogu) a nesmí se rozbít vsunutím dalšího kroku doprostřed.
   const productType = config.productType === 'mono' ? 'mono' : 'segment';
+
+  // §ÚKOL MONO — stejné pravidlo/stejná fáze jako productType výše: tolerantní
+  // validace, žádné odmítnutí souboru. Chybějící/neplatná hodnota (nebo
+  // úplně chybějící config.mono u starších/cizích souborů) spadne na výchozí
+  // 'svislaDeska' na obou koncích. herdblok/podestavby/panelItems/limec se
+  // doplní NÍŽ, až po sloučení katalogu z importu (viz komentář tam).
+  const monoConfig = {
+    leftEndType: sanitizeMonoEndType(rawMono.leftEndType),
+    rightEndType: sanitizeMonoEndType(rawMono.rightEndType),
+  };
 
   // katalog z importu (pokud existuje) sloučit až TEĎ — po všech kontrolách
   // výše, které mohly vést k odmítnutí souboru (return), ale PŘED sanitizací
@@ -688,6 +926,20 @@ function applyConfig(config) {
 
   const segmentsA = (Array.isArray(rawSegmentsA) ? rawSegmentsA : []).map(sanitizeSegment).filter(Boolean);
   const segmentsB = (Array.isArray(rawSegmentsB) ? rawSegmentsB : []).map(sanitizeSegment).filter(Boolean);
+
+  // §ÚKOL MONO §10 — herdblok může odkazovat na katalogové přístroje
+  // (MonoDevice.type = klíč katalogu, viz sanitizeMonoDevice), proto se
+  // sanitizuje AŽ TEĎ, po sloučení katalogu z importu výše — stejný důvod
+  // jako u segmentsA/B. Chybějící seznam = prázdné pole, chybějící limec =
+  // výchozí objekt (defaultMonoCollar) — starý soubor verze 4 nemá žádné
+  // z těchto polí a musí se přesto načíst beze chyby.
+  monoConfig.herdblok = (Array.isArray(rawMono.herdblok) ? rawMono.herdblok : [])
+    .map(sanitizeMonoDevice).filter(Boolean);
+  monoConfig.podestavby = (Array.isArray(rawMono.podestavby) ? rawMono.podestavby : [])
+    .map(sanitizeMonoCabinet).filter(Boolean);
+  monoConfig.panelItems = (Array.isArray(rawMono.panelItems) ? rawMono.panelItems : [])
+    .map(sanitizeMonoPanelItem).filter(Boolean);
+  monoConfig.limec = sanitizeMonoCollar(rawMono.limec);
 
   const arms = Array.isArray(config.arms)
     ? config.arms.filter((a) => a && typeof a === 'object').map((a) => {
@@ -720,14 +972,24 @@ function applyConfig(config) {
   // starší uložené soubory pole projectName nemají — musí se otevřít bez chyby (§4.4 zadání)
   state.projectName = typeof config.projectName === 'string' ? config.projectName.slice(0, 60) : '';
   state.productType = productType; // §ÚKOL A — spočítáno výše, PŘED sloučením katalogu
+  state.mono = monoConfig; // §ÚKOL MONO — spočítáno výše, stejná fáze jako productType
   state.selectedId = null;
 
   floorMesh.material = createFloorMaterial(state.environment === 'dark');
+  // §ÚKOL MONO — OPRAVA POŘADÍ (nalezeno při ověřování v prohlížeči):
+  // ui.setProductType() musí proběhnout PŘED rebuildBlock(). ui.js si typ
+  // bloku drží jako VLASTNÍ kopii (`currentProductType`, viz ui.js) a
+  // renderStrip() — volané uvnitř rebuildBlock() přes ui.render(state) —
+  // se podle NÍ větví, ne podle state.productType. Při opačném pořadí by po
+  // načtení MONO souboru odznak typu bloku sice hlásil ALBA MONO, ale spodní
+  // pás by ještě jedno překreslení zůstal segmentový (#mono-strip-body
+  // skrytý, třída .strip-mono neaktivní) — srovnalo by se to samo až při
+  // dalším rebuildBlock(), takže šlo čistě o chybu pořadí volání.
+  ui.setProductType(state.productType); // §ROZHRANÍ proti ui.js — po načtení souboru
   rebuildBlock();
   // §9 SPEC v4 — načtení konfigurace ze souboru/prohlížeče je jedno
   // z povolených míst pro přerámování kamery.
   reframeCamera();
-  ui.setProductType(state.productType); // §ROZHRANÍ proti ui.js — po načtení souboru
   hasUnsavedChanges = false; // §ÚKOL C — čerstvě načtený soubor = žádné neuložené změny
 }
 
@@ -1018,6 +1280,134 @@ const ui = setupUI({
     rebuildScene();
   },
 
+  // §ÚKOL MONO §4 (balík A5) — callbacky spodního pásu ALBA MONO, jména a
+  // počet přesně podle ZADANI-MONO-UI.md §4 (9 callbacků). CHYBĚLY ÚPLNĚ —
+  // ui.js/mono-ui.js na ně volá přes `callbacks.onMonoXxx?.(...)` (viz
+  // ui.js getMonoStrip/renderMonoPaletteList), takže bez nich by KAŽDÁ
+  // akce v pásu MONO byla tiché no-op (optional chaining nespadne, ale nic
+  // se nestane). Záložka 'arms' NEMÁ vlastní callbacky — používá existující
+  // onAddArm/onRemoveArm/onArmPositionChange/onArmOffsetChange/
+  // onArmAngleChange výše (§4 zadání: „nezakládat pro ně nové").
+  //
+  // Polohy si žádný z nich nepočítá sám — kde je potřebují (onMonoFillPodestavby,
+  // onMonoAdd('panel', …)), čtou je z computeMonoLayout(state) (viz komentář
+  // u importu computeMonoLayout na začátku souboru a §2 zadání). Nové
+  // položky se sanitizují přes STEJNÉ funkce jako při načtení souboru
+  // (sanitizeMonoDevice/sanitizeMonoCabinet/sanitizeMonoPanelItem/
+  // sanitizeMonoCollar) — jediná definice pravidel, žádná duplikace.
+  onMonoEndTypeChange(side, endType) {
+    const value = sanitizeMonoEndType(endType);
+    if (side === 'right') state.mono.rightEndType = value;
+    else state.mono.leftEndType = value;
+    rebuildBlock();
+  },
+  onMonoAdd(layer, kind) {
+    // VADA (nahlásil zadavatel) — „Skříňky se přidávají zprava místo zleva.
+    // Je to nepřirozené." computeMonoLayout (mono-layout.js, layoutSequential)
+    // klade herdblok/podestavby KUMULATIVNĚ v POŘADÍ POLE od x=0, resp. od
+    // sideInsetMM(leftEndType), doprava — první prvek pole = nejlevější
+    // pozice na dráze, poslední prvek pole = pozice těsně před volnou/
+    // chybějící plochou vpravo. `push()` (dřívější kód) řadí novou položku
+    // na KONEC pole, takže skončí úplně vpravo, za všemi už přidanými —
+    // OPRAVA OPRAVY (zadavatel, 5. 8. večer): předchozí pokus tuhle vadu
+    // „opravil" změnou na `unshift()`, tedy přidáváním na ZAČÁTEK pole. To
+    // bylo špatně a zadavatel to odmítl: „nové položky by se neměly přidávat
+    // na začátek, ale na konec řady. Takto je to neintuitivní." Při unshift
+    // totiž platí, že když uživatel přidá postupně A, B, C, uvidí je v pásu
+    // jako C, B, A — v obráceném pořadí, než je zadával.
+    //
+    // Skutečná příčina původního hlášení „přidávají se zprava" NEBYLA v
+    // pořadí pole, ale v tom, že 3D scéna má oproti pásu PŘEVRÁCENOU osu X
+    // (viz PREDANI-2026-08-05-VECER.md §10) — v pásu položka přibývala
+    // vpravo správně, ale ve 3D se objevila na opačné straně bloku.
+    // Přidávání na konec (`push`) je tedy správné a zůstává.
+    //
+    // POZOR — tohle NEPLATÍ pro onMonoFillPodestavby() níže: „Doplnit" cíleně
+    // zaplňuje missingMM na KONCI použitelného rozsahu (zbytek řady vpravo od
+    // poslední položky), takže tam zůstává push (přidání na konec pole =
+    // přesně tam, kde chybějící úsek je).
+    if (layer === 'herdblok') {
+      state.mono.herdblok.push(sanitizeMonoDevice({ type: kind }));
+    } else if (layer === 'podestavby') {
+      state.mono.podestavby.push(sanitizeMonoCabinet({ kind }));
+    } else if (layer === 'panel') {
+      // §2 zadání — panelItems jsou POLOHY, ne pořadí („polohy, ne pořadí"
+      // v §1 zadání) — computeMonoLayout je nekumuluje podle indexu v poli,
+      // takže push/unshift tu na výsledné vykreslení nemá žádný vliv; push
+      // necháván jako neutrální/výchozí volba. Nová poloha se ČTE z
+      // computeMonoLayout (usableFromMM je vždy uvnitř použitelného rozsahu
+      // panelu), nedopočítává se ručně.
+      const layout = computeMonoLayout(state);
+      state.mono.panelItems.push(sanitizeMonoPanelItem({ kind, xMM: layout.usableFromMM }));
+    } else {
+      return; // neznámá vrstva — tiché no-op, žádný pád (stejné pravidlo jako jinde v MONO)
+    }
+    rebuildBlock();
+  },
+  onMonoRemove(layer, id) {
+    const list = layer === 'herdblok' ? state.mono.herdblok
+      : layer === 'podestavby' ? state.mono.podestavby
+      : layer === 'panel' ? state.mono.panelItems
+      : null;
+    if (!list) return;
+    const idx = list.findIndex((item) => item.id === id);
+    if (idx === -1) return;
+    list.splice(idx, 1);
+    rebuildBlock();
+  },
+  onMonoUpdate(layer, id, patch) {
+    // patch = „dílčí objekt polí" (§4 zadání) — stejný vzorec jako
+    // onEditCustom výše (Object.assign nad nalezenou položkou); jednotlivé
+    // hodnoty validuje vstupní prvek v mono-ui.js (rozsahy posuvníků/
+    // číselníků), stejně jako custom-dialog.js validuje výsledek pro
+    // onEditCustom, než ho sem main.js dostane.
+    const item = findMonoItem(layer, id);
+    if (!item || !patch || typeof patch !== 'object') return;
+    Object.assign(item, patch);
+    rebuildBlock();
+  },
+  onMonoMove(layer, id, dir) {
+    // dir: -1 | +1, jen 'herdblok'/'podestavby' (§4 zadání) — stejný vzorec
+    // jako onMoveSegment výše.
+    const list = layer === 'herdblok' ? state.mono.herdblok
+      : layer === 'podestavby' ? state.mono.podestavby
+      : null;
+    if (!list) return;
+    const idx = list.findIndex((item) => item.id === id);
+    const newIdx = idx + dir;
+    if (idx < 0 || newIdx < 0 || newIdx >= list.length) return;
+    const [item] = list.splice(idx, 1);
+    list.splice(newIdx, 0, item);
+    rebuildBlock();
+  },
+  onMonoFillPodestavby() {
+    // tlačítko „Doplnit" — dorovná řadu jednou skříňkou o šířce missingMM
+    // (§4 zadání); missingMM se ČTE z computeMonoLayout, nedopočítává se tu.
+    const layout = computeMonoLayout(state);
+    if (layout.missingMM <= 0) return;
+    state.mono.podestavby.push(sanitizeMonoCabinet({ kind: 'cabinet', widthMM: layout.missingMM }));
+    rebuildBlock();
+  },
+  onMonoCollarChange(patch) {
+    state.mono.limec = sanitizeMonoCollar({ ...state.mono.limec, ...patch });
+    rebuildBlock();
+  },
+  onMonoSelect(layer, id) {
+    // §3 zadání — výběr (zvýraznění dlaždice) je VNITŘNÍ stav mono-ui.js
+    // (`selected`), NENÍ součástí `state`; MONO navíc nemá ve 3D scéně žádné
+    // vybíratelné prvky (mono-block.js: `selectable` je vždy prázdné pole,
+    // přístroje se ve 3D nekreslí, §0 zadání). Handler tu je jen proto, aby
+    // main.js odpovídal §4 zadání jménem i počtem callbacků — dnes žádná
+    // stavová změna, žádný rebuildBlock().
+  },
+  onMonoTabChange(tab) {
+    // §4/§8 zadání — aktivní záložka pásu je vlastní stav ui.js
+    // (`monoActiveTab`, viz getMonoStrip/renderMonoPaletteList v ui.js),
+    // NENÍ pole ve `state`. ui.js si callback nejdřív ukusuje pro sebe
+    // (filtr palety) a teprve pak ho propouští sem — main.js na něj dnes
+    // nemá co reagovat (viz PREDANI-2026-08-05-VECER.md §4).
+  },
+
   onOpenDeviceManager() {
     deviceManager.open();
   },
@@ -1101,12 +1491,43 @@ const ui = setupUI({
     state.arms = [];
     state.selectedId = null;
     state.productType = type === 'mono' ? 'mono' : 'segment';
+    // §ÚKOL MONO — OPRAVA: reset na výchozí, stejně jako ostatní pole výše.
+    // Dřívější verze tu zapomínala herdblok/podestavby/panelItems/limec —
+    // po založení nového MONO projektu tak zůstávaly `undefined` a
+    // serializeConfig() (state.mono.panelItems.map(...) apod.) na tom padala
+    // TypeError hned při prvním pokusu o uložení. Stejné výchozí hodnoty jako
+    // v `state.mono` na začátku souboru — proto tu použit defaultMonoCollar(),
+    // ne ruční kopie objektu.
+    //
+    // PŘÁNÍ zadavatele (aktualizace §10 zadání — „Nový projekt MONO začíná
+    // s prázdnými poli" platí dál pro herdblok/panelItems, ale UŽ NE pro
+    // podestavby): řada podestaveb se předvyplní trojicí Skříňka 600 / volný
+    // prostor 600 / Skříňka 600 (createDefaultMonoPodestavby výše), zbytek
+    // řady zůstává záměrně nedoplněný a UI ho nahlásí jako „chybí N mm" —
+    // stejně jako u ručně sestavené řady. Předvyplňuje se JEN pro
+    // `type === 'mono'` — u nově založeného SEGMENT projektu by šlo o
+    // zbytečné čerpání z nextId pro pole, které se u SEGMENTu nikdy
+    // nezobrazí ani neuloží k ničemu užitečnému.
+    state.mono = {
+      leftEndType: 'svislaDeska',
+      rightEndType: 'svislaDeska',
+      herdblok: [],
+      podestavby: state.productType === 'mono' ? createDefaultMonoPodestavby() : [],
+      panelItems: [],
+      limec: defaultMonoCollar(),
+    };
 
+    // §ÚKOL MONO — OPRAVA POŘADÍ (stejná past jako v applyConfig výše):
+    // ui.setProductType() musí proběhnout PŘED rebuildBlock(), jinak
+    // renderStrip() uvnitř rebuildBlock() → ui.render(state) větví podle
+    // STARÉHO currentProductType, který si ui.js drží ve vlastní closure, a
+    // spodní pás by po založení MONO projektu zůstal segmentový, dokud by
+    // nepřišlo další překreslení.
+    ui.setProductType(state.productType);
     rebuildBlock();
     reframeCamera();
     hasUnsavedChanges = false; // §ÚKOL C — čerstvě založený projekt = žádné neuložené změny
 
-    ui.setProductType(state.productType);
     ui.hideStartScreen();
     // potvrzovací dotaz (rozpracovaná sestava se zahodí) řeší ui.js, tady se
     // už neptáme (viz zadání §ÚKOL A/rozhraní).

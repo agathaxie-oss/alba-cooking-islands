@@ -12,6 +12,8 @@
   --accent-darker: #004E78;
   --accent-soft: rgba(0, 131, 198, 0.12);
   --danger: #C0392B;
+  --warn: #B26A00;
+  --warn-soft: rgba(178, 106, 0, 0.12);
   --radius: 6px;
   --shadow: 0 1px 3px rgba(43, 42, 41, 0.12);
 }
@@ -1343,6 +1345,13 @@ body {
   overflow: hidden;
 }
 
+/* Pás SEGMENTu se u produktu MONO schovává atributem `hidden` (viz renderStrip
+   v ui.js) — display:flex výše by ho jinak přebilo a oba pásy by se vykreslily
+   přes sebe. Stejná past jako u .field-row a .dim-row níže. */
+.strip-body[hidden] {
+  display: none;
+}
+
 .assembly-strip.collapsed .strip-body {
   display: none;
 }
@@ -2273,4 +2282,562 @@ body {
 #sidebar > .panel-section:nth-of-type(-n + 2) {
   padding-top: 0;
   padding-bottom: 0;
+}
+
+/* ==========================================================================
+   PÁS SESTAVY — ALBA MONO (balík A2)
+   Přenos vzhledu z mockup-mono.html (tam prefix mk-, tady mono-), viz
+   ZADANI-MONO-UI.md §6. Pás MONO má jiný obsah než SEGMENT (dráhy úměrné
+   milimetrům místo řady karet), proto samostatná sada tříd místo rozšiřování
+   .strip-card/.module-* — obě sady žijí vedle sebe a ui.js mezi nimi
+   přepíná podle typu projektu (#mono-strip-body / .strip-body).
+   ========================================================================== */
+
+/* kontejner celého MONO pásu — sourozenec .strip-body (§7 zadání), stejná
+   role i vlastnosti: vyplní zbylou výšku pod záložkami, .strip-tab/
+   .strip-collapse zůstávají sdílené se SEGMENTem. [hidden] přepisuje
+   display:flex zpět na none, jinak by nativní atribut hidden (kterým ui.js
+   pás schovává/ukazuje) neměl proti display:flex šanci — stejný důvod jako
+   u ostatních [hidden] pravidel v tomto souboru (např. .dialog-overlay). */
+.mono-strip-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mono-strip-body[hidden] {
+  display: none;
+}
+
+/* obsah jedné záložky pásu (Herdblok/Podestavby sdílejí jeden panel se
+   dvěma dráhami, Čelní panel/Límce/Ramena mají každý svůj) — přepínání
+   viditelnosti jde přes atribut hidden, ne přes ruční display v JS */
+.mono-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 0 24px;
+  min-height: 0;
+}
+
+.mono-panel[hidden] {
+  display: none;
+}
+
+/* společné odsazení pravítka i drah, ať nula na všech řádcích sedí na
+   stejném x — .mono-scale-label je pevný sloupec s popiskem řádku,
+   .mono-scale je prostor, do kterého se kreslí dráha */
+.mono-scale-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.mono-scale-label {
+  flex: 0 0 92px;
+  width: 92px;
+  padding-right: 8px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.mono-scale {
+  position: relative;
+  flex: 1 1 auto;
+}
+
+/* výška řádku s pravítkem — mockup ji drží na zvláštní třídě (mk-ruler-row),
+   která do seznamu §6 nedopadla; bez pevné výšky by řádek s ryze
+   position:absolute obsahem (značky) zkolaboval na nulu */
+.mono-ruler-row {
+  height: 22px;
+  margin-top: 10px;
+}
+
+/* značky pravítka — i je svislá čárka, b je popisek (500, 1000, …) */
+.mono-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+}
+
+.mono-tick i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(-0.5px);
+  width: 1px;
+  height: 6px;
+  background: var(--text-muted);
+  display: block;
+}
+
+.mono-tick b {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* výška řádku dráhy (Herdblok, Podestavby, Čelní panel, Ramena) */
+.mono-track-row {
+  height: 52px;
+  margin-top: 6px;
+}
+
+/* dlaždice na dráze — poloha a šířka jsou úměrné milimetrům a nastavuje je
+   JavaScript inline (left/width v %), proto je tu CSS nedává — left:0;
+   width:0; jsou jen výchozí hodnoty před inline přepisem, stejně jako
+   v mockupu. position:absolute předpokládá position:relative na .mono-scale. */
+.mono-tile {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+  padding: 2px 3px;
+}
+
+.mono-tile-name {
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.mono-tile-size {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.mono-tile-sub {
+  font-size: 8.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.mono-tile-wide .mono-tile-name {
+  white-space: nowrap;
+}
+
+.mono-tile-device, .mono-tile-cabinet {
+  background: var(--bg-panel);
+}
+
+.mono-tile-surface {
+  background: var(--bg-input);
+}
+
+.mono-tile-surface .mono-tile-name, .mono-tile-surface .mono-tile-size {
+  color: var(--text-muted);
+}
+
+.mono-tile-selected {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.mono-tile-selected::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--accent);
+}
+
+/* ztlumení JEDNOTLIVÉ dlaždice na neaktivní záložce (Herdblok dráha vidí
+   Podestavby ztlumené a naopak) — nasazuje se přímo na dlaždici z JS, nikdy
+   na rodiče dráhy, aby hlášení .mono-tile-missing zůstalo plné i tehdy,
+   když je jeho dráha zrovna ta neaktivní */
+.mono-dimmed {
+  opacity: .42;
+}
+
+/* volná mezera mezi podestavbami = most, legitimní stav */
+.mono-tile-gap {
+  color: var(--text-muted);
+  background-color: var(--bg-panel);
+  background-image: repeating-linear-gradient(45deg, var(--border) 0 2px, transparent 2px 8px);
+}
+
+/* koncová zóna daná typem zakončení (50 u vodopádu, 70 u zkoseného) */
+.mono-tile-endzone {
+  background: var(--bg-panel-alt);
+  border-color: var(--bg-panel-alt);
+  color: var(--text-muted);
+}
+
+.mono-tile-endzone .mono-tile-size {
+  font-size: 9.5px;
+  margin-top: 0;
+}
+
+/* VOLBA 2A — řada podestaveb končí dřív než herdblok */
+.mono-tile-missing {
+  background-color: var(--warn-soft);
+  background-image: repeating-linear-gradient(45deg, var(--warn) 0 2px, transparent 2px 8px);
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  gap: 3px;
+}
+
+.mono-tile-missing .mono-tile-name {
+  font-weight: 600;
+  color: var(--warn);
+}
+
+.mono-btn-warn {
+  padding: 2px 9px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--warn);
+  background: var(--bg-panel);
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.mono-btn-warn:hover {
+  background: var(--warn-soft);
+}
+
+/* VOLBA 1B — zakončení jako grafická koncovka na konci dráhy, bez textu;
+   přečnívá přes konec dráhy (translate ∓52%), proto z-index:2 */
+.mono-endcap {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+  color: var(--accent-dark);
+  z-index: 2;
+}
+
+.mono-endcap:hover {
+  background: var(--accent-soft);
+}
+
+.mono-endcap-left {
+  left: 0;
+  transform: translate(-52%, -50%);
+}
+
+.mono-endcap-right {
+  right: 0;
+  transform: translate(52%, -50%);
+}
+
+.mono-endcap-glyph {
+  width: 26px;
+  height: 20px;
+}
+
+.mono-endcap-caret {
+  width: 9px;
+  height: 9px;
+  color: var(--text-muted);
+}
+
+.mono-track-note {
+  margin: 4px 0 0 92px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* bodový prvek na dráze (zásuvka v čelním panelu, rameno) — poloha (left)
+   je opět dopočtená v mm a nastavuje ji JavaScript inline, stejně jako
+   u .mono-tile */
+.mono-point {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 34px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+}
+
+.mono-point svg {
+  width: 17px;
+  height: 17px;
+}
+
+.mono-point b {
+  font-size: 8.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* vybraný bodový prvek — mockup značí obecnou třídou mk-selected, tady
+   dostává mono- prefix jako ostatní stavové třídy (viz .mono-tile-selected) */
+.mono-point-selected {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+/* podklad dráhy — kam prvek vůbec smí (např. čelní panel 50…2420 mm);
+   left/right stejně jako u .mono-tile dává JavaScript inline */
+.mono-track-bed {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.mono-track-bed-label {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+/* -- záložka Límce: formulář, ne dráha -- */
+
+.mono-limec-body {
+  display: flex;
+  gap: 26px;
+  padding: 14px 0 0;
+  min-height: 0;
+}
+
+.mono-limec-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.mono-limec-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mono-limec-row > label {
+  width: 132px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.mono-limec-diagram {
+  flex: 0 0 auto;
+  padding-left: 26px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mono-limec-diagram svg {
+  width: 240px;
+  height: 118px;
+}
+
+/* dvoustavový přepínač ano/ne (límce) */
+.mono-switch {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.mono-switch span {
+  padding: 4px 13px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.mono-switch span:hover {
+  color: var(--accent-dark);
+}
+
+/* stav „zapnuto" — mockup ho značí obecnou třídou mk-on, tady dostává
+   mono- prefix jako ostatní stavové třídy (viz .mono-tile-selected) */
+.mono-switch .mono-switch-on {
+  background: var(--accent-dark);
+  color: #fff;
+}
+
+.mono-switch .mono-switch-on:hover {
+  color: #fff;
+}
+
+/* -- pruh parametrů vybrané položky -- */
+
+.mono-param-bar {
+  margin-top: auto;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.mono-param-title {
+  flex: 0 0 auto;
+  width: 132px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mono-param-fields {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 18px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mono-param-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mono-param-field label {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.mono-param-display {
+  padding: 5px 9px;
+  font-size: 12px;
+  background: var(--bg-panel-alt);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.mono-param-input {
+  padding: 5px 9px;
+  font-size: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.mono-param-trash {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mono-param-trash svg {
+  width: 15px;
+  height: 15px;
+}
+
+.mono-param-trash:hover {
+  border-color: var(--danger);
+}
+
+/* Neutrální ikonové tlačítko v pruhu parametrů — stejný tvar jako koš, ale
+   bez jeho červené. Vzniklo pro šipky přeuspořádání: ty původně recyklovaly
+   .mono-param-trash a dědily z ní --danger, takže „posunout doleva" svítilo
+   stejně výstražně jako „smazat". Barvu nese jen akce, která doopravdy něco
+   ničí. */
+.mono-param-icon-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.mono-param-icon-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.mono-param-icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+/* Ztlumená šipka na kraji seznamu není jen bledá — nesmí ani reagovat na
+   najetí myší, aby nepředstírala, že se dá kliknout. */
+.mono-param-icon-btn.mono-dimmed:hover {
+  border-color: var(--border);
+  color: var(--text-main);
+  cursor: default;
+}
+
+.mono-param-add {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-dark);
+  border-radius: var(--radius);
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+}
+
+/* --accent-darker je tmavší hover odstín, který v souboru používají všechna
+   ostatní plná tlačítka (.icon-btn, .view-btn, #topbar .action-btn) — bez něj
+   by tlačítko jako jediné na hover nereagovalo. */
+.mono-param-add:hover {
+  background: var(--accent-darker);
+}
+
+/* výška pásu MONO — vyšší než dnešní SEGMENT pás; třída na #assembly-strip,
+   ne přepis výchozí výšky (tu si SEGMENT musí nechat, viz zadání §6) */
+#assembly-strip.strip-mono {
+  flex-basis: 268px;
+  height: 268px;
 }

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ALBA MONO — prototyp geometrie herdbloku</title>
+  <!-- Vývojářský nástroj, NENÍ součást produktu — vlastní minimální styl,
+       nesahá na css/style.css stávající aplikace. -->
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: system-ui, sans-serif;
+      background: #dfe3e7;
+      color: #22262b;
+    }
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      padding: 8px 12px; background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid #b9c0c7; font-size: 13px;
+    }
+    #hud h1 { font-size: 14px; margin: 0 12px 0 0; white-space: nowrap; }
+    .preset-btn {
+      border: 1px solid #8a94a0; background: #fff; color: #22262b;
+      border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 13px;
+    }
+    .preset-btn.active { background: #0083C6; color: #fff; border-color: #0083C6; }
+    .preset-btn:hover { border-color: #0083C6; }
+    #info {
+      position: fixed; left: 12px; bottom: 12px; z-index: 10;
+      background: rgba(255,255,255,0.92); border: 1px solid #b9c0c7;
+      border-radius: 6px; padding: 8px 12px; font-size: 12px;
+      max-width: 420px; white-space: pre-line; line-height: 1.5;
+    }
+    #controls-note {
+      position: fixed; right: 12px; bottom: 12px; z-index: 10;
+      background: rgba(255,255,255,0.92); border: 1px solid #b9c0c7;
+      border-radius: 6px; padding: 6px 10px; font-size: 12px;
+    }
+    #three-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="hud">
+    <h1>ALBA MONO — prototyp geometrie herdbloku</h1>
+    <button type="button" class="preset-btn" data-preset="normal">a) běžný blok</button>
+    <button type="button" class="preset-btn" data-preset="bridge">b) most</button>
+    <button type="button" class="preset-btn" data-preset="overhang">c) převis</button>
+    <button type="button" class="preset-btn" data-preset="ends">d) dvě zakončení</button>
+    <button type="button" class="preset-btn" data-preset="collar">e) límec</button>
+    <button type="button" class="preset-btn" data-preset="cover">f) boční kryt</button>
+    <button type="button" class="preset-btn" data-preset="all">vše najednou</button>
+  </div>
+  <div id="info"></div>
+  <div id="controls-note">Střední tlačítko: rotace · Pravé tlačítko: posun · Kolečko: zoom</div>
+  <canvas id="three-canvas"></canvas>
+  <script type="module" src="js/mono-prototype.js"></script>
+</body>
+</html>

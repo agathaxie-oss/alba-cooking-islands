@@ -13,3 +13,6 @@ Alba_logomanual.pdf
 
 # Nasazovací návod — může obsahovat údaje o infrastruktuře
 DEPLOY.md
+
+# Lokalni nastaveni stroje, ne projektu
+.claude/settings.local.json

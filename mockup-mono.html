@@ -1,0 +1,1314 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mockup ovládání — ALBA MONO</title>
+<style>
+/* Proměnné jsou převzaté 1:1 z css/style.css, aby mockup a aplikace nemohly
+   začít žít každý svým životem. --warn tam není, doplněné jen pro hlášení
+   „řada podestaveb je kratší" (volba 2A). */
+:root {
+  --bg-panel: #FEFEFE;
+  --bg-panel-alt: #EBECEC;
+  --bg-input: #F6F7F7;
+  --border: #D8D9D9;
+  --text-main: #2B2A29;
+  --text-muted: #5B5B5B;
+  --accent: #0083C6;
+  --accent-dark: #00639A;
+  --accent-darker: #004E78;
+  --accent-soft: rgba(0, 131, 198, 0.12);
+  --danger: #C0392B;
+  --warn: #B26A00;
+  --warn-soft: rgba(178, 106, 0, 0.12);
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(43, 42, 41, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-panel-alt);
+  color: var(--text-main);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+body { padding: 40px 24px 80px; }
+
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; list-style: none; }
+img, svg { display: block; }
+
+/* Prvky, které jen vypadají jako ovládání. Skutečné <input>/<select> se v
+   mockupu nepoužívají (měly by nativní chování i bez JS) — výjimkou jsou
+   skryté radiopřepínače záložek pásu, které dělají přepínání záložek. */
+.mk-fake { cursor: default; user-select: none; }
+
+.mk-section-title {
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* ================= RÁM APLIKACE (1440×900) ================= */
+
+.mk-frame-wrap { display: flex; justify-content: center; }
+
+.mk-frame {
+  width: 1440px;
+  height: 900px;
+  flex: 0 0 auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- A. HORNÍ LIŠTA — shodná se SEGMENTem ----------
+   Kopie #topbar z index.html + css/style.css: výška 52, pozadí --accent,
+   ikonová tlačítka 34×34 na --accent-dark, aktivní bílé. Skupina pohledů
+   sedí v poloprůhledné „vaničce", přepínač stran A/B je skrytý (blok u
+   stěny), stejně jako v aplikaci. */
+
+.mk-topbar {
+  flex: 0 0 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  background: var(--accent);
+}
+
+.mk-topbar-left, .mk-topbar-center, .mk-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mk-topbar-left { flex: 0 0 auto; }
+.mk-topbar-center { flex: 1 1 auto; justify-content: center; }
+.mk-topbar-right { flex: 0 0 auto; justify-content: flex-end; }
+
+.mk-topbar-logo { height: 26px; }
+
+.mk-btn-row { display: flex; gap: 6px; flex-wrap: nowrap; }
+
+.mk-view-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mk-view-btn, .mk-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent-dark);
+  color: #fff;
+}
+.mk-view-btn svg { width: 20px; height: 20px; }
+.mk-icon-btn svg { width: 17px; height: 17px; }
+
+.mk-view-btn:hover, .mk-icon-btn:hover { background: var(--accent-darker); }
+.mk-view-btn.mk-active, .mk-icon-btn.mk-active { background: #fff; color: var(--accent-dark); }
+.mk-view-btn.mk-active:hover, .mk-icon-btn.mk-active:hover { background: #fff; }
+
+.mk-env-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  outline: 1px solid rgba(255, 255, 255, 0.45);
+}
+.mk-env-btn.mk-light { background: #EBECEC; }
+.mk-env-btn.mk-dark { background: #2B2A29; }
+.mk-env-btn.mk-active { outline: 2px solid #fff; }
+
+.mk-lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 7px;
+  border-radius: 4px;
+  background: transparent;
+  outline: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+.mk-lang-btn:hover { background: rgba(255, 255, 255, 0.16); }
+.mk-lang-flag { width: 22px; height: 15px; border-radius: 2px; overflow: hidden; }
+.mk-lang-flag svg { width: 100%; height: 100%; }
+.mk-lang-caret { width: 12px; height: 12px; }
+
+/* ---------- řádek pod lištou ---------- */
+
+.mk-app-row { flex: 1 1 auto; display: flex; min-height: 0; }
+
+/* ---------- B. LEVÝ PANEL (240px, jako v aplikaci) ---------- */
+
+.mk-sidebar {
+  flex: 0 0 240px;
+  width: 240px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 20px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.mk-panel-section { padding-bottom: 14px; }
+
+.mk-project-name-row { position: relative; margin-bottom: 8px; }
+.mk-fake-input {
+  width: 100%;
+  padding: 6px 26px 6px 9px;
+  font-size: 13px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mk-pencil {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 13px;
+  height: 13px;
+  color: var(--text-muted);
+}
+
+.mk-project-actions { display: flex; gap: 6px; margin-bottom: 10px; }
+.mk-icon-btn-sm {
+  flex: 1;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.mk-icon-btn-sm svg { width: 18px; height: 18px; }
+.mk-icon-btn-sm:hover { border-color: var(--accent); color: var(--accent-dark); }
+
+.mk-project-type-row { display: flex; align-items: flex-start; gap: 7px; flex-wrap: wrap; }
+.mk-chip {
+  flex-shrink: 0;
+  padding: 2px 9px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.mk-note { flex: 1 1 90px; color: var(--text-muted); font-size: 10.5px; }
+
+/* -- Rozměry bloku — stejná pole jako u SEGMENTu, Délka je zase vstup -- */
+
+.mk-seg-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.mk-seg { flex: 1; text-align: center; padding: 5px 4px; font-size: 11.5px; color: var(--text-muted); }
+.mk-seg:hover { color: var(--accent-dark); }
+.mk-seg.mk-active { background: var(--accent-dark); color: #fff; }
+.mk-seg.mk-active:hover { color: #fff; }
+
+.mk-dim-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.mk-dim-row label { flex: 1 1 auto; font-size: 12px; color: var(--text-muted); }
+.mk-dim-input {
+  flex-shrink: 0;
+  width: 66px;
+  text-align: right;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.mk-dim-unit { font-size: 11px; color: var(--text-muted); width: 18px; flex-shrink: 0; }
+
+/* -- Přidat prvek -- */
+
+.mk-palette-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.mk-palette-head .mk-section-title { margin-bottom: 0; }
+.mk-palette-badge {
+  padding: 2px 8px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mk-search-fake {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+.mk-search-fake svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+.mk-palette-list { display: flex; flex-direction: column; gap: 1px; margin-bottom: 8px; }
+.mk-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+.mk-palette-item:hover { background: var(--accent-soft); }
+.mk-palette-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-palette-width { flex-shrink: 0; width: 30px; text-align: right; font-size: 11px; color: var(--text-muted); }
+.mk-palette-plus { flex-shrink: 0; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; color: var(--accent-dark); }
+.mk-palette-plus svg { width: 13px; height: 13px; }
+
+.mk-palette-item.mk-muted .mk-palette-name { color: var(--text-muted); }
+.mk-palette-name-wrap { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.mk-palette-sub { font-size: 9.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-palette-plus-space { width: 18px; flex-shrink: 0; }
+
+.mk-palette-link { font-size: 11.5px; color: var(--accent-dark); text-decoration: underline; }
+.mk-palette-link:hover { color: var(--accent); }
+
+.mk-sidebar-footer { margin-top: auto; padding-top: 10px; font-size: 10px; color: var(--text-muted); line-height: 1.35; }
+
+/* ---------- C. STAGE ---------- */
+
+.mk-stage { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+
+.mk-viewport {
+  flex: 1 1 auto;
+  position: relative;
+  background: var(--bg-panel-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mk-viewport-label { font-size: 14px; color: var(--text-muted); }
+
+.mk-selection-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 7px 13px;
+  font-size: 12.5px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ---------- D. SPODNÍ PÁS ---------- */
+
+.mk-strip {
+  flex: 0 0 268px;
+  height: 268px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* skryté radiopřepínače — jediný kus „chování" v mockupu, aby šlo záložky
+   pásu opravdu proklikat bez JavaScriptu */
+.mk-tab-radio { position: absolute; opacity: 0; pointer-events: none; }
+
+.mk-strip-head {
+  flex: 0 0 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mk-strip-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mk-strip-tab:hover { color: var(--accent-dark); }
+
+.mk-strip-collapse {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.mk-strip-collapse svg { width: 12px; height: 12px; }
+.mk-strip-collapse:hover { border-color: var(--accent); color: var(--accent-dark); }
+
+/* aktivní záložka */
+#mk-tab-herd:checked   ~ .mk-strip-head label[for="mk-tab-herd"],
+#mk-tab-pode:checked   ~ .mk-strip-head label[for="mk-tab-pode"],
+#mk-tab-celni:checked  ~ .mk-strip-head label[for="mk-tab-celni"],
+#mk-tab-limce:checked  ~ .mk-strip-head label[for="mk-tab-limce"],
+#mk-tab-ramena:checked ~ .mk-strip-head label[for="mk-tab-ramena"] {
+  color: var(--text-main);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* obsah záložek */
+.mk-panel { display: none; flex: 1 1 auto; flex-direction: column; padding: 0 24px; min-height: 0; }
+
+#mk-tab-herd:checked   ~ .mk-panels .mk-panel-scale,
+#mk-tab-pode:checked   ~ .mk-panels .mk-panel-scale,
+#mk-tab-celni:checked  ~ .mk-panels .mk-panel-celni,
+#mk-tab-limce:checked  ~ .mk-panels .mk-panel-limce,
+#mk-tab-ramena:checked ~ .mk-panels .mk-panel-ramena { display: flex; }
+
+.mk-panels { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+
+/* dráha, která na dané záložce není editovaná, jen svítí jako kontext.
+   Ztlumují se jednotlivé dlaždice, ne celá dráha — hlášení „chybí" (2A) musí
+   zůstat plné i tehdy, když se zrovna edituje druhá vrstva. */
+#mk-tab-herd:checked ~ .mk-panels .mk-track-pode .mk-tile:not(.mk-tile-missing),
+#mk-tab-herd:checked ~ .mk-panels .mk-track-pode .mk-scale-label,
+#mk-tab-pode:checked ~ .mk-panels .mk-track-herd .mk-tile,
+#mk-tab-pode:checked ~ .mk-panels .mk-track-herd .mk-scale-label,
+#mk-tab-pode:checked ~ .mk-panels .mk-track-herd .mk-endcap { opacity: 0.42; }
+
+/* pruh parametrů se mění se záložkou */
+#mk-tab-herd:checked ~ .mk-panels .mk-param-pode,
+#mk-tab-pode:checked ~ .mk-panels .mk-param-herd { display: none; }
+
+/* -- společné odsazení pravítka i drah, ať nula sedí -- */
+
+.mk-scale-row { display: flex; align-items: stretch; }
+.mk-scale-label {
+  flex: 0 0 92px;
+  width: 92px;
+  padding-right: 8px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+.mk-scale { position: relative; flex: 1 1 auto; }
+
+/* pravítko */
+
+.mk-ruler-row { height: 22px; margin-top: 10px; }
+.mk-tick { position: absolute; top: 0; bottom: 0; left: 0; width: 0; }
+.mk-tick i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(-0.5px);
+  width: 1px;
+  height: 6px;
+  background: var(--text-muted);
+  display: block;
+}
+.mk-tick b {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* dráhy */
+
+.mk-track-row { height: 52px; margin-top: 6px; }
+
+.mk-tile {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-align: center;
+  padding: 2px 3px;
+}
+.mk-tile-name { font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mk-tile-size { font-size: 9.5px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
+.mk-tile-sub { font-size: 8.5px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; }
+.mk-tile-wide .mk-tile-name { white-space: nowrap; }
+
+.mk-tile-device, .mk-tile-cabinet { background: var(--bg-panel); }
+.mk-tile-surface { background: var(--bg-input); }
+.mk-tile-surface .mk-tile-name, .mk-tile-surface .mk-tile-size { color: var(--text-muted); }
+
+.mk-tile-selected { border: 2px solid var(--accent); background: var(--accent-soft); }
+.mk-tile-selected::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--accent);
+}
+
+/* volná mezera mezi podestavbami = most, legitimní stav */
+.mk-tile-gap {
+  color: var(--text-muted);
+  background-color: var(--bg-panel);
+  background-image: repeating-linear-gradient(45deg, var(--border) 0 2px, transparent 2px 8px);
+}
+
+/* koncová zóna daná typem zakončení (50 u vodopádu, 70 u zkoseného) */
+.mk-tile-endzone {
+  background: var(--bg-panel-alt);
+  border-color: var(--bg-panel-alt);
+  color: var(--text-muted);
+}
+.mk-tile-endzone .mk-tile-size { font-size: 9.5px; margin-top: 0; }
+
+/* VOLBA 2A — řada podestaveb končí dřív než herdblok */
+.mk-tile-missing {
+  background-color: var(--warn-soft);
+  background-image: repeating-linear-gradient(45deg, var(--warn) 0 2px, transparent 2px 8px);
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  gap: 3px;
+}
+.mk-tile-missing .mk-tile-name { font-weight: 600; color: var(--warn); }
+.mk-btn-warn {
+  padding: 2px 9px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--warn);
+  background: var(--bg-panel);
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.mk-btn-warn:hover { background: var(--warn-soft); }
+
+/* VOLBA 1B — zakončení jako grafická koncovka na konci dráhy, bez textu */
+.mk-endcap {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+  color: var(--accent-dark);
+  z-index: 2;
+}
+.mk-endcap:hover { background: var(--accent-soft); }
+.mk-endcap-left { left: 0; transform: translate(-52%, -50%); }
+.mk-endcap-right { right: 0; transform: translate(52%, -50%); }
+.mk-endcap-glyph { width: 26px; height: 20px; }
+.mk-endcap-caret { width: 9px; height: 9px; color: var(--text-muted); }
+
+.mk-track-note { margin: 4px 0 0 92px; font-size: 10.5px; color: var(--text-muted); }
+
+/* body na dráze (ramena, zásuvky mají vlastní vzhled níže) */
+.mk-point {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 34px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+}
+.mk-point svg { width: 17px; height: 17px; }
+.mk-point b { font-size: 8.5px; font-weight: 400; color: var(--text-muted); }
+.mk-point.mk-selected { border: 2px solid var(--accent); background: var(--accent-soft); }
+
+/* podklad dráhy — kam prvek vůbec smí (např. čelní panel 50…2420) */
+.mk-track-bed {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.mk-track-bed-label {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+/* -- záložka Límce: formulář, ne dráha -- */
+
+.mk-limce-body { display: flex; gap: 26px; padding: 14px 0 0; min-height: 0; }
+.mk-limce-opts { display: flex; flex-direction: column; gap: 9px; }
+.mk-limce-row { display: flex; align-items: center; gap: 10px; }
+.mk-limce-row > label { width: 132px; font-size: 12px; color: var(--text-muted); }
+
+.mk-switch { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.mk-switch span { padding: 4px 13px; font-size: 11.5px; color: var(--text-muted); }
+.mk-switch span:hover { color: var(--accent-dark); }
+.mk-switch span.mk-on { background: var(--accent-dark); color: #fff; }
+.mk-switch span.mk-on:hover { color: #fff; }
+
+.mk-limce-diagram {
+  flex: 0 0 auto;
+  padding-left: 26px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mk-limce-diagram svg { width: 240px; height: 118px; }
+.mk-diagram-cap { font-size: 10px; color: var(--text-muted); }
+
+/* -- pruh parametrů vybrané položky -- */
+
+.mk-param-bar {
+  margin-top: auto;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden;
+}
+.mk-param-title { flex: 0 0 auto; width: 132px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-param-fields { flex: 1 1 auto; display: flex; gap: 18px; min-width: 0; overflow: hidden; }
+.mk-param-field { display: flex; flex-direction: column; gap: 3px; }
+.mk-param-field label { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
+.mk-param-display {
+  padding: 5px 9px;
+  font-size: 12px;
+  background: var(--bg-panel-alt);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.mk-param-input {
+  padding: 5px 9px;
+  font-size: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.mk-param-trash {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.mk-param-trash svg { width: 15px; height: 15px; }
+.mk-param-trash:hover { border-color: var(--danger); }
+
+.mk-param-add {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-dark);
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+.mk-param-add:hover { background: var(--accent-darker); }
+
+/* ================= legenda pod rámem ================= */
+
+.mk-legend { max-width: 1440px; margin: 32px auto 0; display: flex; gap: 28px; flex-wrap: wrap; }
+.mk-legend-col { flex: 1 1 300px; min-width: 260px; }
+.mk-legend h3 { font-size: 12px; letter-spacing: 0.06em; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+.mk-legend li { font-size: 12px; color: var(--text-main); margin-bottom: 6px; padding-left: 14px; position: relative; line-height: 1.45; }
+.mk-legend li::before { content: "—"; position: absolute; left: 0; color: var(--text-muted); }
+.mk-legend-glyphs { display: flex; gap: 22px; align-items: center; margin-bottom: 10px; }
+.mk-legend-glyph { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.mk-legend-glyph svg { width: 34px; height: 26px; color: var(--accent-dark); }
+.mk-open { color: var(--warn); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="mk-frame-wrap">
+  <div class="mk-frame">
+
+    <!-- ============ A. HORNÍ LIŠTA — 1:1 se SEGMENTem ============ -->
+    <header class="mk-topbar">
+      <div class="mk-topbar-left">
+        <img class="mk-topbar-logo" src="img/logo-alba-white.svg" alt="ALBA" height="26" />
+      </div>
+
+      <div class="mk-topbar-center">
+        <div class="mk-view-group">
+          <div class="mk-btn-row">
+            <span class="mk-view-btn mk-active mk-fake" title="Perspektiva">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/></svg>
+            </span>
+            <span class="mk-view-btn mk-fake" title="Zepředu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 20V10l8-6 8 6v10z"/><path d="M4 10h16"/></svg>
+            </span>
+            <span class="mk-view-btn mk-fake" title="Shora">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 12h16"/></svg>
+            </span>
+          </div>
+          <!-- přepínač stran A/B je u bloku „u stěny" skrytý, stejně jako v aplikaci -->
+        </div>
+        <span class="mk-icon-btn mk-fake" title="Půdorys s popisky">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 5h18v14H3z"/><path d="M3 10h6v9"/><path d="M14 5v6h7"/></svg>
+        </span>
+      </div>
+
+      <div class="mk-topbar-right">
+        <div class="mk-btn-row">
+          <span class="mk-env-btn mk-light mk-active mk-fake" title="Světlá"></span>
+          <span class="mk-env-btn mk-dark mk-fake" title="Tmavá"></span>
+        </div>
+
+        <span class="mk-icon-btn mk-fake" title="Stáhnout PNG">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v12H3z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </span>
+
+        <span class="mk-icon-btn mk-fake" title="Správce přístrojů…">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.86-1.41-1.9-3.29-2.2.72a7.7 7.7 0 0 0-2.6-1.5L14.2 2h-4.4l-.42 2.02a7.7 7.7 0 0 0-2.6 1.5l-2.2-.72-1.9 3.29L4.54 10.5a7.6 7.6 0 0 0 0 3l-1.86 1.41 1.9 3.29 2.2-.72c.75.66 1.63 1.17 2.6 1.5L9.8 22h4.4l.42-2.02a7.7 7.7 0 0 0 2.6-1.5l2.2.72 1.9-3.29z"/></svg>
+        </span>
+
+        <span class="mk-lang-btn mk-fake" title="Jazyk">
+          <span class="mk-lang-flag">
+            <svg viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg">
+              <rect width="30" height="10" fill="#FFFFFF"/>
+              <rect y="10" width="30" height="10" fill="#D7141A"/>
+              <path d="M0 0 15 10 0 20Z" fill="#11457E"/>
+            </svg>
+          </span>
+          <span class="mk-lang-caret">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+        </span>
+      </div>
+    </header>
+
+    <div class="mk-app-row">
+
+      <!-- ============ B. LEVÝ PANEL ============ -->
+      <aside class="mk-sidebar">
+
+        <section class="mk-panel-section">
+          <h2 class="mk-section-title">Projekt</h2>
+
+          <div class="mk-project-name-row">
+            <div class="mk-fake-input mk-fake">Restaurace Na Hradbách</div>
+            <span class="mk-pencil">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+            </span>
+          </div>
+
+          <div class="mk-project-actions">
+            <span class="mk-icon-btn-sm mk-fake" title="Uložit konfiguraci">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M8 3v6h7V3"/><path d="M8 21v-7h8v7"/></svg>
+            </span>
+            <span class="mk-icon-btn-sm mk-fake" title="Načíst ze souboru">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6h6l2 2h10v11H3z"/><path d="M3 11h18"/></svg>
+            </span>
+            <span class="mk-icon-btn-sm mk-fake" title="Nový projekt">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
+            </span>
+          </div>
+
+          <div class="mk-project-type-row">
+            <span class="mk-chip">ALBA MONO</span>
+            <span class="mk-note">Změna typu znamená nový projekt.</span>
+          </div>
+        </section>
+
+        <!-- Rozměry bloku — stejné zadávání jako u SEGMENTu: uživatel zadá
+             rozměry a druh desky (u stěny / ostrov), teprve pak blok plní. -->
+        <section class="mk-panel-section">
+          <h2 class="mk-section-title">Rozměry bloku</h2>
+
+          <div class="mk-seg-toggle">
+            <span class="mk-seg mk-active mk-fake">u stěny</span>
+            <span class="mk-seg mk-fake">ostrov</span>
+          </div>
+
+          <div class="mk-dim-row">
+            <label>Délka</label>
+            <div class="mk-dim-input mk-fake">2490</div>
+            <span class="mk-dim-unit">mm</span>
+          </div>
+          <div class="mk-dim-row">
+            <label>Hloubka</label>
+            <div class="mk-dim-input mk-fake">850</div>
+            <span class="mk-dim-unit">mm</span>
+          </div>
+          <div class="mk-dim-row">
+            <label>Pracovní výška</label>
+            <div class="mk-dim-input mk-fake">900</div>
+            <span class="mk-dim-unit">mm</span>
+          </div>
+        </section>
+
+        <section class="mk-panel-section" style="flex:1 1 auto; display:flex; flex-direction:column; min-height:0;">
+          <div class="mk-palette-head">
+            <h2 class="mk-section-title">Přidat prvek</h2>
+            <span class="mk-palette-badge">do: Herdblok</span>
+          </div>
+
+          <div class="mk-search-fake mk-fake">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M19 19l-4.3-4.3"/></svg>
+            <span>Hledat…</span>
+          </div>
+
+          <ul class="mk-palette-list">
+            <li class="mk-palette-item mk-fake">
+              <span class="mk-palette-name">Indukční deska</span>
+              <span class="mk-palette-width">520</span>
+              <span class="mk-palette-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            </li>
+            <li class="mk-palette-item mk-fake">
+              <span class="mk-palette-name">Plynový vařič</span>
+              <span class="mk-palette-width">520</span>
+              <span class="mk-palette-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            </li>
+            <li class="mk-palette-item mk-fake">
+              <span class="mk-palette-name">Fritéza</span>
+              <span class="mk-palette-width">400</span>
+              <span class="mk-palette-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            </li>
+            <li class="mk-palette-item mk-fake">
+              <span class="mk-palette-name">Pracovní plocha</span>
+              <span class="mk-palette-width">—</span>
+              <span class="mk-palette-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            </li>
+            <li class="mk-palette-item mk-muted mk-fake">
+              <span class="mk-palette-name-wrap">
+                <span class="mk-palette-name">Skříňka</span>
+                <span class="mk-palette-sub">patří do vrstvy Podestavby</span>
+              </span>
+              <span class="mk-palette-width">800</span>
+              <span class="mk-palette-plus-space"></span>
+            </li>
+          </ul>
+
+          <a class="mk-palette-link mk-fake" href="#">Upravit katalog…</a>
+        </section>
+
+        <footer class="mk-sidebar-footer">
+          Levé tlačítko: výběr · Prostřední: otáčení · Pravé: posun · Kolečko: zoom
+        </footer>
+      </aside>
+
+      <!-- ============ C + D. STAGE ============ -->
+      <div class="mk-stage">
+
+        <div class="mk-viewport">
+          <span class="mk-selection-badge">Vybráno: Indukční deska</span>
+          <span class="mk-viewport-label">3D pohled</span>
+        </div>
+
+        <!-- ============ D. SPODNÍ PÁS ============ -->
+        <section class="mk-strip">
+
+          <input class="mk-tab-radio" type="radio" name="mk-strip-tab" id="mk-tab-herd" checked />
+          <input class="mk-tab-radio" type="radio" name="mk-strip-tab" id="mk-tab-pode" />
+          <input class="mk-tab-radio" type="radio" name="mk-strip-tab" id="mk-tab-celni" />
+          <input class="mk-tab-radio" type="radio" name="mk-strip-tab" id="mk-tab-limce" />
+          <input class="mk-tab-radio" type="radio" name="mk-strip-tab" id="mk-tab-ramena" />
+
+          <div class="mk-strip-head">
+            <label class="mk-strip-tab" for="mk-tab-herd">Herdblok</label>
+            <label class="mk-strip-tab" for="mk-tab-pode">Podestavby</label>
+            <label class="mk-strip-tab" for="mk-tab-celni">Čelní panel</label>
+            <label class="mk-strip-tab" for="mk-tab-limce">Límce</label>
+            <label class="mk-strip-tab" for="mk-tab-ramena">Napouštěcí ramena</label>
+
+            <span class="mk-strip-collapse mk-fake" title="Srolovat pás sestavy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </div>
+
+          <div class="mk-panels">
+
+            <!-- ===== Herdblok + Podestavby: dvě dráhy nad společným pravítkem ===== -->
+            <div class="mk-panel mk-panel-scale">
+
+              <div class="mk-scale-row mk-ruler-row">
+                <div class="mk-scale-label"></div>
+                <div class="mk-scale" id="mk-ruler">
+                  <div class="mk-tick" style="left:0%;"><i></i><b style="transform:translateX(0%);">0</b></div>
+                  <div class="mk-tick" style="left:20.08032%;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+                  <div class="mk-tick" style="left:40.16064%;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+                  <div class="mk-tick" style="left:60.24096%;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+                  <div class="mk-tick" style="left:80.32129%;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+                  <div class="mk-tick" style="left:100%;"><i></i><b style="transform:translateX(-100%);">2490</b></div>
+                </div>
+              </div>
+
+              <!-- dráha 1: Herdblok, s grafickými koncovkami (volba 1B) -->
+              <div class="mk-scale-row mk-track-row mk-track-herd">
+                <div class="mk-scale-label">Herdblok</div>
+                <div class="mk-scale" id="mk-track-herdblok">
+
+                  <div class="mk-tile mk-tile-surface" style="left:0%; width:7.42972%;" data-mm="185">
+                    <span class="mk-tile-name">pracovní plocha</span>
+                    <span class="mk-tile-size">185 mm</span>
+                  </div>
+                  <div class="mk-tile mk-tile-device mk-tile-selected mk-tile-wide" style="left:7.42972%; width:20.88353%;" data-mm="520">
+                    <span class="mk-tile-name">Indukční deska</span>
+                    <span class="mk-tile-size">520 mm</span>
+                  </div>
+                  <div class="mk-tile mk-tile-surface" style="left:28.31325%; width:4.01606%;" data-mm="100">
+                    <span class="mk-tile-size">100</span>
+                  </div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:32.32931%; width:20.88353%;" data-mm="520">
+                    <span class="mk-tile-name">Plynový vařič</span>
+                    <span class="mk-tile-size">520 mm</span>
+                  </div>
+                  <div class="mk-tile mk-tile-surface" style="left:53.21284%; width:4.01606%;" data-mm="100">
+                    <span class="mk-tile-size">100</span>
+                  </div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:57.2289%; width:16.06426%;" data-mm="400">
+                    <span class="mk-tile-name">Fritéza</span>
+                    <span class="mk-tile-size">400 mm</span>
+                  </div>
+                  <div class="mk-tile mk-tile-surface" style="left:73.29316%; width:26.70684%;" data-mm="665">
+                    <span class="mk-tile-name">pracovní plocha</span>
+                    <span class="mk-tile-size">665 mm</span>
+                  </div>
+
+                  <!-- VOLBA 1B: typ zakončení jen jako profil, bez popisku -->
+                  <span class="mk-endcap mk-endcap-left mk-fake" id="mk-endcap-left" title="Levé zakončení">
+                    <span class="mk-endcap-glyph">
+                      <svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+                        <path d="M25 5H3v13"/>
+                      </svg>
+                    </span>
+                    <span class="mk-endcap-caret">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </span>
+                  </span>
+
+                  <span class="mk-endcap mk-endcap-right mk-fake" id="mk-endcap-right" title="Pravé zakončení">
+                    <span class="mk-endcap-caret">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </span>
+                    <span class="mk-endcap-glyph">
+                      <svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+                        <path d="M1 5h16l6 6v7"/>
+                      </svg>
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- dráha 2: Podestavby, s hlášením 2A -->
+              <div class="mk-scale-row mk-track-row mk-track-pode">
+                <div class="mk-scale-label">Podestavby</div>
+                <div class="mk-scale" id="mk-track-podestavby">
+                  <div class="mk-tile mk-tile-endzone" style="left:0%; width:2.00803%;" data-mm="50">
+                    <span class="mk-tile-size">50</span>
+                  </div>
+                  <div class="mk-tile mk-tile-cabinet mk-tile-wide" style="left:2.00803%; width:32.12851%;" data-mm="800">
+                    <span class="mk-tile-name">Skříňka</span>
+                    <span class="mk-tile-size">800 mm</span>
+                  </div>
+                  <div class="mk-tile mk-tile-gap mk-tile-wide" style="left:34.13655%; width:16.06426%;" data-mm="400">
+                    <span class="mk-tile-name">volný prostor</span>
+                    <span class="mk-tile-size">400 mm</span>
+                  </div>
+                  <div class="mk-tile mk-tile-cabinet mk-tile-wide" style="left:50.20080%; width:32.12851%;" data-mm="800">
+                    <span class="mk-tile-name">Skříňka</span>
+                    <span class="mk-tile-size">800 mm</span>
+                  </div>
+
+                  <!-- VOLBA 2A -->
+                  <div class="mk-tile mk-tile-missing mk-tile-wide" style="left:82.32932%; width:14.85944%;" data-mm="370" id="mk-tile-missing">
+                    <span class="mk-tile-name">chybí 370 mm</span>
+                    <span class="mk-btn-warn mk-fake">Doplnit</span>
+                  </div>
+
+                  <div class="mk-tile mk-tile-endzone" style="left:97.18876%; width:2.81124%;" data-mm="70">
+                    <span class="mk-tile-size">70</span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="mk-track-note">Koncové zóny 50 / 70 určuje typ zakončení — panel ani skříňky do nich nezasahují.</p>
+
+              <div class="mk-param-bar mk-param-herd">
+                <span class="mk-param-title">Indukční deska</span>
+                <div class="mk-param-fields">
+                  <div class="mk-param-field">
+                    <label>Šířka</label>
+                    <div class="mk-param-display mk-fake">520 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Odstup od přední hrany</label>
+                    <div class="mk-param-input mk-fake">100 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Ochranné pole</label>
+                    <div class="mk-param-input mk-fake">50 mm</div>
+                  </div>
+                </div>
+                <span class="mk-param-trash mk-fake" title="Odebrat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>
+                </span>
+              </div>
+
+              <div class="mk-param-bar mk-param-pode">
+                <span class="mk-param-title">Skříňka</span>
+                <div class="mk-param-fields">
+                  <div class="mk-param-field">
+                    <label>Šířka</label>
+                    <div class="mk-param-input mk-fake">800 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Provedení</label>
+                    <div class="mk-param-input mk-fake">S dvířky</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Sokl</label>
+                    <div class="mk-param-input mk-fake">Nožičky</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Boční kryt</label>
+                    <div class="mk-param-display mk-fake">vlevo 50 · vpravo 20</div>
+                  </div>
+                </div>
+                <span class="mk-param-trash mk-fake" title="Odebrat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>
+                </span>
+              </div>
+            </div>
+
+            <!-- ===== Čelní panel: zásuvky a ovládací prvky ===== -->
+            <div class="mk-panel mk-panel-celni">
+
+              <div class="mk-scale-row mk-ruler-row">
+                <div class="mk-scale-label"></div>
+                <div class="mk-scale">
+                  <div class="mk-tick" style="left:0%;"><i></i><b style="transform:translateX(0%);">0</b></div>
+                  <div class="mk-tick" style="left:20.08032%;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+                  <div class="mk-tick" style="left:40.16064%;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+                  <div class="mk-tick" style="left:60.24096%;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+                  <div class="mk-tick" style="left:80.32129%;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+                  <div class="mk-tick" style="left:100%;"><i></i><b style="transform:translateX(-100%);">2490</b></div>
+                </div>
+              </div>
+
+              <!-- kontextová dráha: kde jsou přístroje, ať se zásuvka nestrefí pod ně -->
+              <div class="mk-scale-row mk-track-row" style="opacity:0.42;">
+                <div class="mk-scale-label">Herdblok</div>
+                <div class="mk-scale">
+                  <div class="mk-tile mk-tile-surface" style="left:0%; width:7.42972%;"><span class="mk-tile-size">185</span></div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:7.42972%; width:20.88353%;"><span class="mk-tile-name">Indukční deska</span></div>
+                  <div class="mk-tile mk-tile-surface" style="left:28.31325%; width:4.01606%;"><span class="mk-tile-size">100</span></div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:32.32931%; width:20.88353%;"><span class="mk-tile-name">Plynový vařič</span></div>
+                  <div class="mk-tile mk-tile-surface" style="left:53.21284%; width:4.01606%;"><span class="mk-tile-size">100</span></div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:57.2289%; width:16.06426%;"><span class="mk-tile-name">Fritéza</span></div>
+                  <div class="mk-tile mk-tile-surface" style="left:73.29316%; width:26.70684%;"><span class="mk-tile-size">665</span></div>
+                </div>
+              </div>
+
+              <div class="mk-scale-row mk-track-row">
+                <div class="mk-scale-label">Čelní panel</div>
+                <div class="mk-scale" id="mk-track-celni">
+                  <!-- panel jde jen 50…2420, mimo koncové zóny -->
+                  <div class="mk-track-bed" style="left:2.00803%; right:2.81124%;">
+                    <span class="mk-track-bed-label">panel 50 – 2 420 mm</span>
+                  </div>
+
+                  <div class="mk-point mk-selected" style="left:16.06426%;" title="Zásuvka 230 V — x 400 mm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+                    <b>400</b>
+                  </div>
+                  <div class="mk-point" style="left:44.17671%;" title="Zásuvka 230 V — x 1 100 mm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+                    <b>1100</b>
+                  </div>
+                  <div class="mk-point" style="left:76.30522%;" title="Zásuvka CEE 400 V — x 1 900 mm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="14" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.4" fill="currentColor" stroke="none"/></svg>
+                    <b>1900</b>
+                  </div>
+                </div>
+              </div>
+
+              <p class="mk-track-note">Prvky se osazují do ovládacího panelu (v ose Z 25–45 mm, výška 650–850 mm nad podlahou).</p>
+
+              <div class="mk-param-bar">
+                <span class="mk-param-title">Zásuvka 230 V</span>
+                <div class="mk-param-fields">
+                  <div class="mk-param-field">
+                    <label>Poloha po délce</label>
+                    <div class="mk-param-input mk-fake">400 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Výška v panelu</label>
+                    <div class="mk-param-input mk-fake">100 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Typ</label>
+                    <div class="mk-param-input mk-fake">230 V / IP44</div>
+                  </div>
+                </div>
+                <span class="mk-param-add mk-fake">+ Přidat prvek do panelu</span>
+                <span class="mk-param-trash mk-fake" title="Odebrat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>
+                </span>
+              </div>
+            </div>
+
+            <!-- ===== Límce ===== -->
+            <div class="mk-panel mk-panel-limce">
+              <div class="mk-limce-body">
+
+                <div class="mk-limce-opts">
+                  <div class="mk-limce-row">
+                    <label>Zadní límec</label>
+                    <div class="mk-switch mk-fake"><span>ne</span><span class="mk-on">ano</span></div>
+                  </div>
+                  <div class="mk-limce-row">
+                    <label>Boční límec vlevo</label>
+                    <div class="mk-switch mk-fake"><span class="mk-on">ne</span><span>ano</span></div>
+                  </div>
+                  <div class="mk-limce-row">
+                    <label>Boční límec vpravo</label>
+                    <div class="mk-switch mk-fake"><span class="mk-on">ne</span><span>ano</span></div>
+                  </div>
+                  <div class="mk-limce-row">
+                    <label>Výška límce</label>
+                    <div class="mk-dim-input mk-fake">100</div>
+                    <span class="mk-dim-unit">mm</span>
+                    <span style="font-size:10.5px; color:var(--text-muted);">SPEC §4.4: 40–300</span>
+                  </div>
+                  <div class="mk-limce-row">
+                    <label>Zarovnat do líce boku</label>
+                    <div class="mk-switch mk-fake"><span>ne</span><span class="mk-on">ano</span></div>
+                  </div>
+                </div>
+
+                <div class="mk-limce-diagram">
+                  <svg viewBox="0 0 240 118" xmlns="http://www.w3.org/2000/svg">
+                    <!-- půdorys desky -->
+                    <rect x="20" y="24" width="200" height="72" rx="3"
+                          fill="var(--bg-input)" stroke="var(--border)" stroke-width="1.5"/>
+                    <!-- zadní límec — zapnutý -->
+                    <rect x="20" y="24" width="200" height="9" rx="2"
+                          fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+                    <!-- boční límce — vypnuté, jen naznačené -->
+                    <rect x="20" y="24" width="9" height="72" rx="2"
+                          fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+                    <rect x="211" y="24" width="9" height="72" rx="2"
+                          fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+                    <text x="120" y="66" text-anchor="middle" font-size="10"
+                          fill="var(--text-muted)" font-family="Segoe UI, sans-serif">pracovní deska</text>
+                    <text x="120" y="16" text-anchor="middle" font-size="10"
+                          fill="var(--accent-dark)" font-family="Segoe UI, sans-serif">zadní límec</text>
+                    <text x="120" y="110" text-anchor="middle" font-size="9"
+                          fill="var(--text-muted)" font-family="Segoe UI, sans-serif">přerušovaně = vypnuto</text>
+                  </svg>
+                </div>
+              </div>
+
+              <div class="mk-param-bar">
+                <span class="mk-param-title">Zadní límec</span>
+                <div class="mk-param-fields">
+                  <div class="mk-param-field">
+                    <label>Délka</label>
+                    <div class="mk-param-display mk-fake">2 490 mm (celá zadní hrana)</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Tloušťka plechu</label>
+                    <div class="mk-param-input mk-fake">3 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Odsazení od hrany desky</label>
+                    <div class="mk-param-input mk-fake">0 mm</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== Napouštěcí ramena ===== -->
+            <div class="mk-panel mk-panel-ramena">
+
+              <div class="mk-scale-row mk-ruler-row">
+                <div class="mk-scale-label"></div>
+                <div class="mk-scale">
+                  <div class="mk-tick" style="left:0%;"><i></i><b style="transform:translateX(0%);">0</b></div>
+                  <div class="mk-tick" style="left:20.08032%;"><i></i><b style="transform:translateX(-50%);">500</b></div>
+                  <div class="mk-tick" style="left:40.16064%;"><i></i><b style="transform:translateX(-50%);">1000</b></div>
+                  <div class="mk-tick" style="left:60.24096%;"><i></i><b style="transform:translateX(-50%);">1500</b></div>
+                  <div class="mk-tick" style="left:80.32129%;"><i></i><b style="transform:translateX(-50%);">2000</b></div>
+                  <div class="mk-tick" style="left:100%;"><i></i><b style="transform:translateX(-100%);">2490</b></div>
+                </div>
+              </div>
+
+              <div class="mk-scale-row mk-track-row" style="opacity:0.42;">
+                <div class="mk-scale-label">Herdblok</div>
+                <div class="mk-scale">
+                  <div class="mk-tile mk-tile-surface" style="left:0%; width:7.42972%;"><span class="mk-tile-size">185</span></div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:7.42972%; width:20.88353%;"><span class="mk-tile-name">Indukční deska</span></div>
+                  <div class="mk-tile mk-tile-surface" style="left:28.31325%; width:4.01606%;"><span class="mk-tile-size">100</span></div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:32.32931%; width:20.88353%;"><span class="mk-tile-name">Plynový vařič</span></div>
+                  <div class="mk-tile mk-tile-surface" style="left:53.21284%; width:4.01606%;"><span class="mk-tile-size">100</span></div>
+                  <div class="mk-tile mk-tile-device mk-tile-wide" style="left:57.2289%; width:16.06426%;"><span class="mk-tile-name">Fritéza</span></div>
+                  <div class="mk-tile mk-tile-surface" style="left:73.29316%; width:26.70684%;"><span class="mk-tile-size">665</span></div>
+                </div>
+              </div>
+
+              <div class="mk-scale-row mk-track-row">
+                <div class="mk-scale-label">Ramena</div>
+                <div class="mk-scale" id="mk-track-ramena">
+                  <div class="mk-track-bed" style="left:0%; right:0%;">
+                    <span class="mk-track-bed-label">deska 0 – 2 490 mm</span>
+                  </div>
+                  <div class="mk-point mk-selected" style="left:36.14458%;" title="Rameno #1 — x 900 mm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V8"/><path d="M7 8h9a3 3 0 0 1 3 3v2"/><path d="M19 13v3"/><path d="M4.5 21h5"/></svg>
+                    <b>900</b>
+                  </div>
+                  <div class="mk-point" style="left:72.28916%;" title="Rameno #2 — x 1 800 mm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V8"/><path d="M7 8h9a3 3 0 0 1 3 3v2"/><path d="M19 13v3"/><path d="M4.5 21h5"/></svg>
+                    <b>1800</b>
+                  </div>
+                </div>
+              </div>
+
+              <p class="mk-track-note">Rameno sedí na desce; u bloku u stěny se odsazuje od zadní hrany, u ostrova od středu.</p>
+
+              <div class="mk-param-bar">
+                <span class="mk-param-title">Rameno #1</span>
+                <div class="mk-param-fields">
+                  <div class="mk-param-field">
+                    <label>Poloha po délce</label>
+                    <div class="mk-param-input mk-fake">900 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Od zadní hrany</label>
+                    <div class="mk-param-input mk-fake">60 mm</div>
+                  </div>
+                  <div class="mk-param-field">
+                    <label>Natočení</label>
+                    <div class="mk-param-input mk-fake">0°</div>
+                  </div>
+                </div>
+                <span class="mk-param-add mk-fake">+ Přidat rameno</span>
+                <span class="mk-param-trash mk-fake" title="Odebrat rameno">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= legenda ================= -->
+
+<section class="mk-legend">
+  <div class="mk-legend-col">
+    <h3>ZAKONČENÍ — VOLBA 1B</h3>
+    <div class="mk-legend-glyphs">
+      <span class="mk-legend-glyph">
+        <svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M25 5H3v13"/></svg>
+        Vodopád
+      </span>
+      <span class="mk-legend-glyph">
+        <svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><path d="M1 5h16l6 6v7"/></svg>
+        Zkosený vodopád
+      </span>
+    </div>
+    <ul>
+      <li>Koncovka sedí na konci dráhy Herdblok a nese jen profil, žádný text. Název je v tooltipu.</li>
+      <li>Sekce „Zakončení" z levého panelu zmizela.</li>
+      <li>Typ konce řídí koncovou zónu na dráze Podestavby: 50 mm u vodopádu, 70 mm u zkoseného.</li>
+    </ul>
+  </div>
+
+  <div class="mk-legend-col">
+    <h3>KRATŠÍ ŘADA PODESTAVEB — VOLBA 2A</h3>
+    <ul>
+      <li>Šrafovaná zóna „chybí 370 mm" s tlačítkem Doplnit sedí přímo na konci dráhy.</li>
+      <li>Mezera <em>uvnitř</em> řady je legitimní most — kreslí se šedě jako „volný prostor", ne oranžově.</li>
+      <li>Kontrolní odznaky (převis, most, odstup) z hlavičky pásu zmizely.</li>
+    </ul>
+  </div>
+
+  <div class="mk-legend-col">
+    <h3>ZÁLOŽKY PÁSU</h3>
+    <ul>
+      <li>Záložky jsou proklikatelné — jsou pod nimi skryté radiopřepínače, jinak mockup JavaScript nemá.</li>
+      <li>Herdblok a Podestavby sdílejí jedno pravítko; neaktivní dráha jen zesvětlá.</li>
+      <li>Čelní panel a Ramena mají vlastní dráhu na témž pravítku, s Herdblokem jako kontextem.</li>
+      <li>Límce jsou formulář — nemají polohu po délce.</li>
+      <li class="mk-open">Otevřené: patří napouštěcí ramena na desku (jak je má SEGMENT), nebo taky do čelního panelu?</li>
+    </ul>
+  </div>
+</section>
+
+</body>
+</html>

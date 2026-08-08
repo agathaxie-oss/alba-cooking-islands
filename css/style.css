@@ -2574,9 +2574,21 @@ body {
   gap: 3px;
 }
 
+/* úkol 7.2 (PREDANI.md): text ležel přímo na šrafuře — repeating-linear-gradient
+   střídá neprůhledný pruh var(--warn) (2 px) s průhledným (6 px), takže text ve
+   var(--warn) byl v místě, kde se s pruhem překryl, prakticky stejné barvy jako
+   podklad pod ním (poměr kontrastu ~1:1). Řešení: neprůhledná "cedulka" pod
+   textem (var(--bg-panel)) — text tak leží VŽDY na plné barvě bez ohledu na to,
+   kudy šrafa zrovna prochází, a barva textu je var(--text-main) místo var(--warn)
+   (samotná dlaždice zůstává barevně "warn" přes okraj/šrafu/tlačítko Doplnit).
+   Kontrast var(--text-main) #2B2A29 na var(--bg-panel) #FEFEFE (obě neprůhledné,
+   žádné skládání alfy) vychází cca 14,2:1 — vysoko nad mezí 4,5:1 pro malý text. */
 .mono-tile-missing .mono-tile-name {
   font-weight: 600;
-  color: var(--warn);
+  color: var(--text-main);
+  background: var(--bg-panel);
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 .mono-btn-warn {

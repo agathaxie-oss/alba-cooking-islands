@@ -489,9 +489,12 @@ export function createMonoStrip({
     const scale = makeEl('div', 'mono-scale');
 
     if (layout.leftInsetMM > 0) {
+      // Bez textu (úkol 7.1, PREDANI.md) — koncová zóna je jen 50/70 mm,
+      // tj. ~2 % šířky dráhy, na text tam není a nebude místo (oříznuté na
+      // „0 m" místo „50 mm"). Hodnotu hlásí .mono-track-note (mono.endZoneNote)
+      // pod dráhou, kde je pro ni místo.
       scale.appendChild(buildTile({
         className: 'mono-tile-endzone',
-        sizeText: tt('catalog.widthExact', { mm: Math.round(layout.leftInsetMM) }),
         leftPct: pct(0, lengthMM),
         widthPct: pct(layout.leftInsetMM, lengthMM),
         dim,
@@ -537,9 +540,9 @@ export function createMonoStrip({
     }
 
     if (layout.rightInsetMM > 0) {
+      // Bez textu — viz poznámka u levé koncové zóny výše.
       scale.appendChild(buildTile({
         className: 'mono-tile-endzone',
-        sizeText: tt('catalog.widthExact', { mm: Math.round(layout.rightInsetMM) }),
         leftPct: pct(layout.usableToMM, lengthMM),
         widthPct: pct(layout.rightInsetMM, lengthMM),
         dim,

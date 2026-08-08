@@ -597,61 +597,94 @@ z ní někdo čerpal, tohle je špatně.
 
 # ČÁST F — PLÁN PŘÍŠTÍ SESSION
 
-Pořadí schválil zadavatel 8. 8. 2026. Rozdělení do vln je dáno tím, KDO
-SAHÁ DO KTERÉHO SOUBORU — dva agenti nesmí psát do téhož souboru naráz.
+## Úvod
 
-## Krok 0 — BLOKUJE VŠECHNO OSTATNÍ
+Plán z 8. 8. 2026 (Krok 0, vlna 1, vlna 2) je **celý hotový**. Ověřené a
+zakomitované: přístroje ve 3D, zrcadlení osy X, monolitický vodopád,
+zkosený vodopád s půdorysným obrysem, boční kryt 20 mm u zkoseného konce,
+šipky přeuspořádání na dlaždice, povrchové úpravy (vyřazení H3 i jejich
+diferenciace u podestaveb), drobnosti v pásu, oprava `ZADANI-MONO-UI.md`.
+Spodní pás MONO je dodělaný. **Zbývá jediný velký kus.**
 
-Ověřit rozdělanou práci na přístrojích, viz ČÁST B4. Dokud to visí, jsou
-`js/mono-block.js` a `js/modules.js` zamčené a vlna 1 nesmí začít. Výsledek
-je binární: buď se to změří a zakomituje, nebo zahodí. Nepřijímat bez
-měření.
+## Zbývá — úkol 6, ostrovní varianta
 
-## Vlna 1 — dva agenti paralelně, soubory se nepřekrývají
+Tlačítko Ostrov v rozhraní existuje, ale **nic nedělá**. Toto je poslední
+velký kus a **nedá se rozdělit mezi souběžné agenty**, protože sahá do
+`js/mono-geometry.js`, `js/mono-block.js`, `js/main.js`, `js/mono-ui.js`
+i `js/ui.js` naráz. Je to **práce na celou session**. Nezačínat ji na
+konci dne — pokud zůstane rozdělaná, zůstanou rozpracované změny v
+několika souborech najednou.
 
-**Agent A — úkol 9b, tvar podestavby podle povrchové úpravy.**
+## Vstupy rozhodnuté — neměnit
 
-Soubory: `js/mono-geometry.js`, `js/mono-block.js`.
+Zadavatel schválil následující. Jsou to součásti specifikace. Ověřit v
+ČÁSTI C úkol 6 a ČÁSTI E:
 
-`buildPodestavba()` dnes staví dva náběhy `buildH2Fillet` VŽDY. Musí dostat
-parametr `finish` a náběhy stavět jen pro `H2`; `H1` a `HS+` mají ostrý roh.
-`js/mono-block.js` musí `finish` z KAŽDÉ SKŘÍŇKY ZVLÁŠŤ do geometrie
-předat — v jedné řadě můžou stát skříňky s různou úpravou. Ověřit přes
-`Box3`, ne okem: u `H2` musí díly náběhu ve scéně být, u `H1`/`HS+` nesmí
-existovat vůbec. Navíc ověřit, jestli tutéž vadu nemá SEGMENT
-(`js/block.js`, `js/modules.js`) — `finish` má i on.
+- **Deska je jediná** a průběžná přes obě strany, v hloubkách A+B. Ne dvě
+  desky proti sobě se spárou uprostřed.
+- **Boční panel u ostrova** jde od čela k čelu (přední i zadní konec,
+  obě strany) a zakrývá i mezeru mezi zády obou podestaveb.
+- **Ostrov má JEN boční límce** (na levé i pravé straně). Zadní límec se u
+  varianty `island` vůbec nenabízí v UI.
+- **U zkoseného vodopádu u ostrova** (`svislaDeskaZkos`) mohou být zkosené
+  **všechny rohy** (všechny čtyři rohy jsou viditelné, protože ostrov
+  obchází po obou stranách). Oproti variantě u stěny, kde jsou zkosené jen
+  přední rohy.
+- **Dnes se `island` chová jako `single`** — v kódu zbývá doplnit logiku.
+  Místa: TODO v `js/main.js` kolem řádku 519 a v `cornerPoints()` v
+  `js/mono-geometry.js`.
 
-**Agent B — úkol 9a, vyřadit H3.**
+## Zbývá — zrcadlení ramen a přístrojů
 
-Soubory: `js/modules.js`, `js/mono-ui.js`.
+U ostrova se musí doplnit i **zrcadlování ramen a přístrojů** stejným
+způsobem, jako je řeší `mirrorX` v `js/mono-block.js` u ostatních prvků.
+Rameno sedí na spáře mezi stranami A a B (ve středu bloku). U varianty
+ostrova se odsazuje od tohoto středu k jedné nebo druhé straně
+(konstanty `ARM_CENTER_OFFSET_MIN`, `ARM_CENTER_OFFSET_MAX`,
+`ARM_CENTER_OFFSET_DEFAULT` v `js/arms.js`, na rozdíl od varianty u
+stěny, která používá `ARM_BACK_OFFSET_*` a odsazuje se od zadní hrany).
+Poloha po délce se zrcadlí přes `mirrorX` a **úhel se neguje** —
+zrcadlením osy X se mění i smysl otáčení kolem Y, stejně jako u
+varianty u stěny.
 
-Seznam je na dvou místech a obě se musí změnit, jinak se rozejdou:
-`FINISH_TYPES` v `modules.js` (zdroj pravdy) a tentýž seznam přepsaný jako
-lokální literál v `mono-ui.js` (modul nesmí importovat `modules.js`). U
-literálu doplnit poznámku, že se obě místa musí měnit spolu. Ověřit, že
-starý soubor projektu s uloženým `H3` se načte bez chyby a spadne na
-výchozí úpravu — soubor se NIKDY neodmítá.
+Zároveň ověřit chování **přepínače strany A/B** ve spodním pásu Herdblok
+— v UI se objeví jen pro variantu `island` a musí správně přepínat mezi
+stranami při měření a vykreslování.
 
-## Vlna 2 — až po vlně 1, drží `js/mono-ui.js`
+## Menší věci zbývající — bez pokynu neřešit
 
-**Nejdřív mockup, teprve potom aplikace.** Úkol 5 (šipky na dlaždice) má
-háček: úzká dlaždice dvě šipky neuveze — prázdný prostor 100 mm je široký
-asi 40 px. Zadavatel rozhodl 8. 8. 2026, že se **nakreslí tři varianty
-jako mockup do samostatného souboru** a teprve po jeho výběru se sáhne do
-aplikace. Do `js/mono-ui.js` ani do `css/style.css` se v téhle fázi
-nesahá.
+Každá z těchto položek se **nemá dělat bez explicitního pokynu
+zadavatele**, i když je zapsaná tady:
 
-Do **téhož mockupu** patří i varianty řešení pro úkol 11 (přetékající
-dráha s dlaždicemi). Diagnóza je potvrzená screenshotem z 8. 8. 2026.
-Obojí se nachází ve spodním pásu a má se o tom rozhodnout jedním výběrem,
-ne dvakrát.
+- **Úkol 12** — Přeplněná položka se ve 3D kreslí za koncem bloku.
+  Zadavatel to 8. 8. 2026 viděl a nechal tak. Uživatel si to sám vyřeší.
 
-Potom úkol 7 — drobnosti v pásu.
+- **Radius u SEGMENTu** — SEGMENT nestaví hygienický radius v koutech
+  podestavby vůbec (pro žádnou úpravu H1, H2, HS+). U MONO se od
+  8. 8. 2026 rozlišuje. Produkty se v tomhle rozešly, není to regrese.
 
-## Vlna 3 — úkol 6, ostrov
+- **Vana fritézy** — Sahá asi 130 mm pod rovinu pracovní desky a protíná
+  ji. Není to regrese, stejně se to chová u SEGMENTu. Je to vlastnost
+  `buildFryerTop()` v `js/modules.js` — kreslit přístroje bez výřezu v
+  desce.
 
-Sám, nedělitelný. Sahá do `mono-geometry.js`, `mono-block.js`, `main.js`,
-`mono-ui.js` i `ui.js` naráz. Vstupy, které už jsou rozhodnuté: jedna
-průběžná deska přes obě strany, boční panel od čela k čelu, ostrov má JEN
-boční límce, a u zkoseného zakončení mohou být zkosené všechny rohy (viz
-ČÁST E).
+- **Přestavba katalogu** — Samostatný, zcela neřešený úkol. Viz
+  `ZADANI-KATALOG.md`. Přístroje mohou v katalogu zmizet, proto se do
+  projektu ukládají jejich definice.
+
+- **Logo ALBA ve 3D** — Nevykresluje se. Diagnóza je hotová, oprava je
+  odložená na pokyn zadavatele.
+
+## Na co nezapomenout
+
+Dvě věci, které právě stály čas:
+
+- **Plný proplach keše PŘED KAŽDÝM MĚŘENÍM V PROHLÍŽEČI.** Podle ČÁSTI A2
+  — seznam nyní pokrývá všech 18 modulů. Starší verze obnovovala jen 7 a
+  dvakrát proto vznikla falešná hlášení vady. Bez něj si agent domyslí, že
+  něco nefunguje, ale jeho měření je na staré verzi.
+
+- **Každý agent si píše měřicí harness do VLASTNÍ PODSLOŽKY** v dočasném
+  adresáři (`scratchpad/agent-N/` apod.) a nepřepisuje nic, co by patřilo
+  jinému agentovi. Dva agenti si jednou přepsali stejně pojmenovaný stub
+  pro `three` a způsobili si navzájem problémy.

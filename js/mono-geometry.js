@@ -154,6 +154,21 @@ export const BACK_WALL_MM = 20;  // zadní stěna
 export const FLOOR_MM = 40;      // podlážka
 export const TOP_RAIL_MM = 20;   // příčná lišta 20×20, JEN VPŘEDU
 export const H2_RADIUS_MM = 16;  // vnitřní radius hygienického stupně H2
+
+// --- povrchová úprava — ovlivňuje TVAR spodních koutů podestavby (PREDANI.md
+// úkol 9b): H2 dostává radius H2_RADIUS_MM, H1 a HS+ mají ostrý roh, žádný
+// radius (viz buildPodestavba níž). Řetězcový kód MUSÍ sedět s modules.js
+// FINISH_TYPES/DEFAULT_FINISH a MonoCabinet.finish (ZADANI-MONO-UI.md §1) —
+// mono-geometry.js zůstává BEZ importu z modules.js (viz hlavička souboru,
+// žádná vazba na stav aplikace), proto se tu jen OPAKUJE holý kód 'H2' jako
+// lokální evidence, ne přebíraná konstanta.
+// Chybějící/neznámá `finish` NENÍ natvrdo "žádný radius" jako libovolná
+// volba implementace — spadá na modules.js DEFAULT_FINISH ('H1', ověřeno
+// 8. 8. 2026), který má PRÁVĚ TAKY ostrý roh bez radiusu, takže test
+// `finish !== FINISH_H2` dává zadáním požadovaný výsledek pro H1, HS+
+// i pro chybějící/neznámou hodnotu zároveň — bez nutnosti sem tahat
+// DEFAULT_FINISH samotné.
+export const FINISH_H2 = 'H2';
 export const CORPUS_SHEET_MM = 1.5; // síla plechu korpusu — zatím evidence
 export const LEG_SIZE_MM = 40;   // konstanta, NE dopočet z šířky
 export const LEG_INSET_MM = 50;  // odsazení nožičky od rohu (boční i čelní/zadní líc)
@@ -734,8 +749,15 @@ export function buildHerdblokUsek(usek) {
  * @param {number} p.widthMM
  * @param {number} p.depthMM  výchozí PODESTAVBA_DEPTH_MM
  * @param {number} p.bodyHeightMM  výška TĚLA skříňky (pracovní výška − 290 − 150)
+ * @param {string} [p.finish]  MonoCabinet.finish (ZADANI-MONO-UI.md §1) —
+ *   VLASTNOST TÉTHLE JEDNÉ SKŘÍŇKY, ne bloku (PREDANI.md úkol 9b): náběhy
+ *   H2 (buildH2Fillet) se STAVÍ pouze pro FINISH_H2 ('H2'); pro cokoli
+ *   jiného — 'H1', 'HS+', chybějící nebo neznámou hodnotu — se dílce náběhu
+ *   VŮBEC NEVYTVOŘÍ (ne jen schovají/zmenší na nulu). Viz FINISH_H2 výš,
+ *   proč tenhle test sám o sobě správně pokrývá i chybějící/neznámou
+ *   hodnotu (spadá na DEFAULT_FINISH='H1', který je taky bez radiusu).
  */
-export function buildPodestavba({ widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHeightMM }) {
+export function buildPodestavba({ widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHeightMM, finish }) {
   const group = new THREE.Group();
   group.name = 'podestavba';
 
@@ -814,14 +836,19 @@ export function buildPodestavba({ widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHe
   });
 
   // --- hygienický stupeň H2: R16 v koutech MEZI PODLÁŽKOU A BOČNÍMI STĚNAMI
-  // (dva kouty, zepředu vidět vlevo a vpravo dole). Ostatní kouty ne — H3 se
-  // teď nedělá (viz "Co se teď NEDĚLÁ"). ------------------------------------
-  const h2Left = buildH2Fillet(WALL_MM, yBodyBottom + FLOOR_MM, +1, floorFrontZ, floorBackZ, stainless);
-  h2Left.name = 'h2-levy';
-  group.add(h2Left);
-  const h2Right = buildH2Fillet(widthMM - WALL_MM, yBodyBottom + FLOOR_MM, -1, floorFrontZ, floorBackZ, stainless);
-  h2Right.name = 'h2-pravy';
-  group.add(h2Right);
+  // (dva kouty, zepředu vidět vlevo a vpravo dole) — STAVÍ SE JEN pro
+  // finish === FINISH_H2 (PREDANI.md úkol 9b). 'H1' a 'HS+' mají ostrý roh:
+  // dílce náběhu se pro ně vůbec NEVYTVOŘÍ (žádné buildH2Fillet volání), ne
+  // jen schovají/zmenší na nulu — proto je celý blok podmíněný, ne jednotlivé
+  // meshe. Ostatní kouty ne — H3 se teď nedělá (viz "Co se teď NEDĚLÁ"). ----
+  if (finish === FINISH_H2) {
+    const h2Left = buildH2Fillet(WALL_MM, yBodyBottom + FLOOR_MM, +1, floorFrontZ, floorBackZ, stainless);
+    h2Left.name = 'h2-levy';
+    group.add(h2Left);
+    const h2Right = buildH2Fillet(widthMM - WALL_MM, yBodyBottom + FLOOR_MM, -1, floorFrontZ, floorBackZ, stainless);
+    h2Right.name = 'h2-pravy';
+    group.add(h2Right);
+  }
 
   group.userData.widthMM = widthMM;
   group.userData.depthMM = depthMM;
@@ -1068,7 +1095,9 @@ export function checkSupport(podestavby, herdblokUsek) {
  *
  * @param {object} params
  * @param {number} [params.workHeightMM=900]  pracovní výška, 850–900
- * @param {Array<{xMM:number, widthMM:number, depthMM?:number}>} params.podestavby
+ * @param {Array<{xMM:number, widthMM:number, depthMM?:number, finish?:string}>} params.podestavby
+ *   `finish` je vlastnost KAŽDÉ SKŘÍŇKY ZVLÁŠŤ (viz buildPodestavba) — jedna
+ *   řada může mít skříňky s různou úpravou vedle sebe.
  * @param {Array<{xMM:number, widthMM:number, depthMM?:number, leftEndType?:string,
  *   rightEndType?:string, collar?:Array}>} params.herdblok  úseky herdbloku
  * @param {Array<{kind:string, xMM:number, heightMM:number}>} [params.panelItems]
@@ -1093,7 +1122,7 @@ export function buildMonoBlock({
   const podestavbyGroup = new THREE.Group();
   podestavbyGroup.name = 'podestavby';
   podestavby.forEach((p) => {
-    const mesh = buildPodestavba({ widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM });
+    const mesh = buildPodestavba({ widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish });
     mesh.position.x = mm(p.xMM);
     podestavbyGroup.add(mesh);
   });

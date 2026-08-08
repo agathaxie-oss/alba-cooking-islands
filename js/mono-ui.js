@@ -37,7 +37,9 @@ const END_TYPE_CHAMFER = 'svislaDeskaZkos';
 
 const BODY_STYLE_OPTIONS = ['closed', 'doors', 'open']; // modules.js
 const PLINTH_TYPES = ['legs', 'building', 'construction']; // modules.js
-const FINISH_TYPES = ['HS+', 'H1', 'H2', 'H3']; // modules.js — kódy, nepřekládají se
+// H3 se od úkolu 9a (PREDANI.md) nenabízí — zdroj pravdy je modules.js,
+// tenhle literál se MUSÍ měnit SPOLU s ním, jinak se seznamy rozejdou.
+const FINISH_TYPES = ['HS+', 'H1', 'H2']; // modules.js — kódy, nepřekládají se
 
 const ARM_ANGLE_MIN = -180; // arms.js
 const ARM_ANGLE_MAX = 180;

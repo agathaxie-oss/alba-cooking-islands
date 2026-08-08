@@ -97,7 +97,12 @@ export const DEFAULT_PLINTH = 'construction';
 
 // povrchové provedení (§11.2 SPEC v4) — INSTANCE pole `finish`; jde o kódy
 // (ne jazykový text), stejné ve všech jazycích — nepřekládá se.
-export const FINISH_TYPES = ['HS+', 'H1', 'H2', 'H3'];
+// H3 se od úkolu 9a (PREDANI.md) nenabízí — zadavatel rozhodl škrtnout.
+// Tento seznam je zdroj pravdy; duplicitní kopie je v mono-ui.js (ř. ~40),
+// obě místa se MUSÍ měnit SPOLU. Staré projekty s uloženým finish:'H3'
+// projdou beze změny — getSegmentFinish()/sanitizeFinish() (main.js) spadnou
+// na DEFAULT_FINISH, soubor se neodmítá.
+export const FINISH_TYPES = ['HS+', 'H1', 'H2'];
 export const DEFAULT_FINISH = 'H1';
 
 export const NEUTRAL_TYPE = 'neutral';

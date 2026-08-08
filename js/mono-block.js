@@ -35,7 +35,7 @@ import {
   ARM_BACK_OFFSET_MAX,
   ARM_BACK_OFFSET_DEFAULT,
 } from './arms.js';
-import { applyTopFeature } from './modules.js';
+import { applyTopFeature, FINISH_TYPES, DEFAULT_FINISH } from './modules.js';
 import { getById as getCatalogEntry } from './catalog.js';
 
 const mm = (v) => v / 1000;
@@ -47,6 +47,16 @@ function readEndType(value) {
   return value === END_TYPES.VERTICAL_PLATE_CHAMFER
     ? END_TYPES.VERTICAL_PLATE_CHAMFER
     : END_TYPES.VERTICAL_PLATE;
+}
+
+/** Tolerantní čtení MonoCabinet.finish (ZADANI-MONO-UI.md §1, PREDANI.md
+ *  úkol 9b) — neplatná/chybějící hodnota spadne na DEFAULT_FINISH, stejné
+ *  pravidlo jako sanitizeFinish v main.js / getSegmentFinish v modules.js.
+ *  state.mono.podestavby už chodí sanitizované z main.js, ale tenhle adaptér
+ *  si to ověřuje samostatně, stejně jako readEndType výš — žádný pád, žádné
+ *  tiché "bez radiusu" jen proto, že hodnota chybí. */
+function readFinish(value) {
+  return FINISH_TYPES.includes(value) ? value : DEFAULT_FINISH;
 }
 
 // --- zrcadlení osy X: pás čte polohy ZLEVA (mm od levé hrany bloku), ale
@@ -137,9 +147,20 @@ export function buildMonoScene(state) {
   // xMM se ZRCADLÍ (viz mirrorX výš) — layout dává xMM jako levou hranu v
   // pásu, mirrorX ji převede na odpovídající levou hranu v prohozené
   // geometrii.
+  //
+  // `finish` (PREDANI.md úkol 9b) je vlastnost KAŽDÉ SKŘÍŇKY ZVLÁŠŤ, ne
+  // celého bloku — čte se z item.finish (MonoCabinet.finish) TADY, uvnitř
+  // stejného .map(), který zpracovává skříňky jednu po druhé, takže dvě
+  // sousední skříňky v jedné řadě mohou mít každá jinou úpravu a tím pádem
+  // i jiný tvar spodních koutů (viz buildPodestavba/FINISH_H2 v
+  // mono-geometry.js). readFinish() ošetřuje chybějící/neznámou hodnotu.
   const podestavby = layout.podestavby
     .filter(({ item }) => item.kind === 'cabinet')
-    .map(({ xMM, widthMM }) => ({ xMM: mirrorX(xMM, lengthMM, widthMM), widthMM }));
+    .map(({ item, xMM, widthMM }) => ({
+      xMM: mirrorX(xMM, lengthMM, widthMM),
+      widthMM,
+      finish: readFinish(item.finish),
+    }));
 
   // Prvky panelu: computeMonoLayout() je vrací už oříznuté do použitelného
   // rozsahu (zadání §2); tady se jen převedou na tvar, který čeká

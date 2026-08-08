@@ -111,14 +111,17 @@ export function sideInsetMM(endType) {
   return END_SIDE_INSET_MM[endType] ?? END_SIDE_INSET_MM[END_TYPES.VERTICAL_PLATE];
 }
 
-// --- svislá boční deska ("nos") — délka rovného čela, PODLE TYPU KONCE -------
+// --- svislá boční deska ("nos"/vodopád) — délka rovného čela, PODLE TYPU KONCE
 // Analogicky k END_SIDE_INSET_MM/sideInsetMM: rozměr je DODANÝ (HODNOTY-MONO.md
 // §7.5) jen pro END_TYPES.VERTICAL_PLATE — 50 mm rovného čela. Pro
 // VERTICAL_PLATE_CHAMFER je čelo 20 mm rovné + 50 mm zkosení pod 45°, což
-// není jedno číslo, a mapa proto pro něj hodnotu nemá. Nos samotný (celý
-// půdorysný tvar) se v tomhle kole NESTAVÍ, viz "Co se teď NEDĚLÁ" nahoře —
-// konstanta a funkce jsou tu jen jako evidence dodaného rozměru pro budoucí
-// geometrii, žádná funkce, která by je dnes spotřebovávala, neexistuje.
+// není jedno číslo, a mapa proto pro něj hodnotu nemá.
+// ZÁKLADNÍ (rovný, nezkosený) tvar vodopádu/nosu už buildHerdblokUsek staví
+// (viz 'vodopad-levy'/'vodopad-pravy' níž), ale s tloušťkou
+// SIDE_PLATE_THICKNESS_MM (20) — TENHLE rozměr (délku rovného čela v
+// půdorysu) zatím nepoužívá žádná funkce. Zůstává evidence pro BUDOUCÍ
+// půdorysné zkosení (VERTICAL_PLATE_CHAMFER, hák cornerPoints), kdy vodopád
+// přestane být prostý obdélník.
 export const NOSE_FRONT_MM = {
   [END_TYPES.VERTICAL_PLATE]: 50,
 };
@@ -130,8 +133,13 @@ export function noseFrontMM(endType) {
 
 // --- pracovní deska ----------------------------------------------------------
 export const DESK_OVERHANG_FRONT_MM = 30;   // přesah desky přes podestavbu vpředu
-export const DESK_OVERHANG_SIDE_MM = 25;    // TODO: bok desky ("nos") není dodaný tvar —
-// konstanta je zatím jen evidence, geometrie ji nepoužívá (viz "Co se teď NEDĚLÁ").
+export const DESK_OVERHANG_SIDE_MM = 25;    // TODO: vodopád (buildHerdblokUsek,
+// 'vodopad-levy'/'vodopad-pravy' níž) už boční tvar staví, ale s tloušťkou
+// SIDE_PLATE_THICKNESS_MM (20), ne s touhle hodnotou — tuhle konstantu
+// nepoužívá. Nejasné, jestli je DESK_OVERHANG_SIDE_MM stejná věc jako
+// tloušťka vodopádu (a je to tedy stará/nahrazená hodnota), nebo jiný rozměr
+// (např. přesah desky NAD vodopádem) — nedomýšlím, zůstává jen evidence,
+// nahlášeno v přejímce.
 export const DESK_OVERHANG_BACK_MM = 25;    // přesah desky přes korpus vzadu
 export const DESK_SHEET_MM = 2;             // síla plechu desky — zatím jen evidence
 export const DESK_EDGE_RETURN_MM = 20;      // zahnutí hrany desky dovnitř — zatím evidence
@@ -551,17 +559,38 @@ export function buildHerdblokUsek(usek) {
   group.add(lista);
 
   // Panel ani lišta NEJSOU po celé délce — na obou koncích chybí
-  // sideInsetMM(leftEndType) / sideInsetMM(rightEndType), tam zůstává vidět
-  // holý korpus. Tam přijde svislá boční deska ("nos").
+  // sideInsetMM(leftEndType) / sideInsetMM(rightEndType), tam by zůstal
+  // vidět holý korpus a schod vůči přesahující desce (deska jde 0..depthMM,
+  // korpus jen corpusFrontZ..corpusBackZ, viz výš). Přesně tenhle schod
+  // zakrývá VODOPÁD.
   //
-  // TODO: svislá boční deska ("nos") — v tomhle kole se NESTAVÍ, jen
-  // evidence dodaných omezení pro budoucí geometrii (viz "Co se teď NEDĚLÁ"):
-  //  - přední líc nosu má v ose Z začátek stejný jako deska, tedy z = 0.
-  //  - vnější líc nosu je v ose X na x = 0 (u pravého konce zrcadlově na
-  //    x = widthMM).
-  //  - u END_TYPES.VERTICAL_PLATE (svislaDeska) má rovné čelo nosu délku
-  //    50 mm v ose X; u END_TYPES.VERTICAL_PLATE_CHAMFER (svislaDeskaZkos)
-  //    je to 20 mm rovné + 50 mm zkosení pod úhlem 45°.
+  // --- vodopád: svislá boční deska/deska "přetéká" přes bok herdbloku a
+  // zakrývá ho CELÝ — přes CELOU výšku herdbloku (HERDBLOK_HEIGHT_MM, tedy
+  // od spodní hrany herdbloku po horní rovinu desky) a CELOU hloubku
+  // (z 0..depthMM), NE zúžený pruh, NE jen čelo (zadání, vodopád). Tloušťka
+  // SIDE_PLATE_THICKNESS_MM (20) na obou koncích.
+  //
+  // V TÉTO VERZI je bok ROVNÝ (obdélníkový půdorys) na OBOU typech
+  // zakončení — půdorysné zkosení pro VERTICAL_PLATE_CHAMFER (viz
+  // cornerPoints, NOSE_FRONT_MM/noseFrontMM) přijde v samostatném kroku,
+  // proto se tu leftEndType/rightEndType k rozlišení tvaru nepoužívá.
+  //
+  // TODO: pro widthMM < 2×SIDE_PLATE_THICKNESS_MM by se levý a pravý
+  // vodopád překrývaly — tak úzký úsek herdbloku zadání nepředpokládá,
+  // neošetřuje se (prototyp, stejně jako panelWidthMM výš).
+  [
+    { name: 'vodopad-levy', xFromMM: 0 },
+    { name: 'vodopad-pravy', xFromMM: widthMM - SIDE_PLATE_THICKNESS_MM },
+  ].forEach(({ name, xFromMM }) => {
+    const vodopad = box(mm(SIDE_PLATE_THICKNESS_MM), mm(HERDBLOK_HEIGHT_MM), mm(depthMM), stainless);
+    vodopad.position.set(
+      mm(xFromMM + SIDE_PLATE_THICKNESS_MM / 2),
+      mm(HERDBLOK_HEIGHT_MM) / 2,
+      mm(depthMM) / 2
+    );
+    vodopad.name = name;
+    group.add(vodopad);
+  });
 
   // --- prvky panelu (zásuvky apod.): xMM je LOKÁLNÍ souřadnice ÚSEKU (viz
   // JSDoc výš). Kontrola je proti ŠÍŘCE PANELU, ne proti šířce úseku —
@@ -799,6 +828,14 @@ function herdblokDepthAtX(xMM, herdblok) {
  * xMM+widthMM); když je `herdblok` prázdné, kraj se nedá určit a i krajní
  * strany dostanou tenký kryt.
  *
+ * VÝJIMKA (zadání, boční kryt 20 mm u zkoseného konce): samotné "na kraji"
+ * (atEdge) už nestačí — je-li typ konce na daném konci
+ * END_TYPES.VERTICAL_PLATE_CHAMFER (zkosený vodopád) A podestavba na tom
+ * konci sedí přesně na kraji, použije se tenký kryt SIDE_COVER_THIN_MM (20)
+ * místo SIDE_COVER_THICK_MM (50). Vyhodnocuje se pro každý konec zvlášť
+ * (leftEndType/rightEndType), blok tak může mít na jednom konci 50 a na
+ * druhém 20.
+ *
  * Všechny ostatní odkryté strany (obě strany mostu/mezery mezi
  * podestavbami, nebo krajní strana odsazená volným prostorem — převis)
  * dostanou SIDE_COVER_THIN_MM (20). Kryt leží VEDLE podestavby ve volném
@@ -820,11 +857,13 @@ function computeSideCovers(podestavby, herdblok) {
   // nejlevější xMM určuje levý typ/hranici, nejpravější konec pravý.
   let leftEdgeX = null;
   let rightEdgeX = null;
+  let leftEndType = END_TYPES.VERTICAL_PLATE;
+  let rightEndType = END_TYPES.VERTICAL_PLATE;
   if (herdblok.length > 0) {
     const leftUsek = herdblok.reduce((a, b) => (b.xMM < a.xMM ? b : a));
     const rightUsek = herdblok.reduce((a, b) => (b.xMM + b.widthMM > a.xMM + a.widthMM ? b : a));
-    const leftEndType = leftUsek.leftEndType || END_TYPES.VERTICAL_PLATE;
-    const rightEndType = rightUsek.rightEndType || END_TYPES.VERTICAL_PLATE;
+    leftEndType = leftUsek.leftEndType || END_TYPES.VERTICAL_PLATE;
+    rightEndType = rightUsek.rightEndType || END_TYPES.VERTICAL_PLATE;
     leftEdgeX = leftUsek.xMM + sideInsetMM(leftEndType);
     rightEdgeX = rightUsek.xMM + rightUsek.widthMM - sideInsetMM(rightEndType);
   }
@@ -838,13 +877,18 @@ function computeSideCovers(podestavby, herdblok) {
 
     if (!hasLeftNeighbor) {
       const atEdge = i === 0 && leftEdgeX !== null && Math.abs(p.xMM - leftEdgeX) <= SIDE_ADJACENCY_TOL_MM;
-      const thicknessMM = atEdge ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
+      // VÝJIMKA: zkosený vodopád (VERTICAL_PLATE_CHAMFER) s podestavbou na
+      // kraji dostává tenký kryt, ne silný — atEdge samo o sobě nestačí.
+      const thicknessMM = atEdge && leftEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
+        ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
       covers.push({ xMM: p.xMM - thicknessMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok) });
     }
     if (!hasRightNeighbor) {
       const atEdge = i === sorted.length - 1 && rightEdgeX !== null
         && Math.abs((p.xMM + p.widthMM) - rightEdgeX) <= SIDE_ADJACENCY_TOL_MM;
-      const thicknessMM = atEdge ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
+      // VÝJIMKA — stejné pravidlo jako výš, pro pravý konec.
+      const thicknessMM = atEdge && rightEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
+        ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
       covers.push({ xMM: p.xMM + p.widthMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok) });
     }
   });

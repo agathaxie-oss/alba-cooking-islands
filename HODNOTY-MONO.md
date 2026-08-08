@@ -454,6 +454,15 @@ neplatí.
 - Tloušťka **50** se použije jen tam, kde podestavba začíná co nejvíc na
   kraji varného bloku, tedy tam, kde před ní není žádný volný prostor.
   **Všude jinde 20** — typicky po obou stranách mezery mezi podestavbami.
+- **VÝJIMKA (8. 8. 2026):** je-li typ zakončení na daném konci
+  `svislaDeskaZkos` (zkosený vodopád) **a** je na tom konci podestavba
+  (tedy by jinak platilo pravidlo výš a vyšla by tloušťka 50), použije se
+  místo toho **20**. Samotné „na kraji" už nestačí — musí se navíc podívat
+  na typ konce. Platí pro každý konec zvlášť (`leftEndType`/`rightEndType`
+  se posuzují nezávisle), takže jeden konec bloku může mít kryt 50 a druhý
+  20. Zadavatel: „pokud tady bude blok ukončen zkoseným vodopádem
+  s podestavbou, použijme spodní krycí panel jen 20 mm. Myslím, že to bude
+  vypadat lépe."
 - Poloha v ose X na kraji bloku závisí na typu konce:
 
 

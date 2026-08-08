@@ -79,12 +79,14 @@ Jediná funkce, která je počítá, je `computeMonoLayout(state)` v
 nepočítá — ani ui, ani geometrie.
 
 - **Herdblok**: prvky se kladou po sobě od `x = 0` doprava, kumulativně.
-  Zbytek do `lengthMM` je volná plocha (nekreslí se jako položka seznamu,
-  jen jako zbytkový proužek). Součet > `lengthMM` = přeplněno.
+  Nové položky se přidávají na KONEC řady (`push`). Zbytek do `lengthMM`
+  je volná plocha (nekreslí se jako položka seznamu, jen jako zbytkový
+  proužek). Součet > `lengthMM` = přeplněno.
 - **Podestavby**: kladou se po sobě od `sideInsetMM(leftEndType)` doprava.
-  Použitelný konec je `lengthMM − sideInsetMM(rightEndType)`. Zbytek do
-  tohoto konce je **chybějící úsek** (volba 2A, oranžově). `kind:'gap'`
-  uvnitř řady je legitimní most a kreslí se šedě.
+  Nové položky se přidávají na KONEC řady (`push`). Použitelný konec je
+  `lengthMM − sideInsetMM(rightEndType)`. Zbytek do tohoto konce je
+  **chybějící úsek** (volba 2A, oranžově). `kind:'gap'` uvnitř řady je
+  legitimní most a kreslí se šedě.
 - **panelItems**: `xMM` se ořezává do
   `[sideInsetMM(left), lengthMM − sideInsetMM(right)]`.
 
@@ -195,8 +197,12 @@ onMonoTabChange(tab)                 // 'herdblok'|'podestavby'|'panel'|'limec'|
                                      // aby podle ní odfiltroval paletu (§8)
 ```
 
-Ramena používají **existující** callbacky SEGMENTu (`onArmAdd`,
-`onArmChange`, `onArmRemove`) — nezakládat pro ně nové.
+Ramena používají **existující** callbacky SEGMENTu (`onAddArm`,
+`onRemoveArm`, `onArmPositionChange`, `onArmOffsetChange`,
+`onArmAngleChange`) — nezakládat pro ně nové.
+
+`onMonoTabChange` zachycuje `ui.js` pro filtrování palety (§8 bod 5) a
+**zároveň ho propustí dál do `main.js`** přes spread operátor.
 
 Každý callback, který mění `state`, končí v `main.js` voláním
 `rebuildBlock()` (přestavba scény + `ui.render`), stejně jako dnešní
@@ -210,6 +216,9 @@ Vkládat do každého jazykového bloku **za skupinu `arms.*`**, ve stejném
 pořadí jako níže. Obchodní jména řad se NEPŘEKLÁDAJÍ.
 `endType.waterfall` a `endType.waterfallChamfered` **už existují** — znovu
 je nezakládat.
+
+Překlady v tabulce níže jsou uvedeny v pořadí **cs / en / de / pl / sk**
+(nikoliv pořadí ze záhlaví).
 
 ```
 mono.tab.herdblok       Herdblok / Cooking block / Herdblock / Blok grzewczy / Herdblok
@@ -267,7 +276,8 @@ Třídy (význam a vzhled přesně podle `mockup-mono.html`, kde mají prefix `m
 .mono-strip-body                    kontejner pásu MONO
 .mono-panel                         obsah jedné záložky (display:none / flex)
 .mono-scale-row .mono-scale-label .mono-scale
-.mono-tick (i, b)                   pravítko
+.mono-ruler-row                     řada s pravítkem
+.mono-tick (i, b)                   značky a popisky na pravítku
 .mono-track-row
 .mono-tile                          + .mono-tile-device .mono-tile-cabinet
                                       .mono-tile-surface .mono-tile-gap
@@ -277,14 +287,15 @@ Třídy (význam a vzhled přesně podle `mockup-mono.html`, kde mají prefix `m
 .mono-btn-warn                      tlačítko „Doplnit"
 .mono-endcap .mono-endcap-left .mono-endcap-right
 .mono-endcap-glyph .mono-endcap-caret
-.mono-point                         bodový prvek (zásuvka, rameno)
+.mono-point .mono-point-selected    bodový prvek (zásuvka, rameno)
+.mono-switch .mono-switch-on        dvoustavový přepínač ano/ne
 .mono-track-bed .mono-track-bed-label
 .mono-track-note
 .mono-dimmed                        ztlumení dlaždice na opacity .42
 .mono-limec-body .mono-limec-opts .mono-limec-row .mono-limec-diagram
-.mono-switch                        dvoustavový přepínač ano/ne
 .mono-param-bar .mono-param-title .mono-param-fields .mono-param-field
 .mono-param-display .mono-param-input .mono-param-trash .mono-param-add
+.mono-param-icon-btn                ikona tlačítka v pruhu parametrů
 ```
 
 Pás MONO je **vyšší než dnešní SEGMENT pás** — `#assembly-strip` u MONO
@@ -313,8 +324,11 @@ Minimální zásah — ui.js má 1555 řádků a nemá se nafukovat.
 
 1. `import { createMonoStrip } from './mono-ui.js';`
 2. Líná instance: `let monoStrip = null;` + `function getMonoStrip()`.
-3. V `renderStrip(state)` hned na začátku:
+3. V `renderStrip(state)` hned na začátku se nastaví `lastStripState = state;`,
+   teprve PAK se staví výhybka:
    ```js
+   lastStripState = state;
+
    const isMono = currentProductType === 'mono';
    els.assemblyStrip.classList.toggle('strip-mono', isMono);
    els.stripBody.hidden = isMono;

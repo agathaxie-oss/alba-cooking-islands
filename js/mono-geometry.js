@@ -280,18 +280,22 @@ function box(widthM, heightM, depthM, material) {
  *   vrácených bodů, aby navazovaly na sousední hrany beze křížení: 'fromZ'
  *   (vchází se po boční hraně) vrátí nejdřív bod na boční hraně, 'fromX'
  *   (vchází se po přední hraně) nejdřív bod na přední hraně.
+ * @param {boolean} [chamferAllCorners=false]  ÚKOL 6 (ostrov): u varianty
+ *   `island` mohou být zkosené VŠECHNY čtyři rohy, ne jen přední (potvrzeno
+ *   8. 8. 2026, HODNOTY-MONO.md §7.5) — `dzIn > 0` samo už nestačí rozlišit
+ *   přední/zadní, proto `chamferAllCorners` podmínku obchází.
  * @returns {Array<{x:number, z:number}>} jeden bod (ostrý roh), nebo dva
- *   (zkosený přední roh u VERTICAL_PLATE_CHAMFER)
+ *   (zkosený roh u VERTICAL_PLATE_CHAMFER)
  */
-function cornerPoints(type, cornerX, cornerZ, dxIn, dzIn, from) {
+function cornerPoints(type, cornerX, cornerZ, dxIn, dzIn, from, chamferAllCorners = false) {
   const sharp = { x: cornerX, z: cornerZ };
-  if (type === END_TYPES.VERTICAL_PLATE_CHAMFER && dzIn > 0) {
+  if (type === END_TYPES.VERTICAL_PLATE_CHAMFER && (chamferAllCorners || dzIn > 0)) {
     const sideEdgePoint = { x: cornerX, z: cornerZ + END_CHAMFER_MM * dzIn };
     const frontEdgePoint = { x: cornerX + END_CHAMFER_MM * dxIn, z: cornerZ };
     return from === 'fromZ' ? [sideEdgePoint, frontEdgePoint] : [frontEdgePoint, sideEdgePoint];
   }
   // ostrý 90° roh: END_TYPES.VERTICAL_PLATE vždy, VERTICAL_PLATE_CHAMFER na
-  // zadních rozích (dzIn <= 0, detekce dle pravidla výš)
+  // zadních rozích u `single` (dzIn <= 0, chamferAllCorners=false)
   return [sharp];
 }
 
@@ -301,18 +305,19 @@ function cornerPoints(type, cornerX, cornerZ, dxIn, dzIn, from) {
  * `frontZMM` posouvá jen PŘEDNÍ hranu dozadu/dopředu, zadní hrana a rohy
  * zůstávají beze změny.
  *
- * @param {{widthMM:number, depthMM:number, frontZMM?:number, leftEndType:string, rightEndType:string}} p
+ * @param {{widthMM:number, depthMM:number, frontZMM?:number, leftEndType:string, rightEndType:string,
+ *   chamferAllCorners?:boolean}} p  `chamferAllCorners` — ÚKOL 6 (ostrov): viz cornerPoints výš.
  * @returns {Array<{x:number, z:number}>} uzavřený mnohoúhelník (poslední bod ≠ první)
  */
-export function buildHerdblokOutline({ widthMM, depthMM, frontZMM = 0, leftEndType, rightEndType }) {
+export function buildHerdblokOutline({ widthMM, depthMM, frontZMM = 0, leftEndType, rightEndType, chamferAllCorners = false }) {
   const backZ = depthMM;
 
   // čtyři rohy, obchůzka ve směru: čelo (0→width) → pravý konec (front→back)
   // → záda (width→0) → levý konec (back→front)
-  const frontRight = cornerPoints(rightEndType, widthMM, frontZMM, -1, +1, 'fromX');
-  const backRight = cornerPoints(rightEndType, widthMM, backZ, -1, -1, 'fromZ');
-  const backLeft = cornerPoints(leftEndType, 0, backZ, +1, -1, 'fromX');
-  const frontLeft = cornerPoints(leftEndType, 0, frontZMM, +1, +1, 'fromZ');
+  const frontRight = cornerPoints(rightEndType, widthMM, frontZMM, -1, +1, 'fromX', chamferAllCorners);
+  const backRight = cornerPoints(rightEndType, widthMM, backZ, -1, -1, 'fromZ', chamferAllCorners);
+  const backLeft = cornerPoints(leftEndType, 0, backZ, +1, -1, 'fromX', chamferAllCorners);
+  const frontLeft = cornerPoints(leftEndType, 0, frontZMM, +1, +1, 'fromZ', chamferAllCorners);
 
   return [...frontLeft, ...frontRight, ...backRight, ...backLeft];
 }
@@ -334,21 +339,32 @@ export function buildHerdblokOutline({ widthMM, depthMM, frontZMM = 0, leftEndTy
  * @param {'left'|'right'} side
  * @param {number} widthMM  šířka CELÉHO úseku (na 'right' se od ní odečítá)
  * @param {number} depthMM
+ * @param {boolean} [chamferAllCorners=false]  ÚKOL 6 (ostrov): když true, i
+ *   VZDÁLENÝ (dřív vždy ostrý) roh na konci depthMM se zkosí stejným
+ *   pravidlem jako blízký — nos u ostrova jde přes CELOU kombinovanou
+ *   hloubku a "od čela k čelu" jsou zkosené oba konce (viz zadání úkolu 6).
+ *   Volá se STEJNÁ cornerPoints() jako pro blízký roh — u `chamferAllCorners
+ *   = false` vrátí cornerPoints() pro dzIn=-1 vždy ostrý bod, tedy PŘESNĚ
+ *   dřívější natvrdo zapsaný bod {x,z:depthMM} — žádná regrese pro `single`.
  * @returns {Array<{x:number, z:number}>}
  */
-function noseOutline(endType, side, widthMM, depthMM) {
+function noseOutline(endType, side, widthMM, depthMM, chamferAllCorners = false) {
   const insetMM = sideInsetMM(endType);
   if (side === 'left') {
     // roh (0,0) — stejná souřadnice/orientace jako frontLeft v buildHerdblokOutline
-    const corner = cornerPoints(endType, 0, 0, +1, +1, 'fromZ');
-    return [...corner, { x: insetMM, z: 0 }, { x: insetMM, z: depthMM }, { x: 0, z: depthMM }];
+    const corner = cornerPoints(endType, 0, 0, +1, +1, 'fromZ', chamferAllCorners);
+    // vzdálený roh (0,depthMM) — 'fromX', stejná konvence jako backLeft v
+    // buildHerdblokOutline (odvozeno a ověřeno na testovacím bloku, viz přejímka)
+    const farCorner = cornerPoints(endType, 0, depthMM, +1, -1, 'fromX', chamferAllCorners);
+    return [...corner, { x: insetMM, z: 0 }, { x: insetMM, z: depthMM }, ...farCorner];
   }
   // roh (widthMM,0) — stejná souřadnice/orientace jako frontRight v
   // buildHerdblokOutline, ale s 'fromZ' (ne 'fromX' jako tam): polygon nosu
   // se obchází od boční hrany k přední, aby vyšel nekřížený (ověřeno na
   // testovacím bloku v přejímce).
-  const corner = cornerPoints(endType, widthMM, 0, -1, +1, 'fromZ');
-  return [...corner, { x: widthMM - insetMM, z: 0 }, { x: widthMM - insetMM, z: depthMM }, { x: widthMM, z: depthMM }];
+  const corner = cornerPoints(endType, widthMM, 0, -1, +1, 'fromZ', chamferAllCorners);
+  const farCorner = cornerPoints(endType, widthMM, depthMM, -1, -1, 'fromX', chamferAllCorners);
+  return [...corner, { x: widthMM - insetMM, z: 0 }, { x: widthMM - insetMM, z: depthMM }, ...farCorner];
 }
 
 /** Postaví THREE.Shape (v rovině X/Z, viz rotace při extruzi) z obrysu. */
@@ -377,9 +393,48 @@ function slabFromOutline(outline, topYMM, heightMM, material) {
   return mesh;
 }
 
-/** Stejné jako slabFromOutline, ale samo spočítá obrys z parametrů. */
-function buildOutlineSlab(outlineArgs, topYMM, heightMM, material) {
-  return slabFromOutline(buildHerdblokOutline(outlineArgs), topYMM, heightMM, material);
+// ============================================================================
+// DESKA HERDBLOKU — extrahováno z buildHerdblokUsek (ÚKOL 6, ostrov)
+// ============================================================================
+// U ostrova je deska JEDNA průběžná přes obě strany (depthAMM + depthBMM),
+// ne dvě desky proti sobě se spárou uprostřed (PREDANI.md, úkol 6) — proto
+// musí jít postavit SAMOSTATNĚ na kombinovaném obrysu, mimo buildHerdblokUsek
+// (ten pro `island` desku vynechává přes `includeDesk:false`, viz níž).
+
+/**
+ * Postaví desku herdbloku jako samostatný THREE.Mesh — stejná geometrie,
+ * jakou dřív stavěl buildHerdblokUsek přímo (obrys → extruze dolů o
+ * DESK_FACE_HEIGHT_MM). Používá ji buildHerdblokUsek (`single`, přes
+ * widthMM/depthMM JEDNOHO úseku) i buildMonoBlock (`island`, přes
+ * widthMM=lengthMM/depthMM=totalDepthMM kombinovaného obrysu, §6 krok 1).
+ *
+ * @param {{widthMM:number, depthMM:number, leftEndType:string, rightEndType:string,
+ *   frontZMM?:number, chamferAllCorners?:boolean}} p
+ * @returns {THREE.Mesh}
+ */
+export function buildHerdblokDesk({ widthMM, depthMM, leftEndType, rightEndType, frontZMM = 0, chamferAllCorners = false }) {
+  const stainless = createStainlessMaterial();
+  const outline = buildHerdblokOutline({ widthMM, depthMM, frontZMM, leftEndType, rightEndType, chamferAllCorners });
+  return slabFromOutline(outline, HERDBLOK_HEIGHT_MM, DESK_FACE_HEIGHT_MM, stainless);
+}
+
+/**
+ * Postaví JEDEN nos (vodopád) na daném konci (`side`) jako samostatný
+ * THREE.Mesh — stejná geometrie, jakou dřív stavěl buildHerdblokUsek přímo
+ * (noseOutline → extruze). Používá ji buildHerdblokUsek (`single`/per-strana
+ * `island`, přes depthMM JEDNÉ strany) i buildMonoBlock (`island`, kombinovaný
+ * nos přes depthMM=totalDepthMM, "od čela k čelu" — viz zadání úkolu 6, ne po
+ * stranách zvlášť).
+ *
+ * @param {{endType:string, side:'left'|'right', widthMM:number, depthMM:number,
+ *   chamferAllCorners?:boolean}} p
+ * @returns {THREE.Mesh}
+ */
+export function buildHerdblokNose({ endType, side, widthMM, depthMM, chamferAllCorners = false }) {
+  const stainless = createStainlessMaterial();
+  const outline = noseOutline(endType, side, widthMM, depthMM, chamferAllCorners);
+  const NOSE_TOP_Y_MM = HERDBLOK_HEIGHT_MM - DESK_FACE_HEIGHT_MM; // 240 — spodní líc desky
+  return slabFromOutline(outline, NOSE_TOP_Y_MM, NOSE_TOP_Y_MM, stainless);
 }
 
 // ============================================================================
@@ -492,6 +547,41 @@ function buildCollarWall(x1MM, z1MM, x2MM, z2MM, baseYMM, heightMM, material) {
   return mesh;
 }
 
+/**
+ * Postaví JEDNU stěnu límce nad danou hranou obrysu (front/back/left/right)
+ * o rozměru widthMM×depthMM — sdílená implementace stejné geometrie, jakou
+ * dřív počítal jen inline `collar.forEach` uvnitř buildHerdblokUsek. U
+ * `island` (ÚKOL 6, §9) se límec staví JEDNOU nad KOMBINOVANÝM obrysem
+ * (widthMM=lengthMM, depthMM=totalDepthMM), ne uvnitř buildHerdblokUsek pro
+ * stranu A/B zvlášť — buildMonoBlock ji proto volá přímo. Podmínku "left/
+ * right jen na konci VERTICAL_PLATE" a "back se u ostrova nikdy nestaví" si
+ * hlídá VOLAJÍCÍ (stejně jako u single dřívější inline kód) — tahle funkce
+ * jen postaví geometrii dané hrany bez podmínek.
+ */
+function buildCollarEdgeWall(edge, widthMM, depthMM, heightMM, material) {
+  const h = clamp(heightMM, COLLAR_HEIGHT_MIN_MM, COLLAR_HEIGHT_MAX_MM);
+  const baseY = HERDBLOK_HEIGHT_MM; // horní hrana desky
+  // Pořadí bodů (p1→p2) obchází obrys desky jedním smyslem — viz OPRAVA
+  // komentář u buildCollarWall výš (jinak by dopočítaná kolmice mířila ven).
+  if (edge === 'front') return buildCollarWall(0, 0, widthMM, 0, baseY, h, material);
+  if (edge === 'back') return buildCollarWall(widthMM, depthMM, 0, depthMM, baseY, h, material);
+  if (edge === 'left') return buildCollarWall(0, depthMM, 0, 0, baseY, h, material);
+  if (edge === 'right') return buildCollarWall(widthMM, 0, widthMM, depthMM, baseY, h, material);
+  return null;
+}
+
+/**
+ * Veřejná obálka buildCollarEdgeWall — používá ji buildMonoBlock() pro
+ * kombinovaný límec ostrova (§9). Jméno meshe `limec-${edge}` nastavuje
+ * rovnou, stejně jako dřívější inline kód v buildHerdblokUsek.
+ */
+export function buildCollarSide({ edge, widthMM, depthMM, heightMM = COLLAR_HEIGHT_DEFAULT_MM }) {
+  const stainless = createStainlessMaterial();
+  const wall = buildCollarEdgeWall(edge, widthMM, depthMM, heightMM, stainless);
+  if (wall) wall.name = `limec-${edge}`;
+  return wall;
+}
+
 // ============================================================================
 // PRVKY V OVLÁDACÍM PANELU — zásuvky apod. (viz PANEL_ITEM výš)
 // ============================================================================
@@ -571,6 +661,18 @@ export function buildPanelItem({ kind, xMM, heightMM = PANEL_ITEM_HEIGHT_DEFAULT
  *   ÚSEKU (ne bloku, tu už převádí volající). Prvek, který by svou šířkou
  *   přesáhl mimo šířku PANELU (leftInsetMM..width-rightInsetMM, užší než
  *   úsek — viz sideInsetMM), se TIŠE nevykreslí, žádný pád, nic se nedomýšlí.
+ * @param {boolean} [usek.includeDesk=true]  ÚKOL 6 (ostrov): `false` u OBOU
+ *   stran ostrova — deska je tam JEDNA průběžná, staví ji buildMonoBlock
+ *   samostatně přes buildHerdblokDesk() (viz zadání, "ne dvě desky proti
+ *   sobě se spárou uprostřed"). U `single` beze změny (`true`, jako dosud).
+ * @param {boolean} [usek.includeNose=true]  ÚKOL 6 (ostrov): `false` u OBOU
+ *   stran ostrova — nos (vodopád) jde na X-koncích "od čela k čelu" přes
+ *   CELOU kombinovanou hloubku, ne po stranách zvlášť; staví ho buildMonoBlock
+ *   samostatně přes buildHerdblokNose(). U `single` beze změny (`true`).
+ * @param {boolean} [usek.chamferAllCorners=false]  ÚKOL 6 (ostrov): protéká
+ *   do buildHerdblokDesk (jen když includeDesk) — u `single` se sem nedostane
+ *   nic (deska se staví mimo), ale parametr se nechává i tady kvůli
+ *   jednotnému rozhraní usek objektu.
  */
 export function buildHerdblokUsek(usek) {
   const {
@@ -580,6 +682,9 @@ export function buildHerdblokUsek(usek) {
     rightEndType = END_TYPES.VERTICAL_PLATE,
     collar = [],
     panelItems = [],
+    includeDesk = true,
+    includeNose = true,
+    chamferAllCorners = false,
   } = usek;
 
   const group = new THREE.Group();
@@ -594,10 +699,14 @@ export function buildHerdblokUsek(usek) {
   // VÝHRADNĚ PŮDORYSNÉ (useknutý PŘEDNÍ roh shora, viz ÚKOL B zadání a
   // cornerPoints výš); buildHerdblokOutline ho automaticky promítne i sem,
   // žádná další úprava tady není potřeba.
-  const deskOutlineArgs = { widthMM, depthMM, frontZMM: 0, leftEndType, rightEndType };
-  const desk = buildOutlineSlab(deskOutlineArgs, HERDBLOK_HEIGHT_MM, DESK_FACE_HEIGHT_MM, stainless);
-  desk.name = 'deska';
-  group.add(desk);
+  // ÚKOL 6 (ostrov): includeDesk=false u OBOU stran ostrova — deska je JEDNA
+  // průběžná, staví ji buildMonoBlock samostatně (buildHerdblokDesk, viz JSDoc
+  // parametru výš). U `single` beze změny — desk se staví tady, přesně jako dřív.
+  if (includeDesk) {
+    const desk = buildHerdblokDesk({ widthMM, depthMM, leftEndType, rightEndType, frontZMM: 0, chamferAllCorners });
+    desk.name = 'deska';
+    group.add(desk);
+  }
 
   // --- zatažení od boku pro korpus/panel/lištu/nos — NENÍ symetrické, závisí
   // na typu KAŽDÉHO konce zvlášť (viz zadání bod 2, ÚKOL A). Spočteno JEDNOU
@@ -679,16 +788,20 @@ export function buildHerdblokUsek(usek) {
   // u svislaDeska prostý obdélník, u svislaDeskaZkos useknutý PŘEDNÍ roh —
   // noseOutline() proto počítá roh přes STEJNOU cornerPoints() jako
   // buildHerdblokOutline.
-  const NOSE_TOP_Y_MM = HERDBLOK_HEIGHT_MM - DESK_FACE_HEIGHT_MM; // 240 — spodní líc desky
-  [
-    { name: 'vodopad-levy', endType: leftEndType, side: 'left' },
-    { name: 'vodopad-pravy', endType: rightEndType, side: 'right' },
-  ].forEach(({ name, endType, side }) => {
-    const outline = noseOutline(endType, side, widthMM, depthMM);
-    const nose = slabFromOutline(outline, NOSE_TOP_Y_MM, NOSE_TOP_Y_MM, stainless);
-    nose.name = name;
-    group.add(nose);
-  });
+  // ÚKOL 6 (ostrov): includeNose=false u OBOU stran ostrova — nos jde na
+  // X-koncích "od čela k čelu" přes CELOU kombinovanou hloubku, staví ho
+  // buildMonoBlock samostatně (buildHerdblokNose, viz JSDoc parametru výš).
+  // U `single` beze změny — nos se staví tady, přesně jako dřív.
+  if (includeNose) {
+    [
+      { name: 'vodopad-levy', endType: leftEndType, side: 'left' },
+      { name: 'vodopad-pravy', endType: rightEndType, side: 'right' },
+    ].forEach(({ name, endType, side }) => {
+      const nose = buildHerdblokNose({ endType, side, widthMM, depthMM, chamferAllCorners });
+      nose.name = name;
+      group.add(nose);
+    });
+  }
 
   // --- prvky panelu (zásuvky apod.): xMM je LOKÁLNÍ souřadnice ÚSEKU (viz
   // JSDoc výš). Kontrola je proti ŠÍŘCE PANELU, ne proti šířce úseku —
@@ -955,9 +1068,15 @@ function herdblokDepthAtX(xMM, herdblok) {
  * který leží nad danou podestavbou (viz herdblokDepthAtX výše) — hloubka
  * herdbloku je volná, ne natvrdo HERDBLOK_DEPTH_DEFAULT_MM.
  *
+ * `atEdge` v návratu (ÚKOL 6, ostrov): true, když je daný kryt na SAMÉM
+ * X-konci bloku (levý kraj nejlevější podestavby / pravý kraj nejpravější).
+ * buildMonoBlock() u varianty `island` tyhle kryty VYNECHÁVÁ (nahradí je
+ * JEDNÍM krytem přes celou kombinovanou hloubku, "od čela k čelu" — viz
+ * zadání úkolu 6) — u `single` se `atEdge` jen ignoruje, žádná změna chování.
+ *
  * @param {Array<{xMM:number, widthMM:number}>} podestavby
  * @param {Array<{xMM:number, widthMM:number, depthMM?:number, leftEndType?:string, rightEndType?:string}>} herdblok
- * @returns {Array<{xMM:number, thicknessMM:number, depthMM:number}>} xMM = menší x kraj krytu
+ * @returns {Array<{xMM:number, thicknessMM:number, depthMM:number, atEdge:boolean}>} xMM = menší x kraj krytu
  */
 function computeSideCovers(podestavby, herdblok) {
   if (podestavby.length === 0) return [];
@@ -991,7 +1110,7 @@ function computeSideCovers(podestavby, herdblok) {
       // kraji dostává tenký kryt, ne silný — atEdge samo o sobě nestačí.
       const thicknessMM = atEdge && leftEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
         ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
-      covers.push({ xMM: p.xMM - thicknessMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok) });
+      covers.push({ xMM: p.xMM - thicknessMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok), atEdge });
     }
     if (!hasRightNeighbor) {
       const atEdge = i === sorted.length - 1 && rightEdgeX !== null
@@ -999,7 +1118,7 @@ function computeSideCovers(podestavby, herdblok) {
       // VÝJIMKA — stejné pravidlo jako výš, pro pravý konec.
       const thicknessMM = atEdge && rightEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
         ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
-      covers.push({ xMM: p.xMM + p.widthMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok) });
+      covers.push({ xMM: p.xMM + p.widthMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok), atEdge });
     }
   });
 
@@ -1087,31 +1206,89 @@ export function checkSupport(podestavby, herdblokUsek) {
 // ============================================================================
 
 /**
- * Sestaví THREE.Group reprezentující celý blok ALBA MONO ze DVOU nezávislých
- * vrstev: `podestavby` a `herdblok` (pole úseků — typicky jeden úsek, ale
+ * Sestaví THREE.Group reprezentující celý blok ALBA MONO. U `variant:'single'`
+ * (výchozí, BEZE ZMĚNY oproti dřívějšímu chování) ze DVOU nezávislých vrstev
+ * strany A: `podestavbyA` a `herdblokA` (pole úseků — typicky jeden úsek, ale
  * API to nevyžaduje). Boční kryty jsou TŘETÍ, ODVOZENOU vrstvou —
  * computeSideCovers() je vygeneruje sama z řady podestaveb (viz zadání,
  * bod 5); volající je nezadává.
  *
+ * U `variant:'island'` (ÚKOL 6, PREDANI.md) přibývá STEJNÁ trojice vrstev
+ * pro stranu B (`podestavbyB`/`herdblokB`/`panelItemsB`) — strana B se
+ * staví v LOKÁLNÍCH (nezrcadlených) souřadnicích STEJNĚ jako strana A, a
+ * celá její podskupina se pak otočí `rotation.y = Math.PI` (ŽÁDNÉ záporné
+ * měřítko — viz zákaz v zadání) a posune tak, aby vyšla na druhém konci
+ * kombinované hloubky, čelem ven. Odvození pozice (position.x = lengthMM,
+ * position.z = totalDepthMM): rotace o 180° kolem Y mapuje lokální (x,y,z)
+ * na world (position.x − x, y, position.z − z); dosazením lokálního z=0
+ * (čelo strany B) chceme world z = totalDepthMM a lokálního z=depthBMM
+ * (záda strany B, spára) world z = depthAMM (což sedí, depthAMM+depthBMM
+ * = totalDepthMM) — a dosazením libovolného lokálního (xMM, xMM+widthMM)
+ * chceme world rozsah roven mirrorX(xMM,lengthMM,widthMM)..+widthMM (STEJNÝ
+ * world X jako stejné xMM na straně A — sdílená osa X mezi A/B, odvozeno z
+ * pravidla o ramenech, viz zadání §8) — což dá position.x = lengthMM.
+ * Díky tomu se na stranu B NEAPLIKUJE mirrorX (na rozdíl od strany A) — dvojí
+ * zrcadlení (mirrorX + rotace) by se vyrušilo špatným směrem.
+ *
+ * Kombinovaná deska/nosy/límec/boční kryty na X-koncích (§6/§9 zadání) se u
+ * `island` staví JEDNOU navíc, přímo v hlavní (nerotované) skupině — ne
+ * uvnitř strany A ani strany B.
+ *
  * @param {object} params
  * @param {number} [params.workHeightMM=900]  pracovní výška, 850–900
- * @param {Array<{xMM:number, widthMM:number, depthMM?:number, finish?:string}>} params.podestavby
+ * @param {'single'|'island'} [params.variant='single']
+ * @param {number} [params.depthAMM]  hloubka strany A — u `island` se z ní
+ *   (spolu s depthBMM) počítá totalDepthMM pro kombinovanou desku/nosy/límec.
+ * @param {number} [params.depthBMM]  hloubka strany B — jen `island`.
+ * @param {Array<{xMM:number, widthMM:number, depthMM?:number, finish?:string}>} params.podestavbyA
  *   `finish` je vlastnost KAŽDÉ SKŘÍŇKY ZVLÁŠŤ (viz buildPodestavba) — jedna
  *   řada může mít skříňky s různou úpravou vedle sebe.
  * @param {Array<{xMM:number, widthMM:number, depthMM?:number, leftEndType?:string,
- *   rightEndType?:string, collar?:Array}>} params.herdblok  úseky herdbloku
- * @param {Array<{kind:string, xMM:number, heightMM:number}>} [params.panelItems]
- *   prvky ovládacího panelu (zásuvky apod.), ABSOLUTNÍ xMM po délce CELÉHO
- *   bloku — každý se osadí do úseku herdbloku, do jehož rozsahu xMM spadá
- *   (viz smyčka níž); šířku panelu daného úseku hlídá až buildHerdblokUsek.
+ *   rightEndType?:string, collar?:Array}>} params.herdblokA  úseky herdbloku strany A
+ * @param {Array<{kind:string, xMM:number, heightMM:number}>} [params.panelItemsA]
+ *   prvky ovládacího panelu strany A (zásuvky apod.), ABSOLUTNÍ xMM po délce
+ *   CELÉHO bloku — každý se osadí do úseku herdbloku, do jehož rozsahu xMM
+ *   spadá (viz smyčka níž); šířku panelu daného úseku hlídá až buildHerdblokUsek.
+ * @param {Array<object>} [params.podestavbyB]  jen `island`, stejný tvar jako podestavbyA,
+ *   v LOKÁLNÍCH (nezrcadlených) souřadnicích strany B.
+ * @param {Array<object>} [params.herdblokB]  jen `island`, stejný tvar jako herdblokA,
+ *   leftEndType/rightEndType SDÍLENÉ a NEPROHOZENÉ (na rozdíl od herdblokA) —
+ *   rotace fyzicky otočí tvar, žádná záměna typů není potřeba.
+ * @param {Array<object>} [params.panelItemsB]  jen `island`, stejný tvar jako panelItemsA,
+ *   v LOKÁLNÍCH (nezrcadlených) souřadnicích strany B.
+ * @param {Array<{edge:'left'|'right', heightMM:number}>} [params.collar]  jen `island` —
+ *   límec nad KOMBINOVANÝM obrysem desky (§9); u `single` se limec bere
+ *   z herdblokA[].collar (beze změny). `back` se tady i tak defenzivně
+ *   ignoruje (ostrov nemá záda, viz zadání) bez ohledu na to, co pole obsahuje.
+ * @param {Array<object>} [params.podestavby]  ZPĚTNÁ KOMPATIBILITA se
+ *   starším podpisem (dřívější `podestavby`, dnes `podestavbyA`) — použije
+ *   se, jen když `podestavbyA` chybí. Stejně `herdblok`→`herdblokA`,
+ *   `panelItems`→`panelItemsA`. Drží v provozu mono-prototype.js, dokud
+ *   nedostane vlastní aktualizaci volání (mimo rozsah tohoto souboru).
  * @returns {{group:THREE.Group, support: Array, bodyHeightMM:number, workHeightMM:number}}
  */
 export function buildMonoBlock({
   workHeightMM = WORK_HEIGHT_DEFAULT_MM,
-  podestavby = [],
-  herdblok = [],
-  panelItems = [],
+  variant = 'single',
+  depthAMM,
+  depthBMM,
+  podestavbyA,
+  herdblokA,
+  panelItemsA,
+  podestavbyB = [],
+  herdblokB = [],
+  panelItemsB = [],
+  collar = [],
+  // zpětná kompatibilita — viz JSDoc výš
+  podestavby: legacyPodestavby,
+  herdblok: legacyHerdblok,
+  panelItems: legacyPanelItems,
 }) {
+  const isIsland = variant === 'island';
+  const podA = podestavbyA !== undefined ? podestavbyA : (legacyPodestavby || []);
+  const herA = herdblokA !== undefined ? herdblokA : (legacyHerdblok || []);
+  const panA = panelItemsA !== undefined ? panelItemsA : (legacyPanelItems || []);
+
   const workHeight = clamp(workHeightMM, WORK_HEIGHT_MIN_MM, WORK_HEIGHT_MAX_MM);
   // výška bloku se mění VÝHRADNĚ tělem skříňky — herdblok i nožičky jsou pevné
   const bodyHeightMM = workHeight - HERDBLOK_HEIGHT_MM - LEG_HEIGHT_MM;
@@ -1119,9 +1296,12 @@ export function buildMonoBlock({
   const group = new THREE.Group();
   group.name = 'alba-mono-blok';
 
+  // ============================================================================
+  // STRANA A — beze změny oproti dřívějšímu chování (single i island)
+  // ============================================================================
   const podestavbyGroup = new THREE.Group();
   podestavbyGroup.name = 'podestavby';
-  podestavby.forEach((p) => {
+  podA.forEach((p) => {
     const mesh = buildPodestavba({ widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish });
     mesh.position.x = mm(p.xMM);
     podestavbyGroup.add(mesh);
@@ -1131,35 +1311,37 @@ export function buildMonoBlock({
   const herdblokGroup = new THREE.Group();
   herdblokGroup.name = 'herdblok';
   herdblokGroup.position.y = mm(workHeight - HERDBLOK_HEIGHT_MM); // sedí na podestavbách
-  herdblok.forEach((u) => {
+  herA.forEach((u) => {
     // panelItems mají ABSOLUTNÍ xMM po délce CELÉHO bloku (viz JSDoc výš) —
     // tady se jen rozdělí do úseku, do jehož rozsahu spadají, a xMM se
     // převede na LOKÁLNÍ souřadnici úseku (stejná konvence jako u xMM/
     // widthMM samotného úseku). Kontrolu vůči ŠÍŘCE PANELU (užší než úsek)
     // dělá až buildHerdblokUsek — ten zná leftInsetMM/rightInsetMM.
-    const usekPanelItems = panelItems
+    const usekPanelItems = panA
       .filter((it) => it.xMM >= u.xMM && it.xMM <= u.xMM + u.widthMM)
       .map((it) => ({ ...it, xMM: it.xMM - u.xMM }));
-    const mesh = buildHerdblokUsek({ ...u, panelItems: usekPanelItems });
+    const mesh = buildHerdblokUsek({
+      ...u,
+      panelItems: usekPanelItems,
+      // ÚKOL 6 (ostrov): deska i nos strany A se u `island` staví JEDNOU,
+      // kombinovaně, níž — ne tady. U `single` beze změny (true/true).
+      includeDesk: !isIsland,
+      includeNose: !isIsland,
+      chamferAllCorners: isIsland,
+    });
     mesh.position.x = mm(u.xMM);
     herdblokGroup.add(mesh);
   });
   group.add(herdblokGroup);
 
-  // --- boční kryty: odvozené z řady podestaveb, NENÍ to volba volajícího ---
-  // Rozměry, které se nemění (viz zadání, bod 5): výška = tělo podestavby
-  // (LEG_HEIGHT_MM..LEG_HEIGHT_MM+bodyHeightMM, řeší buildSideCover sám).
-  // Hloubka (zadní hrana) je VOLNÁ — odvozuje se z depthMM úseku herdbloku,
-  // ke kterému kryt patří (viz herdblokDepthAtX/computeSideCovers výše), ne
-  // natvrdo z HERDBLOK_DEPTH_DEFAULT_MM; při jiné hloubce než 850 by kryt
-  // jinak nedosáhl ke stěně, nebo ji přesáhl. Přední hrana zůstává vždy na
-  // DESK_OVERHANG_FRONT_MM (30).
-  // PŘEDPOKLAD: u vnitřních (THIN, mezi podestavbami) krytů není potvrzeno,
-  // jestli mají jít taky až ke stěně, nebo jen po zadní líc podestavby —
-  // zatím je děláme stejně jako krajní, tedy až ke stěně (depthMM úseku).
+  // --- boční kryty strany A: odvozené z řady podestaveb, NENÍ to volba
+  // volajícího (viz zadání, bod 5). U `island` se kryty NA SAMÉM X-KONCI
+  // BLOKU (atEdge) vynechávají — nahrazuje je JEDEN kombinovaný kryt přes
+  // celou hloubku, "od čela k čelu" (viz níž, §6 krok 4 zadání úkolu 6).
   const sideCoversGroup = new THREE.Group();
   sideCoversGroup.name = 'bocni-kryty';
-  computeSideCovers(podestavby, herdblok).forEach(({ xMM, thicknessMM, depthMM }) => {
+  computeSideCovers(podA, herA).forEach(({ xMM, thicknessMM, depthMM, atEdge }) => {
+    if (isIsland && atEdge) return;
     const cover = buildSideCover({
       thicknessMM,
       heightMM: bodyHeightMM,
@@ -1171,7 +1353,158 @@ export function buildMonoBlock({
   });
   group.add(sideCoversGroup);
 
-  const support = herdblok.map((u) => ({ usek: u, ...checkSupport(podestavby, u) }));
+  // ============================================================================
+  // STRANA B + KOMBINOVANÉ DÍLY — jen `island` (ÚKOL 6, PREDANI.md)
+  // ============================================================================
+  let lengthMM = 0;
+  let totalDepthMM = 0;
+  if (isIsland) {
+    // lengthMM: buildMonoScene VŽDY staví herdblokA/herdblokB jako JEDEN
+    // úsek přes celou délku bloku (existující konvence, i pro `single`) —
+    // widthMM toho úseku je tedy lengthMM. Robustně bereme z A, jinak z B.
+    lengthMM = (herA[0] && herA[0].widthMM) || (herdblokB[0] && herdblokB[0].widthMM) || 0;
+    totalDepthMM = (Number(depthAMM) || (herA[0] && herA[0].depthMM) || 0)
+      + (Number(depthBMM) || (herdblokB[0] && herdblokB[0].depthMM) || 0);
+
+    // --- STRANA B: LOKÁLNÍ (nezrcadlené) souřadnice, celá podskupina se
+    // otočí 180° kolem Y — viz JSDoc výš pro odvození position.x/position.z.
+    const sideBGroup = new THREE.Group();
+    sideBGroup.name = 'strana-b';
+    sideBGroup.rotation.y = Math.PI;
+    sideBGroup.position.set(mm(lengthMM), 0, mm(totalDepthMM));
+
+    const podestavbyBGroup = new THREE.Group();
+    podestavbyBGroup.name = 'podestavby';
+    podestavbyB.forEach((p) => {
+      const mesh = buildPodestavba({ widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish });
+      mesh.position.x = mm(p.xMM);
+      podestavbyBGroup.add(mesh);
+    });
+    sideBGroup.add(podestavbyBGroup);
+
+    const herdblokBGroup = new THREE.Group();
+    herdblokBGroup.name = 'herdblok';
+    herdblokBGroup.position.y = mm(workHeight - HERDBLOK_HEIGHT_MM);
+    herdblokB.forEach((u) => {
+      const usekPanelItems = panelItemsB
+        .filter((it) => it.xMM >= u.xMM && it.xMM <= u.xMM + u.widthMM)
+        .map((it) => ({ ...it, xMM: it.xMM - u.xMM }));
+      const mesh = buildHerdblokUsek({
+        ...u,
+        panelItems: usekPanelItems,
+        includeDesk: false, // kombinovaná deska se staví níž, jednou
+        includeNose: false, // kombinovaný nos se staví níž, jednou
+        chamferAllCorners: true,
+      });
+      mesh.position.x = mm(u.xMM);
+      herdblokBGroup.add(mesh);
+    });
+    sideBGroup.add(herdblokBGroup);
+
+    const sideCoversBGroup = new THREE.Group();
+    sideCoversBGroup.name = 'bocni-kryty';
+    computeSideCovers(podestavbyB, herdblokB).forEach(({ xMM, thicknessMM, depthMM, atEdge }) => {
+      if (atEdge) return; // nahrazeno kombinovaným krytem na X-konci, viz níž
+      const cover = buildSideCover({
+        thicknessMM,
+        heightMM: bodyHeightMM,
+        fromZMM: DESK_OVERHANG_FRONT_MM,
+        toZMM: depthMM,
+        xMM,
+      });
+      sideCoversBGroup.add(cover);
+    });
+    sideBGroup.add(sideCoversBGroup);
+
+    group.add(sideBGroup);
+
+    // --- KOMBINOVANÉ DÍLY: deska, oba nosy, límec left/right, boční kryty
+    // na X-koncích — VŠECHNY přes CELOU kombinovanou hloubku (§6/§9 zadání,
+    // "od čela k čelu", ne po stranách zvlášť). Staví se přímo v hlavní
+    // (nerotované) skupině — herA[0].leftEndType/rightEndType JSOU už typy
+    // PROHOZENÉ pro world x=0/x=lengthMM hranu (stejná konvence, jakou
+    // mono-block.js používá pro herdblokA — viz jeho komentář u mirrorX).
+    if (herA.length > 0) {
+      const deskSpec = herA[0];
+      const combinedLeftType = deskSpec.leftEndType;   // world x=0 hrana
+      const combinedRightType = deskSpec.rightEndType; // world x=lengthMM hrana
+
+      const desk = buildHerdblokDesk({
+        widthMM: lengthMM,
+        depthMM: totalDepthMM,
+        leftEndType: combinedLeftType,
+        rightEndType: combinedRightType,
+        chamferAllCorners: true,
+      });
+      desk.name = 'deska';
+      group.add(desk);
+
+      const noseLeft = buildHerdblokNose({
+        endType: combinedLeftType, side: 'left', widthMM: lengthMM, depthMM: totalDepthMM, chamferAllCorners: true,
+      });
+      noseLeft.name = 'vodopad-levy';
+      group.add(noseLeft);
+      const noseRight = buildHerdblokNose({
+        endType: combinedRightType, side: 'right', widthMM: lengthMM, depthMM: totalDepthMM, chamferAllCorners: true,
+      });
+      noseRight.name = 'vodopad-pravy';
+      group.add(noseRight);
+
+      // --- límec left/right JEDNOU nad kombinovaným obrysem (§9 zadání);
+      // `back` se u ostrova NIKDY nestaví — filtr tady je pojistka navíc
+      // k tomu, co už (podle smlouvy) dělá mono-block.js#buildCollarSpec.
+      collar.forEach(({ edge, heightMM }) => {
+        if (edge !== 'left' && edge !== 'right') return;
+        const endTypeAtEdge = edge === 'left' ? combinedLeftType : combinedRightType;
+        if (endTypeAtEdge !== END_TYPES.VERTICAL_PLATE) return; // stejná podmínka jako u single
+        const wall = buildCollarSide({ edge, widthMM: lengthMM, depthMM: totalDepthMM, heightMM });
+        if (wall) group.add(wall);
+      });
+
+      // --- boční kryty na X-koncích, JEDNA deska přes CELOU kombinovanou
+      // hloubku (z 0..totalDepthMM, "od čela k čelu") — TLOUŠŤKA (THICK/THIN)
+      // se odvozuje ze STEJNÉHO pravidla jako u single (computeSideCovers),
+      // jen aplikovaného na SJEDNOCENÍ obou řad podestaveb: je-li kterákoli
+      // z nich (A nebo B) na daném konci zapřená přímo o hranu bloku, kryt
+      // je THICK (pokud tam zrovna není zkosený konec, pak THIN — stejná
+      // výjimka jako u single), jinak THIN.
+      const worldPodA = podA.map((p) => ({ xMM: p.xMM, widthMM: p.widthMM }));
+      // podestavbyB jsou v LOKÁLNÍCH (nezrcadlených) souřadnicích strany B —
+      // pro zjištění, jestli leží na kraji bloku, se přepočtou na WORLD X
+      // stejným vzorcem, jaký fakticky dá i rotace (mirrorX(xMM,lengthMM,
+      // widthMM) = lengthMM−xMM−widthMM, odvozeno v JSDoc výš) — i když se
+      // samotné meshe B staví BEZ mirrorX (o to se postará rotace).
+      const worldPodB = podestavbyB.map((p) => ({ xMM: lengthMM - p.xMM - p.widthMM, widthMM: p.widthMM }));
+      const allWorldPod = [...worldPodA, ...worldPodB];
+
+      const leftEdgeX = sideInsetMM(combinedLeftType);
+      const rightEdgeX = lengthMM - sideInsetMM(combinedRightType);
+      const leftFlush = allWorldPod.some((p) => Math.abs(p.xMM - leftEdgeX) <= SIDE_ADJACENCY_TOL_MM);
+      const rightFlush = allWorldPod.some((p) => Math.abs((p.xMM + p.widthMM) - rightEdgeX) <= SIDE_ADJACENCY_TOL_MM);
+      const leftThickness = leftFlush && combinedLeftType !== END_TYPES.VERTICAL_PLATE_CHAMFER
+        ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
+      const rightThickness = rightFlush && combinedRightType !== END_TYPES.VERTICAL_PLATE_CHAMFER
+        ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
+
+      if (allWorldPod.length > 0) {
+        const coverLeft = buildSideCover({
+          thicknessMM: leftThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: leftEdgeX - leftThickness,
+        });
+        coverLeft.name = 'bocni-kryt-x-konec';
+        group.add(coverLeft);
+        const coverRight = buildSideCover({
+          thicknessMM: rightThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: rightEdgeX,
+        });
+        coverRight.name = 'bocni-kryt-x-konec';
+        group.add(coverRight);
+      }
+    }
+  }
+
+  const support = [
+    ...herA.map((u) => ({ usek: u, side: 'A', ...checkSupport(podA, u) })),
+    ...(isIsland ? herdblokB.map((u) => ({ usek: u, side: 'B', ...checkSupport(podestavbyB, u) })) : []),
+  ];
 
   group.userData.workHeightMM = workHeight;
   group.userData.bodyHeightMM = bodyHeightMM;

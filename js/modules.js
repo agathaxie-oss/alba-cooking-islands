@@ -864,7 +864,7 @@ function buildSinkTop(group, widthM, depthM, topY, vatWidthM, vatDepthM) {
 }
 
 /** Dispatcher vrchních detailů podle topFeature.type katalogového přístroje. */
-function applyTopFeature(group, def, segment, widthM, depthM, topY) {
+export function applyTopFeature(group, def, segment, widthM, depthM, topY) {
   const type = def.topFeature ? def.topFeature.type : 'none';
   switch (type) {
     case 'burners4':

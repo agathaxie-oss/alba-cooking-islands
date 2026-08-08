@@ -14,10 +14,11 @@
 // adaptér si tedy žádnou řadu sám nedopočítává, jen layout výstup převádí do
 // tvaru, který čeká buildMonoBlock().
 //
-// Do 3D se i tak staví jen JEDEN úsek herdbloku přes celou délku bloku —
-// přístroje (state.mono.herdblok, resp. layout.herdblok) se ve 3D nekreslí
-// (viz "Co se teď NEDĚLÁ" v zadání), proto se layout.herdblok tady vůbec
-// nečte; z výstupu layoutu se bere jen lengthMM, podestavby a panelItems.
+// Tělo herdbloku se i tak staví jen jako JEDEN úsek přes celou délku bloku —
+// přístroje (state.mono.herdblok, resp. layout.herdblok) do korpusu žádný
+// výřez nedělají (deska zůstává celá, viz TODO u devicesGroup níže), jen se
+// na ni navrch OSADÍ přes tentýž dispatcher vrchních detailů jako SEGMENT
+// (modules.js applyTopFeature) — layout.herdblok se pro tohle níž čte.
 
 import * as THREE from 'three';
 import {
@@ -34,6 +35,8 @@ import {
   ARM_BACK_OFFSET_MAX,
   ARM_BACK_OFFSET_DEFAULT,
 } from './arms.js';
+import { applyTopFeature } from './modules.js';
+import { getById as getCatalogEntry } from './catalog.js';
 
 const mm = (v) => v / 1000;
 const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
@@ -171,6 +174,64 @@ export function buildMonoScene(state) {
   }];
 
   const { group } = buildMonoBlock({ workHeightMM, podestavby, herdblok, panelItems });
+
+  // §doplněno (vada "přístroje se ve 3D nekreslí") — přístroje řady herdbloku
+  // se osadí NA rovinu pracovní desky přes tentýž dispatcher vrchních detailů,
+  // jaký používá SEGMENT (modules.js applyTopFeature, viz zadání ÚKOL A/B).
+  // Poloha je VÝHRADNĚ z computeMonoLayout(state).herdblok — layout.herdblok
+  // se tu (na rozdíl od komentáře v hlavičce souboru, který popisoval STAV
+  // PŘED touto opravou) už čte, adaptér si ale žádnou polohu sám nedopočítává,
+  // jen výstup layoutu převádí do prostoru, ve kterém staví build*Top.
+  //
+  // TODO: výřez v desce pro vestavěný přístroj se v tomto kole VĚDOMĚ
+  // NEDĚLÁ (rozhodnutí zadavatele) — přístroj jen sedí na celé, neděravé
+  // desce; THREE.Shape.holes se nepoužívá. Až bude výřez zadaný, patří sem.
+  const devicesGroup = new THREE.Group();
+  devicesGroup.name = 'pristroje';
+  layout.herdblok.forEach(({ item, xMM, widthMM }) => {
+    if (item.type === 'surface') return; // pracovní plocha, ne přístroj — přeskočit
+
+    const def = getCatalogEntry(item.type);
+    if (!def) return; // neznámý katalogový klíč (přístroj vypadl z katalogu) — tiché přeskočení, žádný pád
+
+    // Rozměr přístroje je šířka × hloubka: šířka je INSTANCE (item/layout
+    // widthMM — uživatel si ji může nastavit), hloubka je KATALOGOVÁ
+    // (def.depthMM) — zadání ÚKOL B.
+    const widthM = mm(widthMM);
+    const depthM = mm(def.depthMM);
+
+    // Zrcadlení osy X (viz mirrorX výš) — xMM z layoutu je LEVÁ hrana
+    // přístroje v pásu, stejně jako u podestaveb, proto se volá STEJNÝ
+    // vzorec s widthMM. build*Top (modules.js) staví lokálně VYSTŘEDĚNĚ
+    // kolem x=0 (změřeno na buildElectricStoveTop/buildGasStoveTop — deska/
+    // hořáky jsou v rozsahu přibližně −widthM/2..+widthM/2), proto se k
+    // zrcadlené levé hraně připočítává ještě polovina šířky, aby vyšel
+    // střed, který build*Top očekává.
+    const mirroredLeftMM = mirrorX(xMM, lengthMM, widthMM);
+    const centerXM = mm(mirroredLeftMM + widthMM / 2);
+
+    // Z: build*Top staví lokálně od z=0 (PŘEDNÍ hrana přístroje) do
+    // z=depthM (zadní hrana) — změřeno stejně (např. buildElectricStoveTop
+    // dává desku na z=depthM/2, tj. střed intervalu 0..depthM). Odstup od
+    // přední hrany DESKY (item.frontOffsetMM, výchozí 100 mm) se proto
+    // promítne přímo do posunu celé podskupiny v ose Z — zrcadlením osy X
+    // se Z nemění (viz POZOR v zadání).
+    const frontOffsetMM = item.frontOffsetMM ?? 100;
+
+    const deviceGroup = new THREE.Group();
+    deviceGroup.name = `pristroj-${item.type}`;
+    // Y: sedí na rovině desky — stejná workHeightM, jakou dostává výš
+    // buildMonoBlock (workHeightMM), nedopočítává se z jiného zdroje.
+    deviceGroup.position.set(centerXM, 0, mm(frontOffsetMM));
+
+    // `segment` parametr dispatcheru = item (MonoDevice) — používá se jen
+    // pro rozměry vany dřezu (vatWidthMM/vatDepthMM), které MonoDevice nemá,
+    // takže se uplatní výchozí hodnoty z modules.js (to je v pořádku, viz
+    // zadání ÚKOL B).
+    applyTopFeature(deviceGroup, def, item, widthM, depthM, mm(workHeightMM));
+    devicesGroup.add(deviceGroup);
+  });
+  group.add(devicesGroup);
 
   // §doplněno (vada "ramena se ve 3D nevykreslí") — napouštěcí ramena.
   // state.arms je SDÍLENÉ pole se SEGMENTem (main.js/ui.js

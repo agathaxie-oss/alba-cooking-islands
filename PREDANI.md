@@ -32,6 +32,11 @@ Pořadí závaznosti při rozporu: `HODNOTY-MONO.md` → tenhle soubor →
   mockup a nechat vybrat konverguje mnohem rychleji než popis slovy.
 - Vše viditelné musí být v **5 jazycích** (en, de, pl, cs, sk).
 - Rozhodnutí o rozložení a barvách si nech u sebe, nedelegovat.
+- **Mění-li se pravidlo, hledej VŠECHNA místa, kde je zapsané.** Úkol 4
+  změnil pravidlo o bočním krytu; agent opravil text v `HODNOTY-MONO.md`,
+  ale tabulku o pár řádků níž nechal, takže dokument sám sobě odporoval. Do
+  zadání patří „najdi všechna místa v dokumentaci, kde to pravidlo je", ne
+  jen „zapiš to".
 
 ## A2. Pasti, které opakovaně stály čas
 
@@ -95,10 +100,25 @@ uživatelův Python, **nezabíjet** — použít `alba-konfigurator`.
 - **Hledání prvku podle textu v DOM je nespolehlivé** — filtruj podle třídy.
 - **`window.print()` nespouštěj.** **Na „Uložit konfiguraci" neklikej naslepo** —
   otevře systémový dialog a stáhne uživateli soubor.
+- **Jména těles po zrcadlení klamou.** `mono-block.js` zrcadlí osu X, takže
+  těleso pojmenované `vodopad-levy` je na obrazovce VPRAVO a límec zadaný
+  jako levý se ve scéně jmenuje `limec-right`. Polohy jsou správně, ale kdo
+  ladí podle jmen, splete se.
+- **Souběžní agenti si přepisují měřicí harness.** Dva agenti si v
+  dočasném adresáři založili stejně pojmenované soubory se stubem pro `three`
+  a jeden druhému je přepsal. Do zadání patří věta, ať si každý píše harness
+  do VLASTNÍ podsložky a nic cizího nepřepisuje.
 
 ---
 
 # ČÁST B — KDE TO STOJÍ
+
+Větev `mono-geometrie-a-osa-x` byla smazaná ze serveru i lokálně. Veškerá
+práce ze session je na lokální větvi `main`, poslední commit `11c8d2b`
+(6 commitů z 8. 8. 2026). Server má jedinou větev `main` na `c2efae0` a bez
+výslovného pokynu se **nikdy** nemění. **Práce probíhá výhradně lokálně: na
+`origin` ani na nasazenou aplikaci se nesmí sahat, dokud zadavatel výslovně
+neřekne jinak.** Pull request nevznikl.
 
 Aplikace je interní a nenasazená, žádná uživatelská data → zpětná
 kompatibilita souborů se neřeší. Formát projektu je **verze 5**.
@@ -126,6 +146,13 @@ ovládacího panelu (zásuvky) a límce. Límce leží celé uvnitř půdorysu d
 `js/mono-ui.js` (spodní pás), plus větve v `js/main.js`, `js/ui.js`,
 `js/i18n.js`, `css/style.css`, `index.html`.
 
+Kreslí se i **napouštěcí ramena** — dřív se nekreslila vůbec, pás měl
+plnohodnotnou záložku, ale `main.js` ramena do MONO scény nepředával. Nebylo
+to nikde zapsané ani mezi nedodělky. Ramena jdou přes `arms.js` do téže
+skupiny jako zbytek bloku. Poloha se zrcadlí přes `mirrorX` a ÚHEL se neguje
+— zrcadlením osy X se mění i smysl otáčení kolem Y. Ověřeno: rameno na
+`positionXMM 300` vyjde na `x 921..1195`, pata na `y 900` = rovina desky.
+
 ## B2. Co je napsané, ale nikdo to neviděl běžet
 
 Poslední vlna oprav (pořadí přidávání, předvyplnění nového projektu, jména
@@ -143,6 +170,33 @@ vyrovnané závorky. Práce se přerušila kvůli kreditům.
 - **Logo ALBA ve 3D** se nevykresluje. Diagnóza hotová, oprava odložena na
   pokyn zadavatele.
 
+## B4. Rozdělaná práce — NEOVĚŘENO
+
+V pracovním stromu jsou **nezakomitované změny ve dvou souborech**:
+`js/modules.js` (přidáno jediné slovo `export` u dispatcheru
+`applyTopFeature`) a `js/mono-block.js` (osazení přístrojů na desku, ~65
+řádků).
+
+Jde o **vykreslování přístrojů ve 3D**. Zadavatel je chtěl vidět; rozhodl,
+že se v tomhle kole dělá **BEZ výřezu v desce** — přístroj sedí na rovině
+desky, deska zůstane celá. Výřez je odložený, deska se staví z obrysu přes
+`THREE.Shape`, který díry umí.
+
+**Oba soubory procházejí `node --check`, ale NIKDY neproběhlo měření.**
+Agent byl zastaven těsně před přejímkou. Nevěřit tomu, dokud se to nezměří.
+
+Co se musí ověřit, než se to přijme: (a) úzký přístroj, v pásu první zleva,
+musí vyjít na KLADNÉM world X; (b) položka `type: 'surface'` se nesmí
+vykreslit vůbec; (c) spodek přístroje musí ležet na rovině desky; (d)
+žádné záporné `z`; (e) **SEGMENT se nesmí rozbít** — `applyTopFeature`
+používá i on, a je to jediné místo, kde šlo poškodit něco, co dosud
+fungovalo.
+
+- Dvě poloprůhledné svislé plochy nad rovinou desky jsou **víka fritéz**,
+  která staví funkce `buildFryerTop` v `js/modules.js`. Je to správně —
+  potvrdil zadavatel 8. 8. 2026. Poznámka je tu jen proto, aby to příště
+  nikdo znovu nehlásil jako vadu; **není to nic k řešení.**
+
 ---
 
 # ČÁST C — ÚKOLY
@@ -150,6 +204,13 @@ vyrovnané závorky. Práce se přerušila kvůli kreditům.
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
 ## 1. Převrácená osa X ve 3D — NEJZÁVAŽNĚJŠÍ
+
+**HOTOVO 8. 8. 2026.** Příčina byla rozdíl směru stavby. Změřeno promítnutím
+bodů přes kameru z `computeViews()`: kladné world X je na obrazovce VLEVO.
+SEGMENT staví první segment na nejvyšší +X, MONO opačně. Opraveno zrcadlením
+v adaptéru `mono-block.js` přes funkci `mirrorX` — zrcadlí se polohy, typy
+konců i strany límce. Ověřeno: nejužší skříňka, v pásu první zleva, vyjde
+na `x 800..1200`.
 
 Zadavatel: „Když se dívám na blok zepředu — pohled na panel. Schéma dole
 vypadá dobře, ale na 3D grafice se vše ukazuje obráceně — vlevo je vpravo
@@ -178,6 +239,11 @@ Nezrcadlit „až v UI" — pás i geometrie musí mluvit o téže straně.
 
 ## 2. Vodopád / monolitický bok se nestaví
 
+**HOTOVO 8. 8. 2026.** Nos vyplňuje celé zatažení (50 u vodopádu, 70 u
+zkoseného), ne kvádr 20 mm, a jde jen po spodní líc desky. Korpus je
+zatažený o stejnou hodnotu, takže s nosem nemá souosou stěnu — to bylo
+blikání.
+
 Zadavatel doložil screenshotem: pracovní deska je nahoře jen tenký
 přesahující plát a bok herdbloku pod ním ustupuje, takže je z boku vidět
 schod. Má to být **jeden monolit** přes celou výšku.
@@ -199,6 +265,10 @@ tvar" — ty poznámky přepsat.
 
 ## 3. Zkosený vodopád se ve 3D nekreslí
 
+**HOTOVO 8. 8. 2026.** Půdorysný obrys bloku 2500×850 se zkoseným pravým
+koncem vyjde `(0,0) (2450,0) (2500,50) (2500,850) (0,850)`. Ve svislém řezu
+se nemění nic.
+
 Zadavatel: „správně se rozšíří boční svislá deska na 70 mm, ale není tam
 žádné zkosení."
 
@@ -218,6 +288,9 @@ zatažení panelu u tohohle typu konce.
 **Řešit společně s úkolem 2 — je to týž díl, jen druhý typ konce.**
 
 ## 4. Boční kryt 20 mm u zkoseného konce
+
+**HOTOVO 8. 8. 2026.** Pravidlo je per-konec, `atEdge` samo nestačí. Ověřeno
+přes všechny čtyři kombinace typů konců.
 
 Zadavatel: „pokud tady bude blok ukončen zkoseným vodopádem s podestavbou,
 použijme spodní krycí panel jen 20 mm. Myslím, že to bude vypadat lépe."
@@ -246,8 +319,9 @@ i Podestavby, viditelné bez předchozího výběru. Z pruhu parametrů odstrani
 Krajní dlaždice nemá šipku na příslušné straně.
 
 **Háček:** dlaždice jsou úměrné milimetrům, takže prázdný prostor 100 mm je
-široký ~40 px a dvě šipky neuveze. Vymyslet chování pro úzké dlaždice —
-šipky až od minimální šířky, jen na hover, nebo přetékající přes okraj.
+široký ~40 px a dvě šipky neuveze. Zadavatel rozhodl 8. 8. 2026:
+nakreslit napřed tři varianty jako mockup a vybrat z nich, teprve potom
+implementovat.
 
 ## 6. Ostrovní varianta MONO
 
@@ -276,11 +350,15 @@ souběžné agenty.
 - Prázdný nový projekt MONO hlásí rovnou oranžové „chybí N mm". Podle zadání
   správně, ale vypadá to jako chyba. (Částečně řeší předvyplnění třemi
   položkami — ověřit, jak to teď působí.)
-- Pruh parametrů u záložky Límce měl v mockupu pole (délka, tloušťka plechu,
-  odsazení od hrany), pro která v modelu nejsou data. Buď doplnit do modelu,
-  nebo z mockupu škrtnout.
+- Pruh parametrů u záložky Límce měl v mockupu pole (délka, tloušťka
+  plechu, odsazení od hrany), pro která v modelu nejsou data. Zadavatel
+  rozhodl 8. 8. 2026: ŠKRTNOUT Z MOCKUPU. Pole se mají odstranit z
+  `mockup-mono.html` i z aplikace.
 
 ## 8. Opravit `ZADANI-MONO-UI.md`
+
+**HOTOVO 8. 8. 2026.** Všech šest bodů opraveno a ověřeno proti skutečnému
+kódu.
 
 Kód je správně, **zadání je vadné** — a odkazují se na něj komentáře v kódu:
 
@@ -346,6 +424,36 @@ podestavbách obecně.
 
 `ui.js` předává pásu funkci `deviceName`, která přeloží strojový klíč
 (`induction_hob`) na jméno („Indukční deska"). Napsané, neověřené za běhu.
+
+## 11. Dráha s dlaždicemi přetéká a k přetečeným prvkům se nedá dostat
+
+- Zadavatel 8. 8. 2026 doslova: „Když je dole příliš polí a ta
+  přetékají mimo obrazovku, tak se nedostanu k těm, která nejsou
+  vidět. Nebo tam aspoň není vidět na první pohled způsob, jak to
+  udělat."
+- **Příčina je diagnózou potvrzená screenshotem (8. 8. 2026):**
+  Přetéká DRÁHA S DLAŽDICEMI ve spodním pásu, ne pruh parametrů.
+  Nastane to, když součet položek přesáhne použitelnou délku bloku.
+  Na screenshotu: blok 3200 mm, koncové zóny 70 a 50, tedy použitelných
+  3080 mm, ale podestavby jsou 600 + 600 + 600 + 400 + 480 + 800 =
+  3480 mm — řada je o 400 mm delší a poslední dlaždice utíká za
+  pravý okraj okna. Uříznutá je i pravá koncovka zakončení u dráhy
+  Herdblok — ta sedí na konci dráhy s posunem `transform:
+  translate(∓52%, -50%)`, takže přesahuje ještě o kus dál. Dráha nemá
+  vodorovné posouvání, proto se k tomu, co je za okrajem, nedá dostat.
+- **Naivní oprava nefunguje.** `overflow-x: auto` povýší i svislou
+  osu na `auto` (viz past v ČÁSTI A2), takže přidá svislý posuvník
+  nebo začne řezat shora dolů. Pás MONO má navíc pevnou výšku
+  268 px, takže ani zalomení polí do druhé řady není zadarmo — může
+  přetéct svisle.
+- Přicházejí v úvahu tři cesty: posouvání s viditelným náznakem,
+  zalomení do druhé řady, nebo zúžení polí. **Která z nich, je
+  rozhodnutí o vzhledu a patří zadavateli** — a protože jde o TÝCŽ
+  pruh parametrů, do kterého sahá i úkol 5, má se to nakreslit do
+  TÉHOŽ mockupu jako varianty šipek a rozhodnout naráz.
+- **Ověřit, jestli tutéž vadu nemá i SEGMENT.** Třída má prefix
+  `mono-`, takže se týká jen MONO, ale stejné useknutí může být i v
+  pásu SEGMENTu.
 
 ---
 
@@ -448,3 +556,66 @@ Sedí to s čísly, která už v kódu jsou: `END_STRAIGHT_MM` 20 + `END_CHAMFER
 `prototyp/geometry.js` kolem ř. 602 počítá `facet = H − zuzeneCeloZkoseneVlny`.
 To je ta záměna. Složka `prototyp/` je stará a do aplikace nevede, ale kdyby
 z ní někdo čerpal, tohle je špatně.
+
+---
+
+# ČÁST F — PLÁN PŘÍŠTÍ SESSION
+
+Pořadí schválil zadavatel 8. 8. 2026. Rozdělení do vln je dáno tím, KDO
+SAHÁ DO KTERÉHO SOUBORU — dva agenti nesmí psát do téhož souboru naráz.
+
+## Krok 0 — BLOKUJE VŠECHNO OSTATNÍ
+
+Ověřit rozdělanou práci na přístrojích, viz ČÁST B4. Dokud to visí, jsou
+`js/mono-block.js` a `js/modules.js` zamčené a vlna 1 nesmí začít. Výsledek
+je binární: buď se to změří a zakomituje, nebo zahodí. Nepřijímat bez
+měření.
+
+## Vlna 1 — dva agenti paralelně, soubory se nepřekrývají
+
+**Agent A — úkol 9b, tvar podestavby podle povrchové úpravy.**
+
+Soubory: `js/mono-geometry.js`, `js/mono-block.js`.
+
+`buildPodestavba()` dnes staví dva náběhy `buildH2Fillet` VŽDY. Musí dostat
+parametr `finish` a náběhy stavět jen pro `H2`; `H1` a `HS+` mají ostrý roh.
+`js/mono-block.js` musí `finish` z KAŽDÉ SKŘÍŇKY ZVLÁŠŤ do geometrie
+předat — v jedné řadě můžou stát skříňky s různou úpravou. Ověřit přes
+`Box3`, ne okem: u `H2` musí díly náběhu ve scéně být, u `H1`/`HS+` nesmí
+existovat vůbec. Navíc ověřit, jestli tutéž vadu nemá SEGMENT
+(`js/block.js`, `js/modules.js`) — `finish` má i on.
+
+**Agent B — úkol 9a, vyřadit H3.**
+
+Soubory: `js/modules.js`, `js/mono-ui.js`.
+
+Seznam je na dvou místech a obě se musí změnit, jinak se rozejdou:
+`FINISH_TYPES` v `modules.js` (zdroj pravdy) a tentýž seznam přepsaný jako
+lokální literál v `mono-ui.js` (modul nesmí importovat `modules.js`). U
+literálu doplnit poznámku, že se obě místa musí měnit spolu. Ověřit, že
+starý soubor projektu s uloženým `H3` se načte bez chyby a spadne na
+výchozí úpravu — soubor se NIKDY neodmítá.
+
+## Vlna 2 — až po vlně 1, drží `js/mono-ui.js`
+
+**Nejdřív mockup, teprve potom aplikace.** Úkol 5 (šipky na dlaždice) má
+háček: úzká dlaždice dvě šipky neuveze — prázdný prostor 100 mm je široký
+asi 40 px. Zadavatel rozhodl 8. 8. 2026, že se **nakreslí tři varianty
+jako mockup do samostatného souboru** a teprve po jeho výběru se sáhne do
+aplikace. Do `js/mono-ui.js` ani do `css/style.css` se v téhle fázi
+nesahá.
+
+Do **téhož mockupu** patří i varianty řešení pro úkol 11 (přetékající
+dráha s dlaždicemi). Diagnóza je potvrzená screenshotem z 8. 8. 2026.
+Obojí se nachází ve spodním pásu a má se o tom rozhodnout jedním výběrem,
+ne dvakrát.
+
+Potom úkol 7 — drobnosti v pásu.
+
+## Vlna 3 — úkol 6, ostrov
+
+Sám, nedělitelný. Sahá do `mono-geometry.js`, `mono-block.js`, `main.js`,
+`mono-ui.js` i `ui.js` naráz. Vstupy, které už jsou rozhodnuté: jedna
+průběžná deska přes obě strany, boční panel od čela k čelu, ostrov má JEN
+boční límce, a u zkoseného zakončení mohou být zkosené všechny rohy (viz
+ČÁST E).

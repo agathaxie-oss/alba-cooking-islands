@@ -491,6 +491,118 @@ podestavbách obecně.
 - Týká se OBOU produktů. U SEGMENTu se přeplnění navíc hlásí i číslem
   v hlavičce pásu („Využito 3600 / 3160 mm" červeně).
 
+## 13. Sokly se u MONO ve 3D nekreslí — VADA
+
+Zadavatel 9. 8. 2026 doslova:
+
+> „V 3D se neukazují správně sokly — teď a neukazují se vůbec. Stavební sokl
+> tam nemá vůbec být (ani nožičky). Konstrukční ukazuje nožičky, nožičky
+> samostatně tam vůbec nejsou a soklová zástěna se taky neukazuje."
+
+**Příčina je nalezená, nehledej ji znovu:** `buildPodestavba()`
+v `js/mono-geometry.js` (kolem ř. 932, blok „--- 4 nožičky ---") staví čtyři
+nožičky **natvrdo, bez ohledu na zvolený typ soklu**. Typ soklu nečte vůbec
+a `buildPlinth()` z `js/modules.js` (ř. 263) se u MONO **nikdy nevolá**.
+Volba soklu se tedy ukládá i nabízí v pásu, ale ve 3D nemá žádný účinek.
+
+Hodnoty: `PLINTH_TYPES = ['legs', 'building', 'construction']`
+(`js/modules.js` ř. 95), výchozí `DEFAULT_PLINTH = 'construction'` (ř. 96).
+Tentýž seznam je jako lokální literál v `js/mono-ui.js` (ř. 39) — **obě místa
+se musí měnit spolu.**
+
+Jak to podle zadavatele má vypadat:
+
+| typ soklu | co se má kreslit |
+|---|---|
+| stavební (`building`) | **VŮBEC NIC**, ani nožičky |
+| konstrukční (`construction`) | nožičky |
+| nožičky (`legs`) | nožičky — dnes se prý nezobrazují |
+| soklová zástěna | zástěna — dnes se nezobrazuje |
+
+**OTEVŘENÉ OTÁZKY — zeptat se DŘÍV, než se do toho někdo pustí:**
+
+1. **Je „soklová zástěna" čtvrtý typ soklu, nebo samostatná vlastnost, která
+   se kombinuje s ostatními?** `PLINTH_TYPES` má dnes tři hodnoty a zástěna
+   mezi nimi není. Nedomýšlet.
+2. **Je „konstrukční ukazuje nožičky" popis správného stavu, nebo stížnost?**
+   Z formulace to nejde poznat. Dnes se nožičky staví u všech typů stejně,
+   takže zadavatel mohl popisovat vadu i žádoucí stav.
+3. Jak se má „soklová zástěna" chovat u ostrova, kde je podestavba z obou
+   stran?
+
+## 14. Podestavby potřebují police a dvířka jako SEGMENT — POŽADAVEK
+
+Zadavatel: „u podestaveb chci mít možnost police a dvířek. Stejně jako
+u Segmentu."
+
+**Pozor, je to větší, než vypadá:** `MonoCabinet.bodyStyle` má podle
+`ZADANI-MONO-UI.md` §1 hodnoty `'closed' | 'doors' | 'open'`, jenže
+**geometrie MONO `bodyStyle` neřeší VŮBEC** — grep na `bodyStyle`
+v `js/mono-geometry.js` nevrátí nic. Volba se ukládá i nabízí v pásu, ale
+ve 3D nemá žádný účinek a všechny skříňky vypadají stejně. Nejde tedy jen
+o doplnění polic, ale o zprovoznění celého `bodyStyle`.
+
+Co má SEGMENT hotové v `js/modules.js` a odkud se to dá převzít:
+- `buildBodyByStyle()` (ř. 441) — rozcestník podle stylu
+- `buildOpenBody(..., hasShelf)` (ř. 315) — otevřené tělo, umí i polici
+- `buildDoorBody()` (ř. 369) — dvířka
+- `hasShelfFlag()` (ř. 193) — čte příznak police ze segmentu
+
+Do `MonoCabinet` bude potřeba doplnit příznak police (SEGMENT ho čte přes
+`hasShelfFlag`) a `buildPodestavba()` musí `bodyStyle` i ten příznak dostat
+a použít.
+
+## 15. Zásuvkový blok — POŽADAVEK
+
+Zadavatel: „chci tu mít zásuvkový blok se 2 zásuvkami o šířce 400 (GN 1/1)
+a 600 (GN 2/1)."
+
+Nový typ podestavby: blok se **dvěma zásuvkami**, ve dvou šířkách —
+**400 mm pro GN 1/1** a **600 mm pro GN 2/1**.
+
+SEGMENT má základ hotový: `buildDrawersBody(..., drawerCount)`
+(`js/modules.js` ř. 410) a `getSegmentDrawerCount()` (ř. 122). Počet zásuvek
+je tedy parametr, ne pevné číslo — dá se převzít.
+
+## 16. Skříňka se zásuvy na GN — POŽADAVEK
+
+Zadavatel: „chci tu mít skříňku se zásuvy na GN. 400 mm širokou na GN 1/1
+a 600 mm šířkou na GN 2/1. (otevřenou nebo s dvířky)."
+
+Skříňka s **výsuvy pro GN nádoby**, ve dvou šířkách (400 na GN 1/1, 600 na
+GN 2/1) a ve dvou provedeních — **otevřená** nebo **s dvířky**.
+
+**OTEVŘENÁ OTÁZKA — zeptat se DŘÍV, než se do toho někdo pustí:** kolik
+úrovní zásuvů má skříňka mít a v jaké rozteči? Zadavatel to neřekl.
+**Nedomýšlet číslo.**
+
+## 17. Přístrojům se nekreslí ovládací prvky — VADA
+
+Zadavatel: „přístrojům se nevykreslují ovládací prvky."
+
+**Příčina je známá a není to vada v provedení, ale chybějící kus v zadání.**
+Když se 8. 8. 2026 osazovaly přístroje u MONO, vyexportovala se a volala
+**jen** `applyTopFeature()`, tedy varná plocha. Na ovládací prvky se
+v zadání zapomnělo a `renderControls()` se u MONO nevolá vůbec.
+
+Kde to je:
+- `renderControls(group, widthM, panelCenterY, panelFrontZ, controlType, count)`
+  — `js/modules.js` ř. 479. SEGMENT ji volá z `createSegmentMesh()`.
+- `js/mono-block.js` volá `applyTopFeature()` na **dvou místech** (ř. 321
+  pro stranu A a ř. 350 pro stranu B, po zavedení ostrova). Volání
+  `renderControls()` musí přibýt na obou, jinak bude jedna strana ostrova
+  bez knoflíků.
+- `controlType` a `count` jsou v katalogu u každého přístroje jako
+  `controls: { type, count }` — viz `js/catalog.js` (např. ř. 75:
+  `controls: { type: 'knob', count: 4 }`).
+
+**Souřadnice se ze SEGMENTu NESMÍ převzít naslepo** — MONO má panel jinde.
+U MONO platí: `PANEL_SETBACK_MM = 25` (ustoupení za líc desky),
+`PANEL_HEIGHT_MM = 240`, `LISTA_HEIGHT_MM = 40`, tloušťka panelu 20 mm
+(`PANEL_DEPTH_MM`, lokální v `buildHerdblokUsek`) — vše v
+`js/mono-geometry.js`. Ověřeno měřením: panel MONO leží v ose Z na 25–45 mm
+a ve výšce 650–850 mm nad podlahou při pracovní výšce 900.
+
 ---
 
 # ČÁST D — OTEVŘENÉ OTÁZKY NA ZADAVATELE
@@ -604,7 +716,41 @@ zakomitované: přístroje ve 3D, zrcadlení osy X, monolitický vodopád,
 zkosený vodopád s půdorysným obrysem, boční kryt 20 mm u zkoseného konce,
 šipky přeuspořádání na dlaždice, povrchové úpravy (vyřazení H3 i jejich
 diferenciace u podestaveb), drobnosti v pásu, oprava `ZADANI-MONO-UI.md`.
-Spodní pás MONO je dodělaný. **Zbývá jediný velký kus.**
+Spodní pás MONO je dodělaný.
+
+**Ostrovní varianta (úkol 6) se 9. 8. 2026 postavila** třemi souběžnými
+agenty podle smlouvy `ZADANI-MONO-OSTROV.md` — datový model a ukládání
+(`de22438`), rozhraní a přepínač stran (`5edafaa`), geometrie (`373ee11`).
+Oddíl níž o ní zůstává jako popis toho, co se stavělo a proč.
+
+**POZOR — ostrov NENÍ ověřený jako celek.** Každý ze tří agentů měřil proti
+repozitáři, ve kterém ostatní dva ještě hotoví nebyli; geometrický agent si
+dokonce musel postavit náhradní `mono-layout.js`. Závěrečné ověření
+integrace bylo spuštěno, ale **spadlo na limit session a nedoběhlo**.
+První práce příští session je ho zopakovat. Ověřit hlavně tohle:
+
+1. **Varianta u zdi se nesměla změnit.** Sáhli do ní tři agenti naráz.
+   Kontrolní čísla (před vystředěním): deska x 0–2500 y 850–900 z 0–850,
+   korpus x 50–2430 y 610–850 z 26–825, panel x 50–2430 y 650–850 z 25–45,
+   lišta x 50–2430 y 610–650 z 3–45, nos vlevo x 0–50, nos vpravo
+   x 2430–2500, oba y 610–850 z 0–850.
+2. **Strany A a B jsou opravdu nezávislé** — ne že by B jen zrcadlila A.
+3. **Uložení a načtení neztratí stranu B.** Nejhorší možná vada, uživatel
+   by přišel o data.
+4. **Rozhraní zapisuje do správné strany** — přidání prvku při zvolené
+   straně B musí skončit v `podestavbyB`, ne v `podestavbyA`. Vypadalo by
+   to, že aplikace funguje, a přitom by tiše zapisovala jinam.
+
+**Po ostrovu jsou na řadě úkoly 13 až 17** (ČÁST C). Dva z nich jsou VADY:
+**13** (sokly se nekreslí, typ soklu se ignoruje) a **17** (přístrojům
+chybí ovládací prvky). Tři jsou NOVÉ POŽADAVKY na rozšíření nabídky
+podestaveb: **14** (police a dvířka — a s nimi zprovoznění `bodyStyle`,
+který dnes nemá ve 3D žádný účinek), **15** (zásuvkový blok) a **16**
+(skříňka se zásuvy na GN).
+
+**U úkolů 13 a 16 jsou otevřené otázky a MUSÍ se zeptat zadavatele DŘÍV,
+než se do nich někdo pustí** — u 13 jestli je soklová zástěna čtvrtý typ
+nebo samostatná vlastnost, u 16 kolik úrovní zásuvů a v jaké rozteči.
 
 ## Zbývá — úkol 6, ostrovní varianta
 

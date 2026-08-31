@@ -6,9 +6,12 @@
 // mono-block.js ani main.js si polohy nepočítají samy (viz zadání §1).
 //
 // §ÚKOL MONO OSTROV — computeMonoLayout/computeMonoChecks berou druhý
-// parametr `side` ('A'|'B', výchozí 'A'): strany A a B mají NEZÁVISLÝ obsah
+// parametr `side` ('A'|'B'): strany A a B mají NEZÁVISLÝ obsah
 // (state.mono.herdblokA/B, podestavbyA/B, panelItemsA/B — jako segmentsA/
 // segmentsB u SEGMENTu), ale SDÍLENÝ leftEndType/rightEndType/limec.
+// OPRAVA O2: `side` je POVINNÝ parametr, žádný tichý default (viz
+// ZADANI-MONO-OSTROV.md §3) — chybějící argument spadne hlasitě (Error),
+// neplatná hodnota (např. 'C') dál tolerantně na 'A' (viz readSide níž).
 //
 // Modul je ČISTÝ: žádný DOM, žádné 'three', žádný import z main.js/ui.js.
 // Smí importovat jen z mono-geometry.js — odtud bere sideInsetMM() a
@@ -80,11 +83,17 @@ function layoutSequential(items, startMM, limitMM) {
   return { laid, endMM: cursor };
 }
 
-/** Tolerantní čtení strany — jediné povolené hodnoty jsou 'A' a 'B'; cokoli
- *  jiného (chybějící parametr, překlep, cizí hodnota) spadne na 'A'. Stejné
- *  pravidlo jako u readEndType výše — neplatný vstup nikdy nespadne, jen
- *  tiše dostane rozumnou výchozí hodnotu. */
+/** Tolerantní čtení strany — jediné povolené hodnoty jsou 'A' a 'B'; NEPLATNÁ
+ *  hodnota (překlep, cizí hodnota, např. 'C') tiše spadne na 'A' — to je
+ *  záměrně tolerantní (viz readEndType výše). CHYBĚJÍCÍ argument je ale jiný
+ *  případ (OPRAVA O2, ZADANI-MONO-OSTROV.md §3: „side je POVINNÝ parametr,
+ *  žádný tichý default") — ten musí selhat hlasitě, aby nové volání bez
+ *  `side` neprošlo tiše jako 'A'. `undefined` se sem dostane JEN chybějícím
+ *  argumentem, nikdy platnou hodnotou 'A'/'B', takže rozlišení je bezpečné. */
 function readSide(side) {
+  if (side === undefined) {
+    throw new Error('readSide: chybí povinný parametr side (\'A\' nebo \'B\') — volající musí stranu poslat explicitně, viz ZADANI-MONO-OSTROV.md §3.');
+  }
   return side === 'B' ? 'B' : 'A';
 }
 
@@ -102,12 +111,15 @@ function readSide(side) {
  * na 'A', ne na pád — viz readSide().
  *
  * @param {object} state
- * @param {'A'|'B'} [side='A'] — 'A' je POVINNÁ výchozí hodnota: bez ní by
- *   se rozbila dnešní volání computeMonoLayout(state) v mono-block.js
- *   a mono-ui.js (jiní agenti, do těchto souborů se nesahá).
+ * @param {'A'|'B'} side — OPRAVA O2: POVINNÝ parametr, žádný tichý default
+ *   (ZADANI-MONO-OSTROV.md §3 — „volající to nemá spoléhat"). Ověřeno grepem
+ *   přes celý js/, že všechna dnešní volání (main.js, mono-block.js,
+ *   mono-ui.js) stranu posílají explicitně — viz readSide() níž, chybějící
+ *   argument teď spadne hlasitě (Error), neplatná hodnota (např. 'C') dál
+ *   tolerantně na 'A'.
  * @returns {object} přesně tvar popsaný v ZADANI-MONO-UI.md §2
  */
-export function computeMonoLayout(state, side = 'A') {
+export function computeMonoLayout(state, side) {
   const monoState = (state && state.mono) || {};
   const dims = (state && state.dimensions) || {};
   const s = readSide(side);
@@ -170,12 +182,12 @@ export function computeMonoLayout(state, side = 'A') {
  * fyzického těla herdbloku, ne jednotlivé přístroje uvnitř.
  *
  * @param {object} state
- * @param {'A'|'B'} [side='A'] — stejné pravidlo jako u computeMonoLayout
- *   výše (POVINNÁ výchozí hodnota kvůli dnešním voláním bez druhého
- *   parametru v mono-block.js/mono-ui.js).
+ * @param {'A'|'B'} side — OPRAVA O2: POVINNÝ parametr, stejné pravidlo jako
+ *   u computeMonoLayout výše (žádný tichý default) — chybějící argument
+ *   spadne hlasitě přes computeMonoLayout()→readSide().
  * @returns {{ overhangLeftMM:number, overhangRightMM:number, maxBridgeMM:number, ok:boolean }}
  */
-export function computeMonoChecks(state, side = 'A') {
+export function computeMonoChecks(state, side) {
   const monoState = (state && state.mono) || {};
   const leftEndType = readEndType(monoState.leftEndType);
   const rightEndType = readEndType(monoState.rightEndType);

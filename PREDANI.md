@@ -510,25 +510,44 @@ Hodnoty: `PLINTH_TYPES = ['legs', 'building', 'construction']`
 Tentýž seznam je jako lokální literál v `js/mono-ui.js` (ř. 39) — **obě místa
 se musí měnit spolu.**
 
-Jak to podle zadavatele má vypadat:
+Rozhodnutí zadavatele (9. 8. 2026):
 
 | typ soklu | co se má kreslit |
 |---|---|
 | stavební (`building`) | **VŮBEC NIC**, ani nožičky |
-| konstrukční (`construction`) | nožičky |
-| nožičky (`legs`) | nožičky — dnes se prý nezobrazují |
-| soklová zástěna | zástěna — dnes se nezobrazuje |
+| konstrukční (`construction`) | **nerezový rám, na kterém celý blok sedí. ŽÁDNÉ nožičky.** |
+| nožičky (`legs`) | nožičky |
+| nožičky + soklová zástěna (NOVÁ hodnota) | nožičky + nerezový sokl, který je kryje |
 
-**OTEVŘENÉ OTÁZKY — zeptat se DŘÍV, než se do toho někdo pustí:**
+Zadavatel 9. 8. 2026 doslova: „Konstrukční sokl je nerezový rám, na kterém
+celý varný blok sedí. Nožičky tam vůbec nemají být, takže si stěžuji. Je to
+nesprávný stav." **Dnešní čtyři nožičky u konstrukčního soklu jsou VADA, ne
+popis správného stavu.**
 
-1. **Je „soklová zástěna" čtvrtý typ soklu, nebo samostatná vlastnost, která
-   se kombinuje s ostatními?** `PLINTH_TYPES` má dnes tři hodnoty a zástěna
-   mezi nimi není. Nedomýšlet.
-2. **Je „konstrukční ukazuje nožičky" popis správného stavu, nebo stížnost?**
-   Z formulace to nejde poznat. Dnes se nožičky staví u všech typů stejně,
-   takže zadavatel mohl popisovat vadu i žádoucí stav.
-3. Jak se má „soklová zástěna" chovat u ostrova, kde je podestavba z obou
-   stran?
+Zadavatel 9. 8. 2026 doslova: „Soklová zástěna je nerezový sokl, který kryje
+nožičky — jde použít jen s nimi. Prakticky se k tomu dá přistoupit jako k 4.
+volbě: nožičky + zástěna."
+
+- **Soklová zástěna je tedy ČTVRTÁ HODNOTA `PLINTH_TYPES`, ne samostatný
+  příznak.** Vylučovací volba je záměr — nesmí vzniknout stav se zástěnou
+  bez nožiček.
+- **Zástěna kryje VŠECHNY STRANY bloku.** Jediná výjimka: u jednostranného
+  bloku (`single`) se strana u zdi nekryje. U ostrova (`island`) se kryjí
+  všechny čtyři strany.
+- Nový klíč se do `PLINTH_TYPES` jen PŘIDÁVÁ. **Žádný stávající klíč se
+  nepřejmenovává** a starý soubor projektu se třemi hodnotami se musí
+  načíst bez chyby.
+- `PLINTH_TYPES` je na dvou místech — `js/modules.js` ř. 95 a lokální
+  literál v `js/mono-ui.js` ř. 39. **Obě se musí měnit spolu.**
+**Rozměry soklu** (9. 8. 2026):
+- Základní (výchozí) výška soklu je **150 mm** — platí pro VŠECHNY varianty soklu.
+- Sokl je **uskočený 50 mm od líce bloku**.
+- Výška je nastavitelná, rozsah **50 až 150 mm** (dolní mez 50, výchozí a zároveň horní 150).
+
+Zadavatel 9. 8. 2026 zodpověděl zbývající tři otázky:
+- **Výška soklu je vlastnost CELÉHO BLOKU**, ne jednotlivé skříňky.
+- **Snížení soklu spustí celý blok níž** — korpus se o rozdíl nezvyšuje.
+- **Uskočení 50 mm platí ZE VŠECH STRAN** (čelo, boky i záda).
 
 ## 14. Podestavby potřebují police a dvířka jako SEGMENT — POŽADAVEK
 
@@ -541,6 +560,9 @@ u Segmentu."
 v `js/mono-geometry.js` nevrátí nic. Volba se ukládá i nabízí v pásu, ale
 ve 3D nemá žádný účinek a všechny skříňky vypadají stejně. Nejde tedy jen
 o doplnění polic, ale o zprovoznění celého `bodyStyle`.
+
+Police je příznak **KAŽDÉ SKŘÍŇKY ZVLÁŠŤ**, stejně jako to má SEGMENT
+(`hasShelfFlag`). Potvrzeno 9. 8. 2026.
 
 Co má SEGMENT hotové v `js/modules.js` a odkud se to dá převzít:
 - `buildBodyByStyle()` (ř. 441) — rozcestník podle stylu
@@ -558,7 +580,8 @@ Zadavatel: „chci tu mít zásuvkový blok se 2 zásuvkami o šířce 400 (GN 1
 a 600 (GN 2/1)."
 
 Nový typ podestavby: blok se **dvěma zásuvkami**, ve dvou šířkách —
-**400 mm pro GN 1/1** a **600 mm pro GN 2/1**.
+**400 mm pro GN 1/1** a **600 mm pro GN 2/1**. Šířky jsou **pevné** (400 a 600),
+uživatel je nevolí. Rozhodnuto 9. 8. 2026.
 
 SEGMENT má základ hotový: `buildDrawersBody(..., drawerCount)`
 (`js/modules.js` ř. 410) a `getSegmentDrawerCount()` (ř. 122). Počet zásuvek
@@ -569,12 +592,8 @@ je tedy parametr, ne pevné číslo — dá se převzít.
 Zadavatel: „chci tu mít skříňku se zásuvy na GN. 400 mm širokou na GN 1/1
 a 600 mm šířkou na GN 2/1. (otevřenou nebo s dvířky)."
 
-Skříňka s **výsuvy pro GN nádoby**, ve dvou šířkách (400 na GN 1/1, 600 na
-GN 2/1) a ve dvou provedeních — **otevřená** nebo **s dvířky**.
-
-**OTEVŘENÁ OTÁZKA — zeptat se DŘÍV, než se do toho někdo pustí:** kolik
-úrovní zásuvů má skříňka mít a v jaké rozteči? Zadavatel to neřekl.
-**Nedomýšlet číslo.**
+Rozhodnutí zadavatele (9. 8. 2026): **6 vsuvů, rozteč 70 mm.** Šířky pevné:
+**400 mm pro GN 1/1, 600 mm pro GN 2/1**. Provedení **otevřené nebo s dvířky**.
 
 ## 17. Přístrojům se nekreslí ovládací prvky — VADA
 
@@ -616,7 +635,10 @@ poslední odrážka. Geometrie je odblokovaná celá.**
 
 ## Nezablokuje, ale je potřeba
 
-**Nezbývá nic. Všechny otevřené otázky jsou zodpovězené** — viz ČÁST E.
+**Výška soklu a pracovní výška (ÚKOL 13):** Novou logikou se výška soklu
+nastavuje (rozsah 50–150 mm) a pracovní výška se vypočítává (800–900 mm).
+Zbývá ale odpověď: **Platí tahle změna jen pro MONO, nebo i pro SEGMENT?**
+SEGMENT má dnes pracovní výšku také jako vstup. Viz ČÁST E.
 
 ## Odloženo — neřešit bez pokynu
 
@@ -652,6 +674,20 @@ poslední odrážka. Geometrie je odblokovaná celá.**
   podestavba, která je prázdná.
 - **Nový projekt MONO** začíná s podestavbami: skříňka 600, prázdný prostor
   600, skříňka 600; zbytek řady se hlásí jako chybějící.
+- **Výška skříněk (podestaveb) je nově PEVNÁ** (9. 8. 2026). Odpovídá kombinaci
+  pracovní výšky 900 mm + sokl 150 mm. Uživatel ji nenastavuje.
+- **Uživatel nově nastavuje VÝŠKU SOKLU**, rozsah 50–150 mm, výchozí 150. Je to
+  vlastnost celého bloku.
+- **Pracovní výška se stává DOPOČÍTANÝM údajem**, ne vstupem: pevná výška
+  skříňky + výška soklu. Vychází v rozsahu **800–900 mm**.
+- **Důsledek pro rozhraní:** v levém panelu se pole „Pracovní výška" mění ze
+  vstupního pole na zobrazený výsledek a přibývá vstup „Výška soklu". Nový
+  popisek musí být v **5 jazycích** (en, de, pl, cs, sk) — pořadí podle
+  hlavičky `ZADANI-MONO-UI.md`.
+- Zpětná kompatibilita uložených souborů se **neřeší** — aplikace je interní
+  a nenasazená (platí dosavadní pravidlo projektu).
+- **ZŮSTÁVÁ OTEVŘENÉ:** platí tahle změna jen pro MONO, nebo i pro SEGMENT?
+  SEGMENT má dnes pracovní výšku taky jako vstup.
 
 ## Odpovědi zadavatele — už neptat, tohle je rozhodnuté
 
@@ -733,13 +769,25 @@ První práce příští session je ho zopakovat. Ověřit hlavně tohle:
    Kontrolní čísla (před vystředěním): deska x 0–2500 y 850–900 z 0–850,
    korpus x 50–2430 y 610–850 z 26–825, panel x 50–2430 y 650–850 z 25–45,
    lišta x 50–2430 y 610–650 z 3–45, nos vlevo x 0–50, nos vpravo
-   x 2430–2500, oba y 610–850 z 0–850.
+   x 2430–2500, oba y 610–850 z 0–850. **Poznámka (9. 8. 2026):** Tato
+   čísla platí pro sokl 150 mm (výchozí stav). U jiné výšky soklu se souřadnice
+   Y posunou o pevný rozdíl — skříňka zůstane stejně vysoká, jen sedí níž.
+   Např. sokl 50 mm místo 150 mm znamená, že celý blok klesne o 100 mm.
 2. **Strany A a B jsou opravdu nezávislé** — ne že by B jen zrcadlila A.
 3. **Uložení a načtení neztratí stranu B.** Nejhorší možná vada, uživatel
    by přišel o data.
 4. **Rozhraní zapisuje do správné strany** — přidání prvku při zvolené
    straně B musí skončit v `podestavbyB`, ne v `podestavbyA`. Vypadalo by
    to, že aplikace funguje, a přitom by tiše zapisovala jinam.
+
+**Nová hlášená vada ostrova** (9. 8. 2026): Na screenshotu ostrova (délka 3200,
+hloubka A 850, hloubka B 850, pracovní výška 900) hlásí zadavatel:
+„**Pracovní deska je moc nízko — začíná na podlaze.**" Zároveň panel rozměrů
+hlásí „celková hloubka 850 mm", ačkoli A + B = 1700. Obojí se právě měří,
+příčina zatím není potvrzená — je to hlášení, ne diagnóza.
+
+**Zadavatel 9. 8. 2026 rozhodl o pořadí: nejdřív ověřit ostrov, teprve pak
+úkoly 13–17.**
 
 **Po ostrovu jsou na řadě úkoly 13 až 17** (ČÁST C). Dva z nich jsou VADY:
 **13** (sokly se nekreslí, typ soklu se ignoruje) a **17** (přístrojům
@@ -748,9 +796,10 @@ podestaveb: **14** (police a dvířka — a s nimi zprovoznění `bodyStyle`,
 který dnes nemá ve 3D žádný účinek), **15** (zásuvkový blok) a **16**
 (skříňka se zásuvy na GN).
 
-**U úkolů 13 a 16 jsou otevřené otázky a MUSÍ se zeptat zadavatele DŘÍV,
-než se do nich někdo pustí** — u 13 jestli je soklová zástěna čtvrtý typ
-nebo samostatná vlastnost, u 16 kolik úrovní zásuvů a v jaké rozteči.
+**U výšky soklu a pracovní výšky zůstává otevřená:** Platí nová logika
+(výška soklu se nastavuje, pracovní výška se počítá) jen pro MONO, nebo i
+pro SEGMENT? SEGMENT má dnes pracovní výšku také jako vstup. Podrobněji viz
+ÚKOL 13 v ČÁSTI C a ČÁST E.
 
 ## Zbývá — úkol 6, ostrovní varianta
 

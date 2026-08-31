@@ -442,7 +442,11 @@ export function buildMonoScene(state) {
   // state.dimensions.depthBMM stejně, jako to dělá block.js pro SEGMENT.
   const dimensions = {
     lengthMM: Math.round(lengthMM),
-    depthMM: Math.round(depthAMM),
+    // OPRAVA O2: u `island` je celková hloubka bloku součet obou stran
+    // (depthAMM + depthBMM) — stejné pravidlo jako block.js#totalDepthMM pro
+    // SEGMENT (ř. 199/261 tamtéž). U `single` zůstává beze změny (depthBMMNum
+    // je tam vždy 0, viz definice depthBMMNum výš).
+    depthMM: Math.round(isIsland ? depthAMM + depthBMMNum : depthAMM),
     depthAMM: Math.round(depthAMM),
     depthBMM: isIsland ? Math.round(depthBMMNum) : 0,
     heightMM: Math.round(workHeightMM),

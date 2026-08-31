@@ -1429,6 +1429,25 @@ export function buildMonoBlock({
       const combinedLeftType = deskSpec.leftEndType;   // world x=0 hrana
       const combinedRightType = deskSpec.rightEndType; // world x=lengthMM hrana
 
+      // OPRAVA (vada: "pracovní deska je moc nízko — začíná na podlaze"):
+      // buildHerdblokDesk/buildHerdblokNose/buildCollarEdgeWall (viz jejich
+      // definice výš) pracují v LOKÁLNÍM prostoru herdbloku — y=0 je SPODNÍ
+      // hrana herdbloku, stejná konvence, jakou má i buildHerdblokUsek. U
+      // `single` tenhle prostor zdědí ze svého rodiče, herdblokGroup, který
+      // má position.y = workHeight − HERDBLOK_HEIGHT_MM (ř. 1313). Kombinované
+      // díly ostrova ale žádného takového rodiče neměly a přidávaly se přímo
+      // do kořenové `group` (bez posunu) — proto "seděly na podlaze" místo na
+      // pracovní výšce. combinedGroup dostává STEJNÝ posun jako herdblokGroup/
+      // herdblokBGroup, aby díly skončily ve stejném světovém Y.
+      //
+      // Boční kryty na X-koncích (coverLeft/coverRight, níž) sem NEPATŘÍ —
+      // buildSideCover počítá Y ABSOLUTNĚ (LEG_HEIGHT_MM + heightMM/2, viz
+      // jeho definice), takže je už teď správně a další posun by ho rozbil.
+      const combinedGroup = new THREE.Group();
+      combinedGroup.name = 'kombinovane-dily';
+      combinedGroup.position.y = mm(workHeight - HERDBLOK_HEIGHT_MM);
+      group.add(combinedGroup);
+
       const desk = buildHerdblokDesk({
         widthMM: lengthMM,
         depthMM: totalDepthMM,
@@ -1437,18 +1456,18 @@ export function buildMonoBlock({
         chamferAllCorners: true,
       });
       desk.name = 'deska';
-      group.add(desk);
+      combinedGroup.add(desk);
 
       const noseLeft = buildHerdblokNose({
         endType: combinedLeftType, side: 'left', widthMM: lengthMM, depthMM: totalDepthMM, chamferAllCorners: true,
       });
       noseLeft.name = 'vodopad-levy';
-      group.add(noseLeft);
+      combinedGroup.add(noseLeft);
       const noseRight = buildHerdblokNose({
         endType: combinedRightType, side: 'right', widthMM: lengthMM, depthMM: totalDepthMM, chamferAllCorners: true,
       });
       noseRight.name = 'vodopad-pravy';
-      group.add(noseRight);
+      combinedGroup.add(noseRight);
 
       // --- límec left/right JEDNOU nad kombinovaným obrysem (§9 zadání);
       // `back` se u ostrova NIKDY nestaví — filtr tady je pojistka navíc
@@ -1458,7 +1477,7 @@ export function buildMonoBlock({
         const endTypeAtEdge = edge === 'left' ? combinedLeftType : combinedRightType;
         if (endTypeAtEdge !== END_TYPES.VERTICAL_PLATE) return; // stejná podmínka jako u single
         const wall = buildCollarSide({ edge, widthMM: lengthMM, depthMM: totalDepthMM, heightMM });
-        if (wall) group.add(wall);
+        if (wall) combinedGroup.add(wall);
       });
 
       // --- boční kryty na X-koncích, JEDNA deska přes CELOU kombinovanou

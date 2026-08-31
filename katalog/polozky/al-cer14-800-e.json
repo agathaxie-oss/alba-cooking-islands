@@ -1,0 +1,57 @@
+{
+  "id": "al-cer14-800-e",
+  "publicCode": "AL-CER14-800-E",
+  "supplier": "lotus",
+  "supplierCode": "PCCD-88ET",
+  "origin": "IT",
+  "type": "ceramic",
+  "minCutoutDepthMM": 900,
+  "name": {
+    "en": "Ceramic 4 zones · 800",
+    "de": "Ceranfeld 4 Zonen · 800",
+    "pl": "Płyta ceramiczna 4 strefy · 800",
+    "cs": "Sklokeramika 4 zóny · 800",
+    "sk": "Sklokeramika 4 zóny · 800"
+  },
+  "description": {
+    "en": "Drop-in glass-ceramic cooktop with 4 zones (4 × 3.4 kW), total electric input 13.6 kW, dimensions 800 × 800 × 50 mm. Six power stages per zone, IPX5 controls.",
+    "de": "Drop-in-Ceran-Kochfeld mit 4 Zonen (4 × 3,4 kW), Gesamtleistung elektrisch 13,6 kW, Abmessungen 800 × 800 × 50 mm. Sechs Leistungsstufen je Zone, Bedienung IPX5.",
+    "pl": "Płyta szklanoceramiczna drop-in z 4 strefami (4 × 3,4 kW), całkowita moc elektryczna 13,6 kW, wymiary 800 × 800 × 50 mm. Sześć stopni mocy na strefę, sterowanie IPX5.",
+    "cs": "Vestavná sklokeramická varná deska drop-in se 4 zónami (4 × 3,4 kW), celkový elektrický příkon 13,6 kW, rozměry 800 × 800 × 50 mm. Šest stupňů výkonu na zónu, ovládání IPX5.",
+    "sk": "Vstavaná sklokeramická varná doska drop-in so 4 zónami (4 × 3,4 kW), celkový elektrický príkon 13,6 kW, rozmery 800 × 800 × 50 mm. Šesť stupňov výkonu na zónu, ovládanie IPX5."
+  },
+  "construction": {
+    "en": "Stainless steel AISI 304 worktop 2 mm, molded for easy cleaning, glass-ceramic zones, safety thermostat, front service access. Series 900 (net depth 800 mm).",
+    "de": "Edelstahl-Arbeitsplatte AISI 304 2 mm, geformt zur einfachen Reinigung, Ceran-Zonen, Sicherheitsthermostat, Service von vorne. Serie 900 (Nettotiefe 800 mm).",
+    "pl": "Blat ze stali nierdzewnej AISI 304 2 mm, formowany do łatwego czyszczenia, strefy szklanoceramiczne, termostat bezpieczeństwa, serwis od przodu. Seria 900 (głębokość netto 800 mm).",
+    "cs": "Nerezová deska AISI 304 tl. 2 mm, tvarovaná pro snadné čištění, sklokeramické zóny, bezpečnostní termostat, servis zepředu. Řada 900 (čistá hloubka 800 mm).",
+    "sk": "Nerezová doska AISI 304 hr. 2 mm, tvarovaná pre ľahké čistenie, sklokeramické zóny, bezpečnostný termostat, servis spredu. Rad 900 (čistá hĺbka 800 mm)."
+  },
+  "widthMM": 800,
+  "minWidthMM": 800,
+  "widthAdjustable": false,
+  "depthMM": 900,
+  "minDepthMM": 900,
+  "topFeature": {
+    "type": "ceramic4",
+    "glassWidthMM": 750,
+    "glassDepthMM": 770,
+    "zoneDiameterMM": 220,
+    "zoneInnerDiameterMM": 140
+  },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 4 },
+  "allowedBodyStyles": ["closed", "doors", "open"],
+  "powerKW": 13.6,
+  "voltage": "400 V / 3N - 50 Hz",
+  "gasKW": null,
+  "zones": [
+    { "powerKW": 3.4, "fuel": "electric", "position": "front-left" },
+    { "powerKW": 3.4, "fuel": "electric", "position": "front-right" },
+    { "powerKW": 3.4, "fuel": "electric", "position": "back-left" },
+    { "powerKW": 3.4, "fuel": "electric", "position": "back-right" }
+  ],
+  "cardImage": "img/pristroje/al-cer14-800-e-card.webp",
+  "topImage": "img/pristroje/al-cer14-800-e-top.svg",
+  "geometryNotes": "minCutoutDepthMM 900 odvozeno z net depth 800 mm / kód PCCD-88ET (řada 900). topFeature ceramic4 — sklo 750×770 (RM/katalog), 4× duální zóny Ø220/Ø140 (odhad z fotky card — RM neuvádí Ø), středy ve čtvrtinách skla FL/FR/BL/BR. zones[] = 4 × 3.4 kW. Ke schválení #5."
+}

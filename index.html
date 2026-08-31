@@ -59,7 +59,7 @@
         </button>
       </div>
 
-      <button type="button" id="device-manager-btn" class="icon-btn" title="Device manager…" aria-label="Device manager…" data-i18n-title="catalog.managerBtn" data-i18n-aria-label="catalog.managerBtn">
+      <button type="button" id="device-manager-btn" class="icon-btn" title="Catalog…" aria-label="Catalog…" data-i18n-title="catalog.open" data-i18n-aria-label="catalog.open">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.86-1.41-1.9-3.29-2.2.72a7.7 7.7 0 0 0-2.6-1.5L14.2 2h-4.4l-.42 2.02a7.7 7.7 0 0 0-2.6 1.5l-2.2-.72-1.9 3.29L4.54 10.5a7.6 7.6 0 0 0 0 3l-1.86 1.41 1.9 3.29 2.2-.72c.75.66 1.63 1.17 2.6 1.5L9.8 22h4.4l.42-2.02a7.7 7.7 0 0 0 2.6-1.5l2.2.72 1.9-3.29z"/></svg>
       </button>
 
@@ -173,7 +173,7 @@
         <ul id="palette-list" class="palette-list"></ul>
         <p id="palette-empty" class="palette-empty" hidden></p>
         <button type="button" id="palette-edit-catalog" class="palette-link"
-                data-i18n="palette.editCatalog">Edit catalog…</button>
+                data-i18n="catalog.open">Catalog…</button>
       </section>
 
       <footer class="sidebar-footer">
@@ -315,7 +315,45 @@
     </div>
   </div>
 
-  <!-- Overlay dialog: Správce přístrojů (SPEC v3 §3.4) -->
+  <!-- Overlay: tovární katalog (e-shop) — správa palety (ZADANI-KATALOG.md §7, etapa D) -->
+  <div id="catalog-overlay" class="cat-overlay" role="dialog" aria-modal="true" aria-labelledby="catalog-title" hidden>
+    <div class="cat-dialog">
+      <div class="cat-head">
+        <div>
+          <h2 id="catalog-title" data-i18n="catalog.title">Device catalog</h2>
+        </div>
+        <div class="cat-head-spacer"></div>
+        <button type="button" id="catalog-close-btn" class="cat-close" data-i18n-aria-label="common.close" aria-label="Close">×</button>
+      </div>
+
+      <div class="cat-toolbar">
+        <div class="cat-filter-group">
+          <label for="catalog-filter-depth" data-i18n="catalog.filterDepth">Cutout depth</label>
+          <select id="catalog-filter-depth" class="cat-select"></select>
+        </div>
+        <div class="cat-filter-group">
+          <label for="catalog-filter-type" data-i18n="catalog.filterType">Device type</label>
+          <select id="catalog-filter-type" class="cat-select"></select>
+        </div>
+        <div class="cat-filter-group cat-filter-search">
+          <label for="catalog-filter-search" data-i18n="catalog.searchPlaceholder">Search name or code…</label>
+          <input type="search" id="catalog-filter-search" class="cat-search"
+                 data-i18n-placeholder="catalog.searchPlaceholder"
+                 placeholder="Search name or code…" />
+        </div>
+        <div id="catalog-depth-hint" class="cat-depth-hint" hidden></div>
+      </div>
+
+      <div class="cat-scroll">
+        <div id="catalog-grid" class="cat-grid"></div>
+        <p id="catalog-empty" class="cat-empty" hidden></p>
+        <div id="catalog-detail" class="cat-detail" hidden></div>
+      </div>
+      <div id="catalog-foot" class="cat-foot"></div>
+    </div>
+  </div>
+
+  <!-- Overlay dialog: Správce přístrojů (SPEC v3 §3.4) — etapa G odstraní -->
   <div id="device-manager-overlay" class="dialog-overlay" hidden>
     <div class="dialog-box dialog-box-wide">
       <h2 data-i18n="deviceManager.title">Device manager</h2>

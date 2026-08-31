@@ -530,62 +530,224 @@ function decoratePanelExtras(group, topFeatureType, widthM, panelCenterY, panelF
 // Tyto funkce přidávají detaily přímo do skupiny segmentu na absolutní y-úrovni
 // `topY` (horní plocha průběžné desky), takže musí dostat `topY` jako parametr.
 
-function buildGasStoveTop(group, widthM, depthM, topY) {
+/** Jmenovitá mřížka RM Free-Block / Lotus PCD-x8G (katalog: 390 × 360 mm). */
+const CAST_IRON_GRATE_W_MM = 390;
+const CAST_IRON_GRATE_D_MM = 360;
+const CAST_IRON_EDGE_MM = 20;
+
+/** Jeden litinový hořák + křížová mřížka (sdílené burners4 / burners2).
+ *  `grateWM` / `grateDM` = půdorys mřížky v metrech (katalog: 390×360 mm).
+ *  Délka tyčí = menší strana mřížky, ať kříž zůstane uvnitř obdélníku. */
+function addCastIronBurner(group, x, z, topY, grateWM, grateDM) {
   const castIron = createCastIronMaterial();
-  const positions = [
-    [-widthM * 0.25, depthM * 0.32],
-    [widthM * 0.25, depthM * 0.32],
-    [-widthM * 0.25, depthM * 0.68],
-    [widthM * 0.25, depthM * 0.68],
-  ];
+  const span = Math.min(grateWM, grateDM);
+  const baseR = span * 0.26;
+  const ringR = span * 0.20;
+  const innerR = span * 0.09;
+  const barLen = span * 0.95;
+  const barW = Math.max(span * 0.03, 0.01);
 
-  positions.forEach(([x, z]) => {
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.015, 24), castIron);
-    base.position.set(x, topY + 0.008, z);
-    base.castShadow = true;
-    group.add(base);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(baseR * 0.9, baseR, 0.015, 24), castIron);
+  base.position.set(x, topY + 0.008, z);
+  base.castShadow = true;
+  group.add(base);
 
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 8, 24), castIron);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(x, topY + 0.02, z);
-    ring.castShadow = true;
-    group.add(ring);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(ringR, Math.max(span * 0.03, 0.008), 8, 24), castIron);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(x, topY + 0.02, z);
+  ring.castShadow = true;
+  group.add(ring);
 
-    const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.012, 16), castIron);
-    inner.position.set(x, topY + 0.015, z);
-    group.add(inner);
+  const inner = new THREE.Mesh(new THREE.CylinderGeometry(innerR, innerR, 0.012, 16), castIron);
+  inner.position.set(x, topY + 0.015, z);
+  group.add(inner);
 
-    for (let i = 0; i < 4; i++) {
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.008, 0.012), castIron);
-      bar.rotation.y = (Math.PI / 4) * i;
-      bar.position.set(x, topY + 0.026, z);
-      bar.castShadow = true;
-      group.add(bar);
-    }
-  });
+  for (let i = 0; i < 4; i++) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(barLen, 0.008, barW), castIron);
+    bar.rotation.y = (Math.PI / 4) * i;
+    bar.position.set(x, topY + 0.026, z);
+    bar.castShadow = true;
+    group.add(bar);
+  }
 }
 
-function buildElectricStoveTop(group, widthM, depthM, topY) {
+/**
+ * Absolutní layout litinových mřížek 390×360 mm.
+ * `columns` = 1 → burners2 (osa X=0), 2 → burners4 (dva sloupce ve středech polovin).
+ * Na mělčí řadě (cutout 700) se hloubka mřížky + pitchZ zmenší stejně jako u burners2.
+ */
+function resolveCastIronBurnerLayout(widthM, depthM, columns = 1) {
+  const cols = Math.max(1, Math.round(columns));
+  const EDGE = mm(CAST_IRON_EDGE_MM);
+  const halfW = widthM / cols;
+  const grateWM = Math.min(
+    mm(CAST_IRON_GRATE_W_MM),
+    Math.max(halfW - mm(10), mm(200))
+  );
+  let grateDM = mm(CAST_IRON_GRATE_D_MM);
+
+  // dva kříže za sebou: spanZ ≈ pitch + barLen, barLen = 0.95 · min(W,D)
+  const usable = Math.max(depthM - 2 * EDGE, mm(200));
+  const fitDepth = (d) => d + Math.min(grateWM, d) * 0.95;
+  if (fitDepth(grateDM) > usable) {
+    // solve d + 0.95·d = usable když d ≤ grateWM (typicky ano)
+    grateDM = usable / 1.95;
+  }
+  const barLenZ = Math.min(grateWM, grateDM) * 0.95;
+  const pitchZ = Math.min(grateDM, Math.max(usable - barLenZ, barLenZ));
+  const midZ = depthM / 2;
+  const zs = [midZ - pitchZ / 2, midZ + pitchZ / 2];
+
+  const xs = [];
+  for (let c = 0; c < cols; c++) {
+    xs.push(-widthM / 2 + halfW * (c + 0.5));
+  }
+
+  const positions = [];
+  for (const x of xs) {
+    for (const z of zs) {
+      positions.push([x, z]);
+    }
+  }
+  return { grateWM, grateDM, pitchZ, positions };
+}
+
+/** Čtyřhořák (Lotus PCD-68G / PCD-88G) — 2×2 absolutní mřížky 390×360 mm
+ *  (= dva bloky burners2 vedle sebe). Viz ZADANI-GEOMETRIE-RM.md vlna 2. */
+function buildGasStoveTop(group, widthM, depthM, topY) {
+  const { grateWM, grateDM, positions } = resolveCastIronBurnerLayout(widthM, depthM, 2);
+  positions.forEach(([x, z]) => addCastIronBurner(group, x, z, topY, grateWM, grateDM));
+}
+
+/**
+ * Dvouhořáková plynová deska (Lotus PCD-64G / PCD-84G) — 2 hořáky za sebou
+ * na ose šířky. Cílová mřížka 390×360 mm dle RM PCD-84G; na mělčí řadě
+ * (700 mm cutout) se hloubka mřížky + rozteč zmenší, ať kříž nepřeteče desku.
+ * U PCD-64G je 390×360 K OVĚŘENÍ — viz ZADANI-GEOMETRIE-RM.md.
+ */
+function buildGasStove2Top(group, widthM, depthM, topY) {
+  const { grateWM, grateDM, positions } = resolveCastIronBurnerLayout(widthM, depthM, 1);
+  positions.forEach(([x, z]) => addCastIronBurner(group, x, z, topY, grateWM, grateDM));
+}
+
+/** Sklokeramika PCCD-88ET — sklo 750×770 mm, zóny Ø220 (odhad z fotky). */
+const CERAMIC_EDGE_MM = 20;
+const CERAMIC_GLASS_W_MM = 750;
+const CERAMIC_GLASS_D_MM = 770;
+const CERAMIC_ZONE_DIA_MM = 220;
+const CERAMIC_ZONE_INNER_DIA_MM = 140;
+const CERAMIC_GLASS_THICK_MM = 12;
+
+/**
+ * Absolutní layout 4 sklokeramických zón (Lotus PCCD-88ET).
+ * Sklo z `glassWidthMM/DepthMM` (katalog 750×770), zóny 2×2 ve čtvrtinách skla,
+ * průměr z `zoneDiameterMM` (odhad z fotky — v RM není Ø). Fit do šířky desky /
+ * hloubky řady jako u burners4. Pořadí středů: FL, FR, BL, BR.
+ * Viz ZADANI-GEOMETRIE-RM.md vlna 5.
+ */
+function resolveCeramic4Layout(widthM, depthM, feature = {}) {
+  const EDGE = mm(CERAMIC_EDGE_MM);
+  const hasGlass = Number(feature.glassWidthMM) > 0 && Number(feature.glassDepthMM) > 0;
+  let glassWM = hasGlass ? mm(Number(feature.glassWidthMM)) : mm(CERAMIC_GLASS_W_MM);
+  let glassDM = hasGlass ? mm(Number(feature.glassDepthMM)) : mm(CERAMIC_GLASS_D_MM);
+  // proporční fallback (vlastní přístroj) — skoro celá deska
+  if (!hasGlass && !(Number(feature.zoneDiameterMM) > 0)) {
+    glassWM = Math.max(widthM - 0.02, mm(200));
+    glassDM = Math.max(depthM - 0.02, mm(200));
+  }
+  glassWM = Math.min(glassWM, Math.max(widthM - 2 * EDGE, mm(200)));
+  glassDM = Math.min(glassDM, Math.max(depthM - 2 * EDGE, mm(200)));
+
+  let zoneDia = Number(feature.zoneDiameterMM) > 0
+    ? mm(Number(feature.zoneDiameterMM))
+    : mm(CERAMIC_ZONE_DIA_MM);
+  // 2 zóny + mezera ve skle (max ~45 % kratší strany skla)
+  const maxDia = Math.min(glassWM, glassDM) * 0.45;
+  zoneDia = Math.min(Math.max(zoneDia, mm(60)), Math.max(maxDia, mm(60)));
+
+  let innerDia = Number(feature.zoneInnerDiameterMM) > 0
+    ? mm(Number(feature.zoneInnerDiameterMM))
+    : mm(CERAMIC_ZONE_INNER_DIA_MM);
+  innerDia = Math.min(innerDia, zoneDia * 0.75);
+
+  const centerX = 0;
+  const centerZ = depthM / 2;
+  const pitchX = glassWM / 2;
+  const pitchZ = glassDM / 2;
+  const xs = [centerX - pitchX / 2, centerX + pitchX / 2];
+  const zs = [centerZ - pitchZ / 2, centerZ + pitchZ / 2];
+  // FL, FR, BL, BR — shodné s zones[].position v katalogu
+  const positions = [
+    [xs[0], zs[0]],
+    [xs[1], zs[0]],
+    [xs[0], zs[1]],
+    [xs[1], zs[1]],
+  ];
+  return {
+    glassWM,
+    glassDM,
+    zoneDia,
+    innerDia,
+    positions,
+    centerX,
+    centerZ,
+    pitchX,
+    pitchZ,
+    hasGlass,
+  };
+}
+
+/**
+ * Sklokeramická deska 4 zóny (PCCD-88ET) — absolutní sklo + duální kruhy.
+ * Alias historického názvu: buildElectricStoveTop.
+ */
+function buildCeramicTop(group, widthM, depthM, topY, feature = {}) {
+  const {
+    glassWM, glassDM, zoneDia, innerDia, positions, centerX, centerZ,
+  } = resolveCeramic4Layout(widthM, depthM, feature);
+
   const glassCeramic = createGlassCeramicMaterial();
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(widthM - 0.02, 0.012, depthM - 0.02), glassCeramic);
-  plate.position.set(0, topY + 0.006, depthM / 2);
+  const glassThick = mm(CERAMIC_GLASS_THICK_MM);
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(glassWM, glassThick, glassDM), glassCeramic);
+  plate.position.set(centerX, topY + glassThick / 2, centerZ);
   plate.castShadow = true;
   plate.receiveShadow = true;
+  plate.userData.featurePart = 'ceramicGlass';
   group.add(plate);
 
-  const zoneMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, metalness: 0.3, roughness: 0.25 });
-  const positions = [
-    [-widthM * 0.25, depthM * 0.32],
-    [widthM * 0.25, depthM * 0.32],
-    [-widthM * 0.25, depthM * 0.68],
-    [widthM * 0.25, depthM * 0.68],
-  ];
+  const zoneMat = new THREE.MeshStandardMaterial({ color: 0xc8c8cc, metalness: 0.35, roughness: 0.45 });
+  const ringY = topY + glassThick + 0.001;
+  const tube = mm(3.5);
   positions.forEach(([x, z]) => {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.004, 8, 32), zoneMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(x, topY + 0.013, z);
-    group.add(ring);
+    const outerR = Math.max(zoneDia / 2 - tube, mm(40));
+    const outer = new THREE.Mesh(new THREE.TorusGeometry(outerR, tube, 8, 48), zoneMat);
+    outer.rotation.x = Math.PI / 2;
+    outer.position.set(x, ringY, z);
+    outer.userData.featurePart = 'ceramicZone';
+    group.add(outer);
+
+    const innerR = Math.max(innerDia / 2 - tube * 0.85, mm(25));
+    const inner = new THREE.Mesh(new THREE.TorusGeometry(innerR, tube * 0.85, 8, 40), zoneMat);
+    inner.rotation.x = Math.PI / 2;
+    inner.position.set(x, ringY, z);
+    inner.userData.featurePart = 'ceramicZoneInner';
+    group.add(inner);
   });
+
+  // indikátor zbytkového tepla vpředu uprostřed skla (fotka PCCD-88ET)
+  const hint = mm(18);
+  const residual = new THREE.Mesh(
+    new THREE.BoxGeometry(hint, mm(1), hint),
+    new THREE.MeshStandardMaterial({ color: 0xd0d0d4, metalness: 0.2, roughness: 0.55 })
+  );
+  residual.position.set(centerX, ringY, centerZ - glassDM / 2 + mm(28));
+  residual.userData.featurePart = 'ceramicResidual';
+  group.add(residual);
+}
+
+/** @deprecated použij buildCeramicTop — ponecháno jako alias. */
+function buildElectricStoveTop(group, widthM, depthM, topY, feature = {}) {
+  buildCeramicTop(group, widthM, depthM, topY, feature);
 }
 
 /** Indukce — jedna varná zóna 400×400 mm (§3.3 SPEC v3). */
@@ -615,28 +777,68 @@ function buildInductionTop(group, widthM, depthM, topY) {
   group.add(squareOutline);
 }
 
-function buildFryerTop(group, widthM, depthM, topY) {
+/** Okraj desky kolem van fritézy (mm). */
+const FRYER_EDGE_MM = 20;
+
+/**
+ * Absolutní layout 2 van fritézy (Lotus F2/8D / F2/10D).
+ * Rozměry z `topFeature.vatWidthMM/vatDepthMM` (+ koše); bez nich fallback
+ * proporční (vlastní přístroj v editoru). Vany vedle sebe, zbývající šířka
+ * rozdělená na 2 okraje + mezeru (min. FRYER_EDGE_MM).
+ * Viz ZADANI-GEOMETRIE-RM.md vlna 3.
+ */
+function resolveFryer2Layout(widthM, depthM, feature = {}) {
+  const EDGE = mm(FRYER_EDGE_MM);
+  const hasAbsolute = Number(feature.vatWidthMM) > 0 && Number(feature.vatDepthMM) > 0;
+  let vatWM = hasAbsolute ? mm(Number(feature.vatWidthMM)) : widthM * 0.42;
+  let vatDM = hasAbsolute ? mm(Number(feature.vatDepthMM)) : depthM * 0.6;
+  vatDM = Math.min(vatDM, Math.max(depthM - 2 * EDGE, mm(200)));
+  const maxVatW = Math.max((widthM - 3 * EDGE) / 2, mm(80));
+  vatWM = Math.min(vatWM, maxVatW);
+
+  const remaining = Math.max(widthM - 2 * vatWM, 2 * EDGE);
+  const side = Math.max(EDGE, remaining / 3);
+  const between = Math.max(remaining - 2 * side, EDGE);
+  const halfPitch = vatWM / 2 + between / 2;
+  const centersX = [-halfPitch, halfPitch];
+  const centerZ = depthM / 2;
+
+  let basketWM = Number(feature.basketWidthMM) > 0
+    ? mm(Number(feature.basketWidthMM))
+    : Math.max(vatWM - mm(28), vatWM * 0.75);
+  let basketDM = Number(feature.basketDepthMM) > 0
+    ? mm(Number(feature.basketDepthMM))
+    : Math.max(vatDM - mm(50), vatDM * 0.82);
+  basketWM = Math.min(basketWM, vatWM - mm(8));
+  basketDM = Math.min(basketDM, vatDM - mm(8));
+
+  return { vatWM, vatDM, centersX, centerZ, basketWM, basketDM, side, between, hasAbsolute };
+}
+
+/** Dvojvaná fritéza — absolutní vany z katalogu (148×350 / 220×350) nebo proporční fallback. */
+function buildFryerTop(group, widthM, depthM, topY, feature = {}) {
   const glass = createGlassMaterial();
   const recessMat = createRecessMaterial();
-  const vatWidth = widthM * 0.42;
-  const centers = [-widthM * 0.24, widthM * 0.24];
+  const { vatWM, vatDM, centersX, centerZ, basketWM, basketDM } = resolveFryer2Layout(widthM, depthM, feature);
 
-  centers.forEach((x) => {
-    const vat = new THREE.Mesh(new THREE.BoxGeometry(vatWidth, 0.14, depthM * 0.6), recessMat);
-    vat.position.set(x, topY - 0.06, depthM * 0.5);
+  centersX.forEach((x) => {
+    const vat = new THREE.Mesh(new THREE.BoxGeometry(vatWM, 0.14, vatDM), recessMat);
+    vat.position.set(x, topY - 0.06, centerZ);
+    vat.userData.featurePart = 'fryerVat';
     group.add(vat);
 
-    const basketGeo = new THREE.BoxGeometry(vatWidth - 0.03, 0.11, depthM * 0.5);
     const basket = new THREE.LineSegments(
-      new THREE.EdgesGeometry(basketGeo),
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(basketWM, 0.11, basketDM)),
       new THREE.LineBasicMaterial({ color: 0x8c8c8c })
     );
-    basket.position.set(x, topY - 0.03, depthM * 0.5);
+    basket.position.set(x, topY - 0.03, centerZ);
+    basket.userData.featurePart = 'fryerBasket';
     group.add(basket);
 
-    const lid = new THREE.Mesh(new THREE.BoxGeometry(vatWidth, 0.01, depthM * 0.6), glass);
-    lid.position.set(x, topY + 0.1, depthM * 0.78);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(vatWM, 0.01, vatDM), glass);
+    lid.position.set(x, topY + 0.1, centerZ + vatDM * 0.35);
     lid.rotation.x = -Math.PI * 0.32;
+    lid.userData.featurePart = 'fryerLid';
     group.add(lid);
   });
 }
@@ -667,24 +869,77 @@ function buildFryer1Top(group, widthM, depthM, topY) {
   group.add(lid);
 }
 
-function buildGrillTop(group, widthM, depthM, topY) {
-  const glassCeramic = createGlassCeramicMaterial();
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(widthM - 0.02, 0.02, depthM - 0.06), glassCeramic);
-  plate.position.set(0, topY + 0.01, depthM / 2);
-  plate.castShadow = true;
-  group.add(plate);
+const GRILL_EDGE_MM = 20;
+const GRILL_PLATE_THICK_MM = 14;
+const GRILL_RIB_COUNT = 7;
+const GRILL_TRAY_DEPTH_MM = 40;
 
-  const grooveMat = new THREE.MeshStandardMaterial({ color: 0x050505, metalness: 0.2, roughness: 0.6 });
-  const grooveCount = 8;
-  for (let i = 0; i < grooveCount; i++) {
-    const z = 0.06 + ((depthM - 0.12) * i) / (grooveCount - 1);
-    const groove = new THREE.Mesh(new THREE.BoxGeometry(widthM - 0.06, 0.006, 0.015), grooveMat);
-    groove.position.set(0, topY + 0.021, z);
-    group.add(groove);
+/**
+ * Grilovací plocha — absolutní mm z `cookAreaWidthMM/DepthMM` (FTLRD-88ET
+ * 680×760) nebo proporční fallback. Viz ZADANI-GEOMETRIE-RM.md vlna 4.
+ */
+function resolveGrillLayout(widthM, depthM, feature = {}) {
+  const EDGE = mm(GRILL_EDGE_MM);
+  const hasAbsolute = Number(feature.cookAreaWidthMM) > 0 && Number(feature.cookAreaDepthMM) > 0;
+  let cookWM = hasAbsolute ? mm(Number(feature.cookAreaWidthMM)) : Math.max(widthM - 0.02, mm(200));
+  let cookDM = hasAbsolute ? mm(Number(feature.cookAreaDepthMM)) : Math.max(depthM - 0.06, mm(200));
+  cookWM = Math.min(cookWM, Math.max(widthM - 2 * EDGE, mm(200)));
+  cookDM = Math.min(cookDM, Math.max(depthM - 2 * EDGE, mm(200)));
+  const centerX = 0;
+  const centerZ = depthM / 2;
+  const trayDM = Math.min(mm(GRILL_TRAY_DEPTH_MM), cookDM * 0.12);
+  const trayWM = cookWM * 0.28;
+  return { cookWM, cookDM, centerX, centerZ, trayWM, trayDM, hasAbsolute };
+}
+
+/**
+ * Kombinovaný fry-top (FTLRD-88ET): ½ vlevo rýhovaná (žebra předozadně),
+ * ½ vpravo hladká; sběr tuku vpředu uprostřed. Plocha z katalogu nebo fallback.
+ */
+function buildGrillTop(group, widthM, depthM, topY, feature = {}) {
+  const { cookWM, cookDM, centerX, centerZ, trayWM, trayDM } = resolveGrillLayout(widthM, depthM, feature);
+  const plateThick = mm(GRILL_PLATE_THICK_MM);
+  const halfW = cookWM / 2;
+  const plateY = topY + plateThick / 2;
+
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x7a7e82, metalness: 0.88, roughness: 0.34 });
+  const ribMat = new THREE.MeshStandardMaterial({ color: 0x55595d, metalness: 0.82, roughness: 0.42 });
+
+  // pravá polovina — hladká (fotka FTLRD-88ET)
+  const smooth = new THREE.Mesh(new THREE.BoxGeometry(halfW, plateThick, cookDM), steelMat);
+  smooth.position.set(centerX + halfW / 2, plateY, centerZ);
+  smooth.castShadow = true;
+  smooth.receiveShadow = true;
+  smooth.userData.featurePart = 'grillCookArea';
+  group.add(smooth);
+
+  // levá polovina — základ pod žebry
+  const ribbedBase = new THREE.Mesh(new THREE.BoxGeometry(halfW, plateThick, cookDM), steelMat);
+  ribbedBase.position.set(centerX - halfW / 2, plateY, centerZ);
+  ribbedBase.castShadow = true;
+  ribbedBase.receiveShadow = true;
+  ribbedBase.userData.featurePart = 'grillCookArea';
+  group.add(ribbedBase);
+
+  // žebra předozadně (osa Z) jen na levé polovině
+  const ribWM = mm(14);
+  const ribHM = mm(5);
+  const marginX = mm(18);
+  const usable = Math.max(halfW - 2 * marginX, ribWM);
+  for (let i = 0; i < GRILL_RIB_COUNT; i++) {
+    const t = GRILL_RIB_COUNT === 1 ? 0.5 : i / (GRILL_RIB_COUNT - 1);
+    const x = centerX - halfW + marginX + usable * t;
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(ribWM, ribHM, cookDM - mm(12)), ribMat);
+    rib.position.set(x, topY + plateThick + ribHM / 2, centerZ);
+    rib.castShadow = true;
+    rib.userData.featurePart = 'grillRib';
+    group.add(rib);
   }
 
-  const tray = new THREE.Mesh(new THREE.BoxGeometry(widthM - 0.1, 0.01, 0.05), createRecessMaterial());
-  tray.position.set(0, topY + 0.006, 0.05);
+  // sběr tuku / odtok vpředu uprostřed plochy
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(trayWM, mm(10), trayDM), createRecessMaterial());
+  tray.position.set(centerX, topY + mm(4), centerZ - cookDM / 2 + trayDM / 2 + mm(4));
+  tray.userData.featurePart = 'grillTray';
   group.add(tray);
 }
 
@@ -875,20 +1130,23 @@ export function applyTopFeature(group, def, segment, widthM, depthM, topY) {
     case 'burners4':
       buildGasStoveTop(group, widthM, depthM, topY);
       break;
+    case 'burners2':
+      buildGasStove2Top(group, widthM, depthM, topY);
+      break;
     case 'ceramic4':
-      buildElectricStoveTop(group, widthM, depthM, topY);
+      buildCeramicTop(group, widthM, depthM, topY, def.topFeature || {});
       break;
     case 'induction':
       buildInductionTop(group, widthM, depthM, topY);
       break;
     case 'fryer2':
-      buildFryerTop(group, widthM, depthM, topY);
+      buildFryerTop(group, widthM, depthM, topY, def.topFeature || {});
       break;
     case 'fryer1':
       buildFryer1Top(group, widthM, depthM, topY);
       break;
     case 'grill':
-      buildGrillTop(group, widthM, depthM, topY);
+      buildGrillTop(group, widthM, depthM, topY, def.topFeature || {});
       break;
     case 'bainmarie':
       buildBainMarieTop(group, widthM, depthM, topY);

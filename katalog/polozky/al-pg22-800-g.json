@@ -1,0 +1,51 @@
+{
+  "id": "al-pg22-800-g",
+  "publicCode": "AL-PG22-800-G",
+  "supplier": "lotus",
+  "supplierCode": "PCD-68G",
+  "origin": "IT",
+  "type": "gas_range",
+  "minCutoutDepthMM": 700,
+  "name": {
+    "en": "Gas range 22 kW · 800",
+    "de": "Gasherd 22 kW · 800",
+    "pl": "Kuchenka gazowa 22 kW · 800",
+    "cs": "Sporák plynový 22 kW · 800",
+    "sk": "Sporák plynový 22 kW · 800"
+  },
+  "description": {
+    "en": "Drop-in gas cooktop with 4 cast-iron burners (7.5 / 5.5 / 5.5 / 3.5 kW), total gas input 22 kW, dimensions 800 × 600 × 110 mm. Standing pilot ignition, natural gas / LPG, IPX5.",
+    "de": "Drop-in-Gaskochfeld mit 4 Gussbrennern (7,5 / 5,5 / 5,5 / 3,5 kW), Gesamtleistung Gas 22 kW, Abmessungen 800 × 600 × 110 mm. Zündung durch Dauerflamme, Erdgas / Flüssiggas, IPX5.",
+    "pl": "Płyta gazowa drop-in z 4 palnikami żeliwnymi (7,5 / 5,5 / 5,5 / 3,5 kW), całkowita moc gazowa 22 kW, wymiary 800 × 600 × 110 mm. Zapłon płomieniem dyżurnym, gaz ziemny / LPG, IPX5.",
+    "cs": "Plynová varná deska drop-in se 4 litinovými hořáky (7,5 / 5,5 / 5,5 / 3,5 kW), celkový plynový příkon 22 kW, rozměry 800 × 600 × 110 mm. Zapalování věčným plamenem, zemní plyn / LPG, IPX5.",
+    "sk": "Plynová varná doska drop-in so 4 liatinovými horákmi (7,5 / 5,5 / 5,5 / 3,5 kW), celkový plynový príkon 22 kW, rozmery 800 × 600 × 110 mm. Zapaľovanie večným plameňom, zemný plyn / LPG, IPX5."
+  },
+  "construction": {
+    "en": "Stainless steel AISI 304 worktop 2 mm, safety thermocouple, cast-iron grids, gas connection 1/2\", front service access. Series 700 (net depth 600 mm).",
+    "de": "Edelstahl-Arbeitsplatte AISI 304 2 mm, Sicherheits-Thermoelement, Gussroste, Gasanschluss 1/2\", Service von vorne. Serie 700 (Nettotiefe 600 mm).",
+    "pl": "Blat ze stali nierdzewnej AISI 304 2 mm, termopara bezpieczeństwa, ruszty żeliwne, przyłącze gazu 1/2\", serwis od przodu. Seria 700 (głębokość netto 600 mm).",
+    "cs": "Nerezová deska AISI 304 tl. 2 mm, bezpečnostní termočlánek, litinové mřížky, přípojka plynu 1/2\", servis zepředu. Řada 700 (čistá hloubka 600 mm).",
+    "sk": "Nerezová doska AISI 304 hr. 2 mm, bezpečnostný termočlánok, liatinové mriežky, prípojka plynu 1/2\", servis spredu. Rad 700 (čistá hĺbka 600 mm)."
+  },
+  "widthMM": 800,
+  "minWidthMM": 800,
+  "widthAdjustable": false,
+  "depthMM": 700,
+  "minDepthMM": 700,
+  "topFeature": { "type": "burners4" },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 4 },
+  "allowedBodyStyles": ["closed", "doors", "open"],
+  "powerKW": null,
+  "voltage": "",
+  "gasKW": 22,
+  "zones": [
+    { "powerKW": 7.5, "fuel": "gas", "position": "front-left" },
+    { "powerKW": 5.5, "fuel": "gas", "position": "back-left" },
+    { "powerKW": 5.5, "fuel": "gas", "position": "front-right" },
+    { "powerKW": 3.5, "fuel": "gas", "position": "back-right" }
+  ],
+  "cardImage": "img/pristroje/al-pg22-800-g-card.webp",
+  "topImage": "img/pristroje/al-pg22-800-g-top.svg",
+  "geometryNotes": "minCutoutDepthMM 700 (net depth 600 / PCD-68G řada 700). topFeature burners4 — absolutní mřížky 390×360 mm (2×2, stejný fit jako burners2; na 700 clamp hloubky). Ke schválení #2 viz ZADANI-GEOMETRIE-RM.md. zones[] = RM zóny 1–4 (7.5 / 5.5 / 5.5 / 3.5 kW). Pozice: RM neuvádí půdorys zón → mapováno na pořadí středu v resolveCastIronBurnerLayout(columns=2): FL, BL, FR, BR (front = menší Z / čelo u panelu)."
+}

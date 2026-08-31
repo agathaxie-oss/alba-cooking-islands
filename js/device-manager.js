@@ -21,7 +21,7 @@ const MIN_DEPTH_FLOOR = 400;
 const MIN_DEPTH_CEIL = 1200;
 
 // typy prvku na desce (topFeature.type) — viz SPEC §3.1; popisek přes i18n klíč topFeature.<value>
-const TOP_FEATURE_TYPES = ['none', 'burners4', 'ceramic4', 'induction', 'fryer1', 'fryer2', 'grill', 'bainmarie', 'multipan', 'sink', 'bitmap'];
+const TOP_FEATURE_TYPES = ['none', 'burners2', 'burners4', 'ceramic4', 'induction', 'fryer1', 'fryer2', 'grill', 'bainmarie', 'multipan', 'sink', 'bitmap'];
 
 function clamp(v, min, max) {
   return Math.min(Math.max(v, min), max);

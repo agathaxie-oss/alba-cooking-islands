@@ -224,9 +224,12 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin) {
   const rect = (x, y, rw, rh, extra = '') =>
     parts.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" stroke="#000" stroke-width="${sw}" ${extra} />`);
 
-  if (type === 'burners4') {
-    const r = Math.min(w, d) * 0.13;
-    [[-0.25, 0.32], [0.25, 0.32], [-0.25, 0.68], [0.25, 0.68]].forEach(([fx, fz]) => {
+  if (type === 'burners4' || type === 'burners2') {
+    const r = Math.min(w, d) * (type === 'burners2' ? 0.18 : 0.13);
+    const layout = type === 'burners2'
+      ? [[0, 0.32], [0, 0.68]]
+      : [[-0.25, 0.32], [0.25, 0.32], [-0.25, 0.68], [0.25, 0.68]];
+    layout.forEach(([fx, fz]) => {
       const cx = px(fx * w);
       const cy = pz(fz);
       circle(cx, cy, r, 'fill="none"');
@@ -271,13 +274,25 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin) {
     line(x + vatW * 0.15, y + vatD * 0.5, x + vatW * 0.85, y + vatD * 0.5);
     line(x + vatW * 0.15, y + vatD * 0.85, x + vatW * 0.85, y + vatD * 0.85);
   } else if (type === 'grill') {
-    rect(px(-w * 0.47), pz(0.04), w * 0.94, d * 0.8, 'fill="none"');
-    const grooves = 7;
-    for (let i = 1; i <= grooves; i++) {
-      const f = 0.08 + (0.72 * i) / (grooves + 1);
-      line(px(-w * 0.44), pz(f), px(w * 0.44), pz(f));
+    // absolutní cookArea z topFeature (FTLRD 680×760) nebo proporční fallback
+    const cookWmm = Number(def?.topFeature?.cookAreaWidthMM) > 0
+      ? Number(def.topFeature.cookAreaWidthMM)
+      : w * 0.94;
+    const cookDmm = Number(def?.topFeature?.cookAreaDepthMM) > 0
+      ? Number(def.topFeature.cookAreaDepthMM)
+      : d * 0.8;
+    const cookW = Math.min(cookWmm, w - 20);
+    const cookD = Math.min(cookDmm, d - 20);
+    const gx = px(-cookW / 2);
+    const gy = pz(0.5) - cookD / 2;
+    rect(gx, gy, cookW, cookD, 'fill="none"');
+    // levá polovina rýhovaná (žebra předozadně), pravá hladká
+    const ribs = 6;
+    for (let i = 1; i <= ribs; i++) {
+      const rx = gx + (cookW * 0.5 * i) / (ribs + 1);
+      line(rx, gy + cookD * 0.06, rx, gy + cookD * 0.94);
     }
-    rect(px(-w * 0.3), pz(0.86), w * 0.6, d * 0.1, 'fill="none"'); // odkapávací miska
+    rect(px(-cookW * 0.14), gy + cookD * 0.02, cookW * 0.28, cookD * 0.08, 'fill="none"'); // sběr tuku
   } else if (type === 'bainmarie') {
     rect(px(-w * 0.4), pz(0.15), w * 0.8, d * 0.7, 'fill="none"');
     line(px(-w * 0.3), pz(0.5), px(w * 0.3), pz(0.5));

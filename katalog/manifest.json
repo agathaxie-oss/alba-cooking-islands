@@ -1,0 +1,166 @@
+{
+  "factoryVersion": 1,
+  "schema": 1,
+  "items": [
+    {
+      "id": "al-pg22-800-g",
+      "type": "gas_range",
+      "minCutoutDepthMM": 700,
+      "publicCode": "AL-PG22-800-G",
+      "name": {
+        "en": "Gas range 22 kW · 800",
+        "de": "Gasherd 22 kW · 800",
+        "pl": "Kuchenka gazowa 22 kW · 800",
+        "cs": "Sporák plynový 22 kW · 800",
+        "sk": "Sporák plynový 22 kW · 800"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-pg22-800-g-card.webp",
+      "tags": ["gas", "22kw", "4burners"]
+    },
+    {
+      "id": "al-pg13-400-g",
+      "type": "gas_range",
+      "minCutoutDepthMM": 700,
+      "publicCode": "AL-PG13-400-G",
+      "name": {
+        "en": "Gas range 13 kW · 400",
+        "de": "Gasherd 13 kW · 400",
+        "pl": "Kuchenka gazowa 13 kW · 400",
+        "cs": "Sporák plynový 13 kW · 400",
+        "sk": "Sporák plynový 13 kW · 400"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-pg13-400-g-card.webp",
+      "tags": ["gas", "13kw", "2burners"]
+    },
+    {
+      "id": "al-pg11-400-g",
+      "type": "gas_range",
+      "minCutoutDepthMM": 900,
+      "publicCode": "AL-PG11-400-G",
+      "name": {
+        "en": "Gas range 11 kW · 400",
+        "de": "Gasherd 11 kW · 400",
+        "pl": "Kuchenka gazowa 11 kW · 400",
+        "cs": "Sporák plynový 11 kW · 400",
+        "sk": "Sporák plynový 11 kW · 400"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-pg11-400-g-card.webp",
+      "tags": ["gas", "11kw", "2burners"]
+    },
+    {
+      "id": "al-pg28-800-g",
+      "type": "gas_range",
+      "minCutoutDepthMM": 900,
+      "publicCode": "AL-PG28-800-G",
+      "name": {
+        "en": "Gas range 28 kW · 800",
+        "de": "Gasherd 28 kW · 800",
+        "pl": "Kuchenka gazowa 28 kW · 800",
+        "cs": "Sporák plynový 28 kW · 800",
+        "sk": "Sporák plynový 28 kW · 800"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-pg28-800-g-card.webp",
+      "tags": ["gas", "28kw", "4burners"]
+    },
+    {
+      "id": "al-cer14-800-e",
+      "type": "ceramic",
+      "minCutoutDepthMM": 900,
+      "publicCode": "AL-CER14-800-E",
+      "name": {
+        "en": "Ceramic 4 zones · 800",
+        "de": "Ceranfeld 4 Zonen · 800",
+        "pl": "Płyta ceramiczna 4 strefy · 800",
+        "cs": "Sklokeramika 4 zóny · 800",
+        "sk": "Sklokeramika 4 zóny · 800"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-cer14-800-e-card.webp",
+      "tags": ["electric", "ceramic", "13.6kw"]
+    },
+    {
+      "id": "al-gr15-800-e",
+      "type": "griddle",
+      "minCutoutDepthMM": 900,
+      "publicCode": "AL-GR15-800-E",
+      "name": {
+        "en": "Griddle combined · 800",
+        "de": "Grillplatte kombiniert · 800",
+        "pl": "Płyta grillowa kombinowana · 800",
+        "cs": "Grilovací deska kombinovaná · 800",
+        "sk": "Grilovacia doska kombinovaná · 800"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-gr15-800-e-card.webp",
+      "tags": ["electric", "15kw", "combined"]
+    },
+    {
+      "id": "al-fr10-400-e",
+      "type": "fryer",
+      "minCutoutDepthMM": 700,
+      "publicCode": "AL-FR10-400-E",
+      "name": {
+        "en": "Fryer 10 l · 400",
+        "de": "Fritteuse 10 l · 400",
+        "pl": "Frytownica 10 l · 400",
+        "cs": "Fritéza 10 l · 400",
+        "sk": "Fritéza 10 l · 400"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-fr10-400-e-card.svg",
+      "tags": ["electric", "10l"]
+    },
+    {
+      "id": "al-fr88-400-e",
+      "type": "fryer",
+      "minCutoutDepthMM": 700,
+      "publicCode": "AL-FR88-400-E",
+      "name": {
+        "en": "Fryer 8+8 l · 400",
+        "de": "Fritteuse 8+8 l · 400",
+        "pl": "Frytownica 8+8 l · 400",
+        "cs": "Fritéza 8+8 l · 400",
+        "sk": "Fritéza 8+8 l · 400"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-fr88-400-e-card.webp",
+      "tags": ["electric", "8+8l"]
+    },
+    {
+      "id": "al-fr1010-600-e",
+      "type": "fryer",
+      "minCutoutDepthMM": 700,
+      "publicCode": "AL-FR1010-600-E",
+      "name": {
+        "en": "Fryer 10+10 l · 600",
+        "de": "Fritteuse 10+10 l · 600",
+        "pl": "Frytownica 10+10 l · 600",
+        "cs": "Fritéza 10+10 l · 600",
+        "sk": "Fritéza 10+10 l · 600"
+      },
+      "origin": "IT",
+      "cardImage": "img/pristroje/al-fr1010-600-e-card.webp",
+      "tags": ["electric", "10+10l"]
+    },
+    {
+      "id": "al-ind5-500-e",
+      "type": "induction",
+      "minCutoutDepthMM": 700,
+      "publicCode": "AL-IND5-500-E",
+      "name": {
+        "en": "Induction 1 zone 5 kW · 500",
+        "de": "Induktion 1 Zone 5 kW · 500",
+        "pl": "Indukcja 1 strefa 5 kW · 500",
+        "cs": "Indukce 1 zóna 5 kW · 500",
+        "sk": "Indukcia 1 zóna 5 kW · 500"
+      },
+      "origin": "DE",
+      "cardImage": "img/pristroje/al-ind5-500-e-card.svg",
+      "tags": ["electric", "5kw"]
+    }
+  ]
+}

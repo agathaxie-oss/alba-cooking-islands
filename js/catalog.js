@@ -1,219 +1,41 @@
-// catalog.js — datový model katalogu přístrojů (SPEC v3 §3.1–3.3, §7;
-// SPEC v4 §10 — topFixed, allowedBodyStyles, katalogové technické údaje;
-// §13 — vícejazyčné názvy vestavěných přístrojů).
-// Katalog = vestavěné přístroje (nemazatelné, ale skrytelné A PLNĚ
-// EDITOVATELNÉ — §7.2) + uživatelské přístroje uložené v localStorage.
-//
-// Datový model přístroje (viz SPEC §3.1 + §7.1 + v4 §10 + §13):
-// { id, name, nameCustom, builtin, visible, widthMM, minWidthMM, depthMM,
-//   minDepthMM, widthAdjustable, topFeature:{type}, controls:{type,count},
-//   imageDataURL,
-//   topFixed,             // §10.1 — prvek na desce v pevné (jmenovité) velikosti
-//   allowedBodyStyles,    // §10.2 — podmnožina ['closed','doors','open']
-//   powerKW, voltage, gasKW, descriptionText, descriptionCustom,
-//   constructionText, constructionCustom, catalogCode }
-// topFeature.type: burners4 | ceramic4 | fryer1 | fryer2 | grill | bainmarie |
-//                  multipan | sink | induction | none | bitmap
-//
-// §13 — název vestavěného přístroje: pokud uživatel přístroj nepřejmenoval
-// (nameCustom=false), název se bere z překladu podle `id` (viz i18n.js klíče
-// `device.<id>`) a `name`/`nameCustom` se v uloženém katalogu nepoužívají pro
-// zobrazení. Jakmile uživatel název ve Správci přístrojů změní, uloží se
-// doslovně a nameCustom=true — takový přístroj (i vlastní/duplikovaný) se už
-// nepřekládá. Viz getEntryDisplayName() níže.
-//
-// ZADANI-KATALOG.md — stejný mechanismus platí i pro popis funkcí a popis
-// konstrukce (descriptionText/constructionText): dokud je nemá uživatel
-// upravené (descriptionCustom/constructionCustom = false), berou se u
-// vestavěného přístroje z překladu (klíče `device.<id>.description` /
-// `device.<id>.construction`); jinak se zobrazují doslovně. Chybějící
-// příznaky ve starších uložených katalozích se považují za neupravené
-// (custom = false). Viz getEntryDescription() / getEntryConstruction() níže.
-//
-// Pozn.: dřívější katalogové pole `bodyStyle` (jediný pevný styl podestavby)
-// bylo nahrazeno `allowedBodyStyles` — konkrétní styl instance segmentu se
-// nyní volí v seznamu segmentů (viz modules.js getSegmentBodyStyle).
+// catalog.js — tovární katalog z katalog/manifest.json + lazy polozky/<id>.json
+// (ZADANI-KATALOG.md §3, §9–§10, §12, §14.1; etapy B + D).
+// Továrna se do localStorage NEZAPISUJE. Osobní předvolba = množina id
+// **v paletě** (alba-katalog-paleta-v1). Kompatibilní most (getById/getCatalog/…)
+// drží device-manager a starý kód při životě do etapy G.
 
-import { t } from './i18n.js';
+import { getLang } from './i18n.js';
 
 export const CATALOG_STORAGE_KEY = 'alba-katalog-v1';
+export const PALETTE_STORAGE_KEY = 'alba-katalog-paleta-v1';
+const HIDDEN_STORAGE_KEY = 'alba-katalog-skryte-v1';
 
 const CONTROL_TYPES = ['knob', 'button', 'switch'];
 const BODY_STYLES = ['closed', 'doors', 'open'];
-// v2 — přidány značkové drop-in přístroje (Lotus PCD-68G/FTLD-66ET/F10D-64ET,
-// Berner BI1EG5) a ALBA Bain Marie EBM 1/1. Číslo schématu se ukládá spolu
-// s katalogem do localStorage (viz persist); při načtení se neshoduje-li
-// s aktuálním, katalog se bere jako neuložený a použijí se výchozí hodnoty
-// (viz ensureLoaded).
-const CURRENT_SCHEMA_VERSION = 2;
-
-// meze normalizace minimální/výchozí hloubky (§7.1)
 const DEPTH_FLOOR = 400;
 const DEPTH_CEIL = 1200;
 const DEPTH_DEFAULT = 700;
 
-// katalogové technické údaje (§10.3) — u vestavěných zůstávají PRÁZDNÉ,
-// aplikace si žádné technické parametry nevymýšlí; vyplní si je uživatel.
-const EMPTY_CATALOG_INFO = {
-  powerKW: null, voltage: '', gasKW: null,
-  descriptionText: '', constructionText: '', catalogCode: '',
-  descriptionCustom: false, constructionCustom: false,
+/** Stará id → kanonické nové id (nebo null = záměrně bez položky). */
+const ALIASES = {
+  lotus_pcd_68g: 'al-pg22-800-g',
+  lotus_f10d_64et: 'al-fr10-400-e',
+  berner_bi1eg5: 'al-ind5-500-e',
+  lotus_ftld_66et: null,
+  alba_ebm_11: null,
 };
 
-// --- vestavěný základ katalogu (SPEC §3.2 + nové přístroje §3.3) ------------
-// Všechny vestavěné přístroje mají minDepthMM/depthMM 700 mm (§7.1) — jde
-// o výchozí hodnotu; ve Správci přístrojů ji lze změnit (§7.2), tovární
-// hodnoty jdou kdykoli obnovit přes resetBuiltin().
-// topFixed (§10.1): sporák, sklokeramika, fritéza a indukce mají prvek na
-// desce v pevné (jmenovité) velikosti; ostatní se roztahují s šířkou.
-// allowedBodyStyles (§10.2): přístroje s vanami/hořáky → uzavřená/s dvířky;
-// dřez navíc umožňuje i otevřenou podestavbu.
-const BUILTIN_DEFAULTS = [
-  {
-    id: 'gas_stove', name: 'Sporák plynový', builtin: true, visible: true, nameCustom: false,
-    widthMM: 800, minWidthMM: 800, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'burners4' }, controls: { type: 'knob', count: 4 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors'],
-    ...EMPTY_CATALOG_INFO,
-  },
-  {
-    id: 'electric_stove', name: 'Sklokeramika', builtin: true, visible: true, nameCustom: false,
-    widthMM: 800, minWidthMM: 800, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'ceramic4' }, controls: { type: 'knob', count: 4 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors'],
-    ...EMPTY_CATALOG_INFO,
-  },
-  {
-    id: 'fryer', name: 'Fritéza', builtin: true, visible: true, nameCustom: false,
-    widthMM: 400, minWidthMM: 400, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'fryer2' }, controls: { type: 'knob', count: 2 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors'],
-    ...EMPTY_CATALOG_INFO,
-  },
-  {
-    id: 'grill', name: 'Gril / grilovací deska', builtin: true, visible: true, nameCustom: false,
-    widthMM: 800, minWidthMM: 800, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'grill' }, controls: { type: 'knob', count: 2 },
-    imageDataURL: null, topFixed: false, allowedBodyStyles: ['closed', 'doors'],
-    ...EMPTY_CATALOG_INFO,
-  },
-  // Obecná vodní lázeň — skrytá, protože neurčuje velikost vany (na rozdíl od alba_ebm_11 GN 1/1).
-  // Uživatel si ji může zapnout ve správci přístrojů kdykoli.
-  {
-    id: 'bain_marie', name: 'Vodní lázeň', builtin: true, visible: false, nameCustom: false,
-    widthMM: 400, minWidthMM: 400, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'bainmarie' }, controls: { type: 'knob', count: 1 },
-    imageDataURL: null, topFixed: false, allowedBodyStyles: ['closed', 'doors'],
-    ...EMPTY_CATALOG_INFO,
-  },
-  {
-    id: 'multi_pan', name: 'Multifunkční pánev', builtin: true, visible: true, nameCustom: false,
-    widthMM: 800, minWidthMM: 800, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'multipan' }, controls: { type: 'knob', count: 1 },
-    imageDataURL: null, topFixed: false, allowedBodyStyles: ['closed', 'doors'],
-    ...EMPTY_CATALOG_INFO,
-  },
-  {
-    // Dřez s volitelnými rozměry vany — šířka podestavby nastavitelná,
-    // rozměry vany (vatWidthMM/vatDepthMM) jsou pole INSTANCE segmentu.
-    id: 'sink', name: 'Dřez', builtin: true, visible: true, nameCustom: false,
-    widthMM: 800, minWidthMM: 400, depthMM: 700, minDepthMM: 700, widthAdjustable: true,
-    topFeature: { type: 'sink' }, controls: { type: 'knob', count: 1 },
-    imageDataURL: null, topFixed: false, allowedBodyStyles: ['closed', 'doors', 'open'],
-    ...EMPTY_CATALOG_INFO,
-  },
-  {
-    // Indukce — jedna varná zóna 400×400 mm, šířka podestavby 500–1200 mm.
-    id: 'induction', name: 'Indukce', builtin: true, visible: true, nameCustom: false,
-    widthMM: 500, minWidthMM: 500, depthMM: 700, minDepthMM: 700, widthAdjustable: true,
-    topFeature: { type: 'induction' }, controls: { type: 'knob', count: 1 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors'],
-    ...EMPTY_CATALOG_INFO,
-  },
-
-  // --- značkové drop-in přístroje (katalog výrobců Lotus/RM Gastro, Berner,
-  // ALBA) — topFixed: true (prvek na desce v pevné jmenovité velikosti). ---
-  {
-    // Lotus PCD-68G — plynová varná deska drop-in, 4 hořáky (3,5+5,5+5,5+7,5 kW).
-    id: 'lotus_pcd_68g', name: 'Sporák plynový Lotus 22 kW',
-    builtin: true, visible: true, nameCustom: false,
-    widthMM: 800, minWidthMM: 800, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'burners4' }, controls: { type: 'knob', count: 4 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors', 'open'],
-    powerKW: null, voltage: '', gasKW: 22,
-    descriptionText: 'Plynová varná deska drop-in se 4 hořáky (3,5 / 5,5 / 5,5 / 7,5 kW), '
-      + 'celkový plynový příkon 22 kW, rozměry 800 × 600 × 110 mm. Nezávislé ovládání '
-      + 'jednotlivých hořáků, piezo zapalování.',
-    constructionText: 'Nerez CrNi 18/10 AISI 304, deska tl. 2 mm, bezpečnostní ventily '
-      + 's termočlánkem, hořáky s modulovaným plamenem, vyjímatelné odkapávací misky, '
-      + 'přípojka plynu ISO 7-1 1/2" M.',
-    catalogCode: 'PCD-68G',
-    descriptionCustom: false, constructionCustom: false,
-  },
-  {
-    // Lotus FTLD-66ET — elektrická grilovací deska drop-in, hladká, 2 zóny.
-    id: 'lotus_ftld_66et', name: 'Grilovací deska Lotus 6 kW',
-    builtin: true, visible: true, nameCustom: false,
-    widthMM: 600, minWidthMM: 600, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'grill' }, controls: { type: 'knob', count: 2 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors', 'open'],
-    powerKW: 6, voltage: '400 V/3N (i 230 V/3, 230 V), 50/60 Hz', gasKW: null,
-    descriptionText: 'Elektrická grilovací deska drop-in s hladkou varnou plochou, '
-      + 'rozměry 600 × 600 × 220 mm, varná plocha cca 555 × 550 mm, dvě samostatně '
-      + 'ovládané zóny.',
-    constructionText: 'Nerez jemně saténovaná, chromované detaily.',
-    catalogCode: 'FTLD-66ET',
-    descriptionCustom: false, constructionCustom: false,
-  },
-  {
-    // Lotus F10D-64ET — elektrická fritéza drop-in, 10 l. Vyžaduje dvířka.
-    id: 'lotus_f10d_64et', name: 'Fritéza Lotus 10 l',
-    builtin: true, visible: true, nameCustom: false,
-    widthMM: 400, minWidthMM: 400, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'fryer1' }, controls: { type: 'knob', count: 1 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['doors'],
-    powerKW: 7.15, voltage: '400 V~3N / 230 V~3, 50/60 Hz', gasKW: null,
-    descriptionText: 'Elektrická fritéza drop-in o objemu 10 l, rozměry 400 × 600 × 390 mm, '
-      + 'vana 220 × 350 × 230 mm, koš 200 × 300 × 100 mm, výkon 10 kg/h.',
-    constructionText: 'Nerez AISI 304, dvojitý termostat (provozní a bezpečnostní), '
-      + 'filtr vany, sklopné topné těleso pro snadné čištění.',
-    catalogCode: 'F10D-64ET',
-    descriptionCustom: false, constructionCustom: false,
-  },
-  {
-    // Berner BI1EG5 — vestavná indukční varná deska, 1 zóna, výřez cca 400×400 mm.
-    id: 'berner_bi1eg5', name: 'Indukce Berner 5 kW',
-    builtin: true, visible: true, nameCustom: false,
-    widthMM: 500, minWidthMM: 500, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'induction' }, controls: { type: 'knob', count: 1 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors', 'open'],
-    powerKW: 5, voltage: '400 V třífázově, 50/60 Hz, jištění 3×16 A', gasKW: null,
-    descriptionText: 'Vestavná indukční varná deska s jednou čtvercovou zónou, '
-      + 'rozměry/výřez cca 400 × 400 mm, indukční cívka cca 270 × 270 mm, '
-      + 'min. průměr nádoby 12 cm.',
-    constructionText: 'Sklo Schott Ceran tl. 6 mm, krytí IP11, jištění 3×16 A.',
-    catalogCode: 'BI1EG5',
-    descriptionCustom: false, constructionCustom: false,
-  },
-  {
-    // ALBA Bain Marie EBM 1/1 — vodní lázeň pro GN 1/1.
-    id: 'alba_ebm_11', name: 'Vodní lázeň ALBA GN 1/1',
-    builtin: true, visible: true, nameCustom: false,
-    widthMM: 400, minWidthMM: 400, depthMM: 700, minDepthMM: 700, widthAdjustable: false,
-    topFeature: { type: 'bainmarie' }, controls: { type: 'knob', count: 1 },
-    imageDataURL: null, topFixed: true, allowedBodyStyles: ['closed', 'doors', 'open'],
-    powerKW: 1.2, voltage: '', gasKW: null,
-    descriptionText: 'Elektrická vodní lázeň pro gastronádoby GN 1/1, rozměry vany '
-      + '305 × 510 × 200 mm.',
-    constructionText: 'Nerezové provedení, zapuštěná vana.',
-    catalogCode: 'EBM 1/1',
-    descriptionCustom: false, constructionCustom: false,
-  },
-];
-
-function cloneEntry(entry) {
-  return JSON.parse(JSON.stringify(entry));
-}
+let factoryVersion = 0;
+/** @type {Array<object>} */
+let manifestItems = [];
+/** @type {object|null} */
+let categories = null;
+/** Cache normalizovaných továrních položek (kanonické id → item). */
+const itemCache = new Map();
+/** Paměťová vrstva z načteného projektu — NESLUČUJE se do továrny. */
+const projectSnapshot = new Map();
+/** @type {Set<string>} id továrních položek v osobní paletě */
+let paletteIds = new Set();
 
 function clampNum(value, min, max, fallback) {
   const n = Math.round(Number(value));
@@ -221,8 +43,6 @@ function clampNum(value, min, max, fallback) {
   return Math.min(Math.max(n, min), max);
 }
 
-/** Volitelný kladný číselný katalogový údaj (§10.3) — prázdné/neplatné → null,
- *  nikdy si nic nedomýšlí (u vestavěných zůstává prázdné). */
 function normalizeOptionalNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   const n = Number(value);
@@ -233,266 +53,511 @@ function normalizeOptionalText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-/** Povolené styly podestavby (§10.2 SPEC v4) — podmnožina ['closed','doors',
- *  'open'], vždy alespoň jeden; prázdné/neplatné pole → všechny tři styly. */
 function normalizeAllowedBodyStyles(rawAllowed) {
   const arr = Array.isArray(rawAllowed) ? rawAllowed.filter((v) => BODY_STYLES.includes(v)) : [];
   const unique = Array.from(new Set(arr));
   return unique.length ? unique : ['closed', 'doors', 'open'];
 }
 
-function normalizeEntry(raw, fallbackBuiltin) {
+const ZONE_FUELS = ['gas', 'electric'];
+const ZONE_POSITIONS = [
+  'front-left',
+  'front-right',
+  'back-left',
+  'back-right',
+  'front',
+  'back',
+];
+
+/** Zóny/hořáky: pořadí = RM zóna 1…N; `position` = místo na desce (viz 3D layout). */
+function normalizeZones(rawZones) {
+  if (!Array.isArray(rawZones) || rawZones.length === 0) return null;
+  const zones = rawZones.map((z) => {
+    if (!z || typeof z !== 'object') return null;
+    const powerKW = z.powerKW === null || z.powerKW === undefined || z.powerKW === ''
+      ? null
+      : normalizeOptionalNumber(z.powerKW);
+    const fuel = ZONE_FUELS.includes(z.fuel) ? z.fuel : null;
+    const position = ZONE_POSITIONS.includes(z.position) ? z.position : null;
+    return { powerKW, fuel, position };
+  }).filter(Boolean);
+  return zones.length ? zones : null;
+}
+
+function localizeField(field, lang) {
+  if (!field || typeof field !== 'object' || Array.isArray(field)) return '';
+  const code = lang || 'en';
+  if (typeof field[code] === 'string' && field[code]) return field[code];
+  if (typeof field.en === 'string') return field.en;
+  return '';
+}
+
+/**
+ * Vyřeší alias. Vrací:
+ * - kanonické id (string),
+ * - null pokud alias cíleně nemá položku,
+ * - vstupní id pokud není v mapě aliasů.
+ */
+function resolveAlias(id) {
+  if (id == null || id === '') return null;
+  const key = String(id);
+  if (Object.prototype.hasOwnProperty.call(ALIASES, key)) {
+    return ALIASES[key];
+  }
+  return key;
+}
+
+function allManifestIds() {
+  return manifestItems.map((entry) => String(entry.id)).filter(Boolean);
+}
+
+function readPaletteIdsRaw() {
+  try {
+    const json = localStorage.getItem(PALETTE_STORAGE_KEY);
+    if (!json) return null;
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return null;
+    return new Set(parsed.map((v) => String(v)).filter(Boolean));
+  } catch (err) {
+    console.error('Seznam id v paletě se nepodařilo načíst.', err);
+    return null;
+  }
+}
+
+function readLegacyHiddenIds() {
+  try {
+    const json = localStorage.getItem(HIDDEN_STORAGE_KEY);
+    if (!json) return null;
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return null;
+    return new Set(parsed.map((v) => String(v)).filter(Boolean));
+  } catch (err) {
+    console.error('Legacy seznam skrytých položek se nepodařilo načíst.', err);
+    return null;
+  }
+}
+
+function writePaletteIds() {
+  try {
+    localStorage.setItem(PALETTE_STORAGE_KEY, JSON.stringify(Array.from(paletteIds)));
+  } catch (err) {
+    console.error('Seznam id v paletě se nepodařilo uložit.', err);
+  }
+}
+
+/** Inicializace palety po načtení manifestu (§9): paleta → migrace skryté → default všechna id. */
+function initPaletteFromStorage() {
+  const existing = readPaletteIdsRaw();
+  if (existing) {
+    paletteIds = existing;
+    return;
+  }
+
+  const legacyHidden = readLegacyHiddenIds();
+  const manifestIdList = allManifestIds();
+  if (legacyHidden) {
+    paletteIds = new Set(manifestIdList.filter((id) => !legacyHidden.has(id)));
+    writePaletteIds();
+    try {
+      localStorage.removeItem(HIDDEN_STORAGE_KEY);
+    } catch (_) {
+      /* ignore */
+    }
+    return;
+  }
+
+  // Default: všechna id z manifestu, ať paleta není prázdná.
+  paletteIds = new Set(manifestIdList);
+  writePaletteIds();
+}
+
+function syncCachedVisibleFlags() {
+  itemCache.forEach((item) => {
+    if (item) item.visible = paletteIds.has(item.id);
+  });
+}
+
+function clearLegacyFactoryStorage() {
+  try {
+    localStorage.removeItem(CATALOG_STORAGE_KEY);
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+/** topFeature — type + volitelné absolutní mm (fritéza, později gril…). */
+function normalizeTopFeature(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.type) return { type: 'none' };
+  const tf = { type: String(raw.type) };
+  for (const key of [
+    'vatWidthMM', 'vatDepthMM', 'basketWidthMM', 'basketDepthMM',
+    'cookAreaWidthMM', 'cookAreaDepthMM',
+    'glassWidthMM', 'glassDepthMM', 'zoneDiameterMM', 'zoneInnerDiameterMM',
+  ]) {
+    const n = Number(raw[key]);
+    if (Number.isFinite(n) && n > 0) tf[key] = Math.round(n);
+  }
+  return tf;
+}
+
+/** Normalizace položky z katalog/polozky/*.json do tvaru očekávaného appkou. */
+function normalizeFactoryItem(raw) {
   if (!raw || typeof raw !== 'object' || !raw.id) return null;
+  const id = String(raw.id);
   const minDepthMM = clampNum(raw.minDepthMM, DEPTH_FLOOR, DEPTH_CEIL, DEPTH_DEFAULT);
-  const builtin = !!(raw.builtin ?? fallbackBuiltin);
-  const builtinDef = builtin ? BUILTIN_DEFAULTS.find((d) => d.id === String(raw.id)) : null;
-  const rawName = typeof raw.name === 'string' ? raw.name.trim() : '';
-  // §13 — nameCustom rozlišuje přejmenovaný vestavěný přístroj (zobrazuje se
-  // doslovně) od nepřejmenovaného (název se bere z překladu podle id). Bere
-  // se přímo z uloženého pole; chybí-li, je false u vestavěného (builtinDef)
-  // a true u vlastního přístroje.
-  const nameCustom = raw.nameCustom !== undefined ? !!raw.nameCustom : !builtinDef;
-  const name = nameCustom ? (rawName || t('catalog.deviceFallbackName')) : '';
-  // ZADANI-KATALOG.md — descriptionCustom/constructionCustom rozlišují popis
-  // upravený uživatelem (zobrazuje se doslovně) od nepřejmenovaného vestavěného
-  // (bere se z překladu). Na rozdíl od nameCustom tu není potřeba heuristika
-  // pro starší data bez příznaku — ta se prostě považují za neupravená.
-  const descriptionCustom = !!raw.descriptionCustom;
-  const constructionCustom = !!raw.constructionCustom;
+  const lang = getLang();
+  const publicCode = normalizeOptionalText(raw.publicCode);
+  const descriptionText = raw.description && typeof raw.description === 'object'
+    ? localizeField(raw.description, lang)
+    : normalizeOptionalText(raw.descriptionText);
+  const constructionText = raw.construction && typeof raw.construction === 'object'
+    ? localizeField(raw.construction, lang)
+    : normalizeOptionalText(raw.constructionText);
+
   return {
-    id: String(raw.id),
-    name,
-    nameCustom,
-    builtin,
-    visible: raw.visible !== false,
-    widthMM: Number(raw.widthMM) > 0 ? Math.round(Number(raw.widthMM)) : 400,
-    minWidthMM: Number(raw.minWidthMM) > 0 ? Math.round(Number(raw.minWidthMM)) : 200,
-    // hloubka podestavby (§7.1) — minDepthMM je minimum, depthMM výchozí
-    // hodnota instance; obojí normalizováno do rozsahu 400–1200 mm.
-    minDepthMM,
-    depthMM: clampNum(raw.depthMM, DEPTH_FLOOR, DEPTH_CEIL, minDepthMM),
-    widthAdjustable: !!raw.widthAdjustable,
-    topFeature: raw.topFeature && typeof raw.topFeature === 'object' && raw.topFeature.type
-      ? { type: String(raw.topFeature.type) }
-      : { type: 'none' },
+    ...raw,
+    id,
+    builtin: true,
+    visible: paletteIds.has(id),
+    name: raw.name && typeof raw.name === 'object' ? raw.name : (typeof raw.name === 'string' ? raw.name : {}),
+    catalogCode: publicCode || normalizeOptionalText(raw.catalogCode),
+    publicCode,
+    descriptionText,
+    constructionText,
+    topFeature: normalizeTopFeature(raw.topFeature),
     controls: {
       type: raw.controls && CONTROL_TYPES.includes(raw.controls.type) ? raw.controls.type : 'knob',
       count: raw.controls ? Math.min(Math.max(Math.round(Number(raw.controls.count)) || 0, 0), 8) : 0,
     },
-    imageDataURL: typeof raw.imageDataURL === 'string' ? raw.imageDataURL : null,
-    // §10.1 — prvek na desce v pevné (jmenovité) velikosti bez ohledu na šířku
+    widthMM: Number(raw.widthMM) > 0 ? Math.round(Number(raw.widthMM)) : 400,
+    minWidthMM: Number(raw.minWidthMM) > 0 ? Math.round(Number(raw.minWidthMM)) : 200,
+    minDepthMM,
+    depthMM: clampNum(raw.depthMM, DEPTH_FLOOR, DEPTH_CEIL, minDepthMM),
+    widthAdjustable: !!raw.widthAdjustable,
     topFixed: !!raw.topFixed,
-    // §10.2 — povolené typy podestavby (nahrazuje dřívější jediné `bodyStyle`)
     allowedBodyStyles: normalizeAllowedBodyStyles(raw.allowedBodyStyles),
-    // §10.3 — volitelné technické údaje, u vestavěných prázdné
     powerKW: normalizeOptionalNumber(raw.powerKW),
     voltage: normalizeOptionalText(raw.voltage),
     gasKW: normalizeOptionalNumber(raw.gasKW),
-    descriptionText: normalizeOptionalText(raw.descriptionText),
-    descriptionCustom,
-    constructionText: normalizeOptionalText(raw.constructionText),
-    constructionCustom,
-    catalogCode: normalizeOptionalText(raw.catalogCode),
+    zones: normalizeZones(raw.zones),
   };
 }
 
-/** Sloučí uložená data s vestavěným základem. Vestavěné (id z BUILTIN_DEFAULTS)
- *  lze nyní PLNĚ upravovat (§7.2) — jen builtin:true a id se nepřepisují a
- *  nejde je smazat. Vlastní přístroje se přebírají tak, jak jsou uložené. */
-function mergeWithBuiltins(stored) {
-  const byId = new Map();
-  BUILTIN_DEFAULTS.forEach((def) => byId.set(def.id, cloneEntry(def)));
-  (Array.isArray(stored) ? stored : []).forEach((raw) => {
-    if (!raw || !raw.id) return;
-    const isBuiltinId = byId.has(String(raw.id)) && BUILTIN_DEFAULTS.some((d) => d.id === String(raw.id));
-    const entry = normalizeEntry(raw, isBuiltinId);
-    if (!entry) return;
-    if (isBuiltinId) {
-      byId.set(entry.id, { ...entry, builtin: true }); // upravené vlastnosti se přebírají, id/builtin zůstávají pevné
-    } else {
-      byId.set(entry.id, { ...entry, builtin: false });
-    }
-  });
-  return Array.from(byId.values());
+/** Snapshot / importovaná položka — zachovej data, doplň kompatibilní pole. */
+function normalizeSnapshotItem(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.id) return null;
+  const id = String(raw.id);
+  const publicCode = normalizeOptionalText(raw.publicCode) || normalizeOptionalText(raw.catalogCode);
+  const minDepthMM = clampNum(raw.minDepthMM, DEPTH_FLOOR, DEPTH_CEIL, DEPTH_DEFAULT);
+  return {
+    ...raw,
+    id,
+    builtin: !!raw.builtin,
+    visible: raw.visible !== false && paletteIds.has(id),
+    catalogCode: publicCode,
+    publicCode: publicCode || normalizeOptionalText(raw.publicCode),
+    descriptionText: normalizeOptionalText(raw.descriptionText)
+      || (raw.description && typeof raw.description === 'object'
+        ? localizeField(raw.description, getLang())
+        : ''),
+    constructionText: normalizeOptionalText(raw.constructionText)
+      || (raw.construction && typeof raw.construction === 'object'
+        ? localizeField(raw.construction, getLang())
+        : ''),
+    topFeature: normalizeTopFeature(raw.topFeature),
+    controls: {
+      type: raw.controls && CONTROL_TYPES.includes(raw.controls.type) ? raw.controls.type : 'knob',
+      count: raw.controls ? Math.min(Math.max(Math.round(Number(raw.controls.count)) || 0, 0), 8) : 0,
+    },
+    widthMM: Number(raw.widthMM) > 0 ? Math.round(Number(raw.widthMM)) : 400,
+    minWidthMM: Number(raw.minWidthMM) > 0 ? Math.round(Number(raw.minWidthMM)) : 200,
+    minDepthMM,
+    depthMM: clampNum(raw.depthMM, DEPTH_FLOOR, DEPTH_CEIL, minDepthMM),
+    widthAdjustable: !!raw.widthAdjustable,
+    topFixed: !!raw.topFixed,
+    allowedBodyStyles: normalizeAllowedBodyStyles(raw.allowedBodyStyles),
+    powerKW: normalizeOptionalNumber(raw.powerKW),
+    voltage: normalizeOptionalText(raw.voltage),
+    gasKW: normalizeOptionalNumber(raw.gasKW),
+    zones: normalizeZones(raw.zones),
+  };
 }
 
-let catalog = null; // in-memory cache, naplní se při prvním přístupu
+function lookupSyncResolved(canonicalId, originalId) {
+  if (!canonicalId) return null;
+  if (itemCache.has(canonicalId)) {
+    const item = itemCache.get(canonicalId);
+    return { ...item, visible: paletteIds.has(item.id) };
+  }
+  if (projectSnapshot.has(canonicalId)) {
+    return projectSnapshot.get(canonicalId);
+  }
+  if (originalId && originalId !== canonicalId && projectSnapshot.has(originalId)) {
+    return projectSnapshot.get(originalId);
+  }
+  return null;
+}
 
-function persist() {
+// --- povinné API (§14.1) --------------------------------------------------------
+
+export function getFactoryVersion() {
+  return factoryVersion;
+}
+
+export async function loadManifest() {
+  clearLegacyFactoryStorage();
+  itemCache.clear();
+  manifestItems = [];
+  factoryVersion = 0;
+  categories = null;
+  paletteIds = new Set();
+
+  let res;
   try {
-    const data = {
-      schema: CURRENT_SCHEMA_VERSION,
-      entries: catalog,
-    };
-    localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(data));
+    res = await fetch('katalog/manifest.json');
   } catch (err) {
-    console.error('Katalog přístrojů se nepodařilo uložit.', err);
+    console.error('Nepodařilo se načíst katalog/manifest.json', err);
+    throw err;
+  }
+  if (!res.ok) {
+    const msg = `katalog/manifest.json: HTTP ${res.status}`;
+    console.error(msg);
+    throw new Error(msg);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    console.error('katalog/manifest.json: neplatný JSON', err);
+    throw err;
+  }
+
+  factoryVersion = Number(data.factoryVersion) || 0;
+  manifestItems = Array.isArray(data.items) ? data.items.slice() : [];
+  initPaletteFromStorage();
+
+  try {
+    const catRes = await fetch('katalog/kategorie.json');
+    if (catRes.ok) {
+      categories = await catRes.json();
+    }
+  } catch (err) {
+    console.warn('katalog/kategorie.json se nepodařilo načíst (volitelné).', err);
+  }
+
+  // Teď jen 3 položky — sync getById/getCatalog hned po bootu.
+  await Promise.all(manifestItems.map((entry) => getItem(entry.id)));
+
+  return data;
+}
+
+export function getManifestItems() {
+  return manifestItems.slice();
+}
+
+/** Volitelně načtené kategorie (po loadManifest); jinak null. */
+export function getCategories() {
+  return categories;
+}
+
+export async function getItem(id) {
+  const originalId = id == null ? '' : String(id);
+  const canonical = resolveAlias(originalId);
+  if (canonical === null) return null;
+
+  const cached = lookupSyncResolved(canonical, originalId);
+  if (cached && itemCache.has(cached.id)) return cached;
+
+  if (projectSnapshot.has(canonical)) return projectSnapshot.get(canonical);
+  if (originalId && projectSnapshot.has(originalId)) return projectSnapshot.get(originalId);
+
+  try {
+    const res = await fetch(`katalog/polozky/${encodeURIComponent(canonical)}.json`);
+    if (!res.ok) {
+      console.error(`katalog/polozky/${canonical}.json: HTTP ${res.status}`);
+      return null;
+    }
+    const raw = await res.json();
+    const item = normalizeFactoryItem(raw);
+    if (!item) return null;
+    itemCache.set(item.id, item);
+    return { ...item, visible: paletteIds.has(item.id) };
+  } catch (err) {
+    console.error(`Nepodařilo se načíst katalog/polozky/${canonical}.json`, err);
+    return null;
   }
 }
 
-function ensureLoaded() {
-  if (catalog) return;
-  let stored = null;
-  try {
-    const json = localStorage.getItem(CATALOG_STORAGE_KEY);
-    if (json) {
-      const parsed = JSON.parse(json);
-      // Platný uložený katalog = objekt { schema, entries } se shodným
-      // číslem schématu; cokoli jiné (holé pole, cizí/poškozený obsah, jiné
-      // schéma) se bere jako „nic uloženo" a použijí se výchozí hodnoty.
-      if (parsed && typeof parsed === 'object' && parsed.schema === CURRENT_SCHEMA_VERSION && Array.isArray(parsed.entries)) {
-        stored = parsed.entries;
-      }
-    }
-  } catch (err) {
-    console.error('Uložený katalog přístrojů se nepodařilo načíst, používám výchozí.', err);
-  }
-
-  catalog = mergeWithBuiltins(stored);
+export function getItemSync(id) {
+  const originalId = id == null ? '' : String(id);
+  const canonical = resolveAlias(originalId);
+  if (canonical === null) return null;
+  return lookupSyncResolved(canonical, originalId);
 }
 
-/** Vrátí celý katalog (vestavěné + vlastní). */
+export function resolveName(item, lang) {
+  if (!item) return '';
+  if (item.name && typeof item.name === 'object' && !Array.isArray(item.name)) {
+    return localizeField(item.name, lang);
+  }
+  return typeof item.name === 'string' ? item.name : '';
+}
+
+export function getPaletteIds() {
+  return Array.from(paletteIds);
+}
+
+export function isInPalette(id) {
+  if (id == null || id === '') return false;
+  const key = String(id);
+  if (paletteIds.has(key)) return true;
+  const canonical = resolveAlias(key);
+  return !!canonical && paletteIds.has(canonical);
+}
+
+export function addToPalette(id) {
+  if (id == null || id === '') return;
+  const key = String(id);
+  const canonical = resolveAlias(key);
+  const storeId = canonical || key;
+  if (!storeId) return;
+  paletteIds.add(storeId);
+  writePaletteIds();
+  syncCachedVisibleFlags();
+}
+
+export function removeFromPalette(id) {
+  if (id == null || id === '') return;
+  const key = String(id);
+  paletteIds.delete(key);
+  const canonical = resolveAlias(key);
+  if (canonical) paletteIds.delete(canonical);
+  writePaletteIds();
+  syncCachedVisibleFlags();
+}
+
+/** @deprecated Prefer getPaletteIds(); vrací id z manifestu, která NEJSOU v paletě. */
+export function getHiddenIds() {
+  return allManifestIds().filter((id) => !paletteIds.has(id));
+}
+
+/** @deprecated Prefer addToPalette / removeFromPalette — inverzní mapování na paletu. */
+export function setItemHidden(id, hidden) {
+  console.warn('catalog.setItemHidden: deprecated — mapuje na remove/addFromPalette');
+  if (hidden) removeFromPalette(id);
+  else addToPalette(id);
+}
+
+export async function buildSnapshot(usedIds) {
+  const ids = Array.isArray(usedIds) ? usedIds : [];
+  const out = [];
+  const seen = new Set();
+  for (const rawId of ids) {
+    const item = await getItem(rawId);
+    if (!item || seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(JSON.parse(JSON.stringify(item)));
+  }
+  return out;
+}
+
+export function lookupForRender(id, snapshot) {
+  const originalId = id == null ? '' : String(id);
+  const canonical = resolveAlias(originalId);
+
+  if (Array.isArray(snapshot)) {
+    const byOriginal = snapshot.find((e) => e && e.id === originalId);
+    if (byOriginal) return byOriginal;
+    if (canonical && canonical !== originalId) {
+      const byCanonical = snapshot.find((e) => e && e.id === canonical);
+      if (byCanonical) return byCanonical;
+    }
+  }
+
+  if (canonical === null) return null;
+  return lookupSyncResolved(canonical, originalId);
+}
+
+// --- kompatibilní most ----------------------------------------------------------
+
+export function getById(id) {
+  return getItemSync(id);
+}
+
 export function getCatalog() {
-  ensureLoaded();
-  return catalog;
+  return manifestItems
+    .map((entry) => {
+      const item = itemCache.get(entry.id);
+      if (!item) return null;
+      return { ...item, visible: paletteIds.has(item.id) };
+    })
+    .filter(Boolean);
 }
 
-/** Přístroje nabízené v „Přidat segment" (visible=true). */
+/** Položky v osobní paletě (pro levý panel). Ne „ne-skryté". */
 export function getVisible() {
-  return getCatalog().filter((entry) => entry.visible);
+  return getCatalog().filter((entry) => paletteIds.has(entry.id));
 }
 
-/** §13 — zobrazovaný název přístroje: u nepřejmenovaného vestavěného přístroje
- *  se bere z aktuálního jazykového překladu podle jeho `id`; přejmenovaný
- *  i vlastní přístroj se zobrazuje doslovně, tak jak ho zadal uživatel. */
 export function getEntryDisplayName(entry) {
   if (!entry) return '';
-  if (entry.builtin && !entry.nameCustom) {
-    return t(`device.${entry.id}`);
+  if (entry.name && typeof entry.name === 'object' && !Array.isArray(entry.name)) {
+    return resolveName(entry, getLang());
   }
-  return entry.name || t('catalog.deviceFallbackName');
+  return typeof entry.name === 'string' ? entry.name : '';
 }
 
-/** ZADANI-KATALOG.md — zobrazovaný popis funkcí přístroje: u vestavěného
- *  přístroje bez uživatelské úpravy (descriptionCustom=false) se bere
- *  z aktuálního jazykového překladu podle `id` (klíč `device.<id>.description`);
- *  pokud pro daný přístroj popis v překladu není (u většiny vestavěných je
- *  prázdný), vrátí se prázdný řetězec, ne samotný klíč. Upravený i vlastní
- *  přístroj se zobrazuje doslovně. */
 export function getEntryDescription(entry) {
   if (!entry) return '';
-  if (entry.builtin && !entry.descriptionCustom) {
-    const key = `device.${entry.id}.description`;
-    const translated = t(key);
-    return translated === key ? '' : translated;
+  if (entry.description && typeof entry.description === 'object' && !Array.isArray(entry.description)) {
+    return localizeField(entry.description, getLang());
   }
   return entry.descriptionText || '';
 }
 
-/** Analogicky pro popis konstrukce (constructionText) — klíč `device.<id>.construction`. */
 export function getEntryConstruction(entry) {
   if (!entry) return '';
-  if (entry.builtin && !entry.constructionCustom) {
-    const key = `device.${entry.id}.construction`;
-    const translated = t(key);
-    return translated === key ? '' : translated;
+  if (entry.construction && typeof entry.construction === 'object' && !Array.isArray(entry.construction)) {
+    return localizeField(entry.construction, getLang());
   }
   return entry.constructionText || '';
 }
 
-/** Najde přístroj podle id. */
-export function getById(id) {
-  return getCatalog().find((entry) => entry.id === id);
-}
-
-/** Vytvoří nový nebo aktualizuje existující přístroj (§7.2: i vestavěný lze
- *  plně upravit — jen builtin flag a id se nemění a nejde smazat). Vrací
- *  uloženou položku. */
-export function upsert(rawEntry) {
-  ensureLoaded();
-  const existing = rawEntry && rawEntry.id ? getById(rawEntry.id) : null;
-  const normalized = normalizeEntry(rawEntry, existing ? existing.builtin : false);
-  if (!normalized) return null;
-  if (!normalized.id) {
-    normalized.id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  }
-  const idx = catalog.findIndex((entry) => entry.id === normalized.id);
-  if (idx >= 0) {
-    const wasBuiltin = catalog[idx].builtin;
-    catalog[idx] = { ...normalized, id: catalog[idx].id, builtin: wasBuiltin };
-  } else {
-    catalog.push(normalized);
-  }
-  persist();
-  return getById(normalized.id);
-}
-
-/** Nastaví viditelnost přístroje (funguje i pro builtin — skrytí, ne smazání). */
-export function setVisible(id, visible) {
-  const entry = getById(id);
-  if (!entry) return;
-  entry.visible = !!visible;
-  persist();
-}
-
-/** Smaže vlastní přístroj. Vestavěné nelze smazat (vrátí false). */
-export function remove(id) {
-  ensureLoaded();
-  const entry = getById(id);
-  if (!entry || entry.builtin) return false;
-  catalog = catalog.filter((e) => e.id !== id);
-  persist();
-  return true;
-}
-
-/** Vytvoří kopii přístroje (i vestavěného) jako nový vlastní přístroj. */
-export function duplicate(id) {
-  ensureLoaded();
-  const src = getById(id);
-  if (!src) return null;
-  const copy = cloneEntry(src);
-  copy.id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-  // §13 — duplikát je vždy vlastní přístroj, proto se doslovně pojmenuje
-  // (nepřekládá se) z AKTUÁLNÍHO zobrazovaného názvu zdroje. Stejně tak popis
-  // funkcí a konstrukce se převezmou z AKTUÁLNÍHO zobrazovaného (přeloženého)
-  // textu zdroje, ne z jeho interní (třeba nepřeložené) uložené hodnoty.
-  copy.name = `${getEntryDisplayName(src)} ${t('catalog.duplicateSuffix')}`;
-  copy.nameCustom = true;
-  copy.descriptionText = getEntryDescription(src);
-  copy.descriptionCustom = true;
-  copy.constructionText = getEntryConstruction(src);
-  copy.constructionCustom = true;
-  copy.builtin = false;
-  copy.visible = true;
-  catalog.push(copy);
-  persist();
-  return copy;
-}
-
-/** Obnoví tovární hodnoty vestavěného přístroje (§7.2 „Obnovit výchozí").
- *  Vrací obnovenou položku, nebo null (neznámé/nevestavěné id). */
-export function resetBuiltin(id) {
-  ensureLoaded();
-  const def = BUILTIN_DEFAULTS.find((d) => d.id === id);
-  if (!def) return null;
-  const reset = cloneEntry(def);
-  reset.name = ''; // §13 — bez přejmenování se název bere z překladu (nameCustom=false)
-  const idx = catalog.findIndex((e) => e.id === id);
-  if (idx >= 0) {
-    catalog[idx] = reset;
-  } else {
-    catalog.push(reset);
-  }
-  persist();
-  return reset;
-}
-
-/** Sloučí katalog z importované konfigurace (JSON export) — tolerantní,
- *  nikdy nezahodí builtin přístroje. Používá se při načtení uložené sestavy. */
+/**
+ * Uloží položky z načteného projektu do paměťové vrstvy projectSnapshot.
+ * NESLUČUJE do továrny, nic do localStorage katalogu.
+ */
 export function importCatalog(rawArray) {
   if (!Array.isArray(rawArray)) return;
-  ensureLoaded();
-  const customOnly = catalog.filter((entry) => !entry.builtin);
-  catalog = mergeWithBuiltins([...customOnly, ...rawArray]);
-  persist();
+  projectSnapshot.clear();
+  rawArray.forEach((raw) => {
+    const item = normalizeSnapshotItem(raw);
+    if (!item) return;
+    projectSnapshot.set(item.id, item);
+  });
+}
+
+export function upsert(_rawEntry) {
+  console.warn('catalog.upsert: továrna je jen pro čtení (etapa B) — no-op');
+  return null;
+}
+
+export function remove(_id) {
+  console.warn('catalog.remove: továrna je jen pro čtení (etapa B) — no-op');
+  return false;
+}
+
+export function duplicate(_id) {
+  console.warn('catalog.duplicate: továrna je jen pro čtení (etapa B) — no-op');
+  return null;
+}
+
+export function resetBuiltin(_id) {
+  console.warn('catalog.resetBuiltin: továrna je jen pro čtení (etapa B) — no-op');
+  return null;
+}
+
+export function setVisible(id, visible) {
+  setItemHidden(id, !visible);
 }

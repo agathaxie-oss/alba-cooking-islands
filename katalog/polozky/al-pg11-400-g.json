@@ -1,0 +1,49 @@
+{
+  "id": "al-pg11-400-g",
+  "publicCode": "AL-PG11-400-G",
+  "supplier": "lotus",
+  "supplierCode": "PCD-84G",
+  "origin": "IT",
+  "type": "gas_range",
+  "minCutoutDepthMM": 900,
+  "name": {
+    "en": "Gas range 11 kW · 400",
+    "de": "Gasherd 11 kW · 400",
+    "pl": "Kuchenka gazowa 11 kW · 400",
+    "cs": "Sporák plynový 11 kW · 400",
+    "sk": "Sporák plynový 11 kW · 400"
+  },
+  "description": {
+    "en": "Drop-in gas cooktop with 2 burners (7 / 4 kW), total gas input 11 kW, dimensions 400 × 800 × 110 mm. Standing pilot ignition, burner grate 390 × 360 mm.",
+    "de": "Drop-in-Gaskochfeld mit 2 Brennern (7 / 4 kW), Gesamtleistung Gas 11 kW, Abmessungen 400 × 800 × 110 mm. Zündung durch Dauerflamme, Brennerrost 390 × 360 mm.",
+    "pl": "Płyta gazowa drop-in z 2 palnikami (7 / 4 kW), całkowita moc gazowa 11 kW, wymiary 400 × 800 × 110 mm. Zapłon płomieniem dyżurnym, ruszt palnika 390 × 360 mm.",
+    "cs": "Plynová varná deska drop-in se 2 hořáky (7 / 4 kW), celkový plynový příkon 11 kW, rozměry 400 × 800 × 110 mm. Zapalování věčným plamenem, mřížka hořáku 390 × 360 mm.",
+    "sk": "Plynová varná doska drop-in so 2 horákmi (7 / 4 kW), celkový plynový príkon 11 kW, rozmery 400 × 800 × 110 mm. Zapaľovanie večným plameňom, mriežka horáka 390 × 360 mm."
+  },
+  "construction": {
+    "en": "Stainless steel body, drop-in construction, knob control, gas connection 1/2\". Series 900 (net depth 800 mm).",
+    "de": "Edelstahlgehäuse, Drop-in-Bauweise, Knebelbedienung, Gasanschluss 1/2\". Serie 900 (Nettotiefe 800 mm).",
+    "pl": "Korpus ze stali nierdzewnej, konstrukcja drop-in, sterowanie pokrętłami, przyłącze gazu 1/2\". Seria 900 (głębokość netto 800 mm).",
+    "cs": "Nerezové tělo, konstrukce drop-in, ovládání knoflíky, přípojka plynu 1/2\". Řada 900 (čistá hloubka 800 mm).",
+    "sk": "Nerezové telo, konštrukcia drop-in, ovládanie gombíkmi, prípojka plynu 1/2\". Rad 900 (čistá hĺbka 800 mm)."
+  },
+  "widthMM": 400,
+  "minWidthMM": 400,
+  "widthAdjustable": false,
+  "depthMM": 900,
+  "minDepthMM": 900,
+  "topFeature": { "type": "burners2" },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 2 },
+  "allowedBodyStyles": ["closed", "doors", "open"],
+  "powerKW": null,
+  "voltage": "",
+  "gasKW": 11,
+  "zones": [
+    { "powerKW": 7, "fuel": "gas", "position": "front" },
+    { "powerKW": 4, "fuel": "gas", "position": "back" }
+  ],
+  "cardImage": "img/pristroje/al-pg11-400-g-card.webp",
+  "topImage": "img/pristroje/al-pg11-400-g-top.svg",
+  "geometryNotes": "minCutoutDepthMM 900 (net depth 800 / PCD-84G řada 900). topFeature burners2 — mřížka 390×360 mm (RM); ke schválení #1 viz ZADANI-GEOMETRIE-RM.md. zones[] = RM zóny 1–2 (7 / 4 kW). Pozice: RM neuvádí půdorys → mapováno na resolveCastIronBurnerLayout(columns=1): front, back (front = menší Z / čelo)."
+}

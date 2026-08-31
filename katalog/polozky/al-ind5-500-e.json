@@ -1,0 +1,48 @@
+{
+  "id": "al-ind5-500-e",
+  "publicCode": "AL-IND5-500-E",
+  "supplier": "berner",
+  "supplierCode": "BI1EG5",
+  "origin": "DE",
+  "type": "induction",
+  "minCutoutDepthMM": 700,
+  "name": {
+    "en": "Induction 1 zone 5 kW · 500",
+    "de": "Induktion 1 Zone 5 kW · 500",
+    "pl": "Indukcja 1 strefa 5 kW · 500",
+    "cs": "Indukce 1 zóna 5 kW · 500",
+    "sk": "Indukcia 1 zóna 5 kW · 500"
+  },
+  "description": {
+    "en": "Built-in induction cooktop with one square zone, cutout approx. 400 × 400 mm, induction coil approx. 270 × 270 mm, min. pan diameter 12 cm.",
+    "de": "Einbau-Induktionskochfeld mit einer quadratischen Zone, Ausschnitt ca. 400 × 400 mm, Induktionsspule ca. 270 × 270 mm, mind. Topfdurchmesser 12 cm.",
+    "pl": "Wbudowana płyta indukcyjna z jedną kwadratową strefą, wycięcie ok. 400 × 400 mm, cewka indukcyjna ok. 270 × 270 mm, min. średnica naczynia 12 cm.",
+    "cs": "Vestavná indukční varná deska s jednou čtvercovou zónou, rozměry/výřez cca 400 × 400 mm, indukční cívka cca 270 × 270 mm, min. průměr nádoby 12 cm.",
+    "sk": "Vstavaná indukčná varná doska s jednou štvorcovou zónou, rozmery/výrez cca 400 × 400 mm, indukčná cievka cca 270 × 270 mm, min. priemer nádoby 12 cm."
+  },
+  "construction": {
+    "en": "Schott Ceran glass 6 mm thick, IP11 protection, fuse protection 3×16 A.",
+    "de": "Schott Ceran Glas 6 mm stark, Schutzart IP11, Absicherung 3×16 A.",
+    "pl": "Szkło Schott Ceran grubości 6 mm, ochrona IP11, zabezpieczenie 3×16 A.",
+    "cs": "Sklo Schott Ceran tl. 6 mm, krytí IP11, jištění 3×16 A.",
+    "sk": "Sklo Schott Ceran hr. 6 mm, krytie IP11, istenie 3×16 A."
+  },
+  "widthMM": 500,
+  "minWidthMM": 500,
+  "widthAdjustable": false,
+  "depthMM": 700,
+  "minDepthMM": 700,
+  "topFeature": { "type": "induction" },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 1 },
+  "allowedBodyStyles": ["closed", "doors", "open"],
+  "powerKW": 5,
+  "voltage": "400 V třífázově, 50/60 Hz, jištění 3×16 A",
+  "gasKW": null,
+  "zones": [
+    { "powerKW": 5, "fuel": "electric" }
+  ],
+  "cardImage": "img/pristroje/al-ind5-500-e-card.svg",
+  "topImage": "img/pristroje/al-ind5-500-e-top.svg",
+  "geometryNotes": "Migrace z builtin berner_bi1eg5; topFeature zatím bez nového screenshotu (etapa A). zones[] = 1 zóna 5 kW."
+}

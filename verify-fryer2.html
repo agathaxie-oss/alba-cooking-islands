@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>verify fryer2</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #1a1a1a; color: #eee; }
+    canvas { display: block; width: 720px; height: 480px; background: #2a2a2e; }
+    pre { background: #111; padding: 12px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>fryer2 Box3 verify (absolutní vany)</h1>
+  <canvas id="c" width="720" height="480"></canvas>
+  <pre id="out">loading…</pre>
+  <script type="module">
+    import * as THREE from 'three';
+    import { createSegmentMesh } from './js/modules.js';
+    import { loadManifest, getById } from './js/catalog.js';
+
+    await loadManifest();
+
+    // stejná logika jako resolveFryer2Layout v modules.js
+    function layoutNums(widthMM, depthMM, feature) {
+      const mm = (v) => v / 1000;
+      const EDGE = mm(20);
+      const widthM = mm(widthMM);
+      const depthM = mm(depthMM);
+      let vatWM = mm(Number(feature.vatWidthMM));
+      let vatDM = mm(Number(feature.vatDepthMM));
+      vatDM = Math.min(vatDM, Math.max(depthM - 2 * EDGE, mm(200)));
+      const maxVatW = Math.max((widthM - 3 * EDGE) / 2, mm(80));
+      vatWM = Math.min(vatWM, maxVatW);
+      const remaining = Math.max(widthM - 2 * vatWM, 2 * EDGE);
+      const side = Math.max(EDGE, remaining / 3);
+      const between = Math.max(remaining - 2 * side, EDGE);
+      const halfPitch = vatWM / 2 + between / 2;
+      const centersX = [-halfPitch, halfPitch];
+      const centerZ = depthM / 2;
+      let basketWM = Number(feature.basketWidthMM) > 0 ? mm(Number(feature.basketWidthMM)) : vatWM - mm(28);
+      let basketDM = Number(feature.basketDepthMM) > 0 ? mm(Number(feature.basketDepthMM)) : vatDM - mm(50);
+      basketWM = Math.min(basketWM, vatWM - mm(8));
+      basketDM = Math.min(basketDM, vatDM - mm(8));
+      return {
+        vatWmm: vatWM * 1000,
+        vatDmm: vatDM * 1000,
+        basketWmm: basketWM * 1000,
+        basketDmm: basketDM * 1000,
+        sideMm: side * 1000,
+        betweenMm: between * 1000,
+        xs: centersX.map((x) => x * 1000),
+        zMm: centerZ * 1000,
+      };
+    }
+
+    const cases = [
+      { id: 'al-fr88-400-e', depthMM: 700, label: 'F2/8D-64ET' },
+      { id: 'al-fr1010-600-e', depthMM: 700, label: 'F2/10D-66ET' },
+    ];
+
+    const lines = [];
+    const workHeightM = 0.9;
+    const groups = [];
+
+    for (const c of cases) {
+      const def = getById(c.id);
+      const segment = {
+        id: 1,
+        type: c.id,
+        widthMM: def.widthMM,
+        podestavba: 'closed',
+        hasPanel: true,
+        plinth: 'standard',
+        finish: 'brushed',
+        bodyStyle: 'closed',
+      };
+      const group = createSegmentMesh(segment, c.depthMM / 1000, workHeightM);
+      const vatBox = new THREE.Box3();
+      let vatCount = 0;
+      group.traverse((obj) => {
+        if (!obj.isMesh || obj.userData.featurePart !== 'fryerVat') return;
+        vatBox.union(new THREE.Box3().setFromObject(obj));
+        vatCount += 1;
+      });
+      const size = vatBox.getSize(new THREE.Vector3());
+      const lay = layoutNums(def.widthMM, c.depthMM, def.topFeature || {});
+      const minX = Math.min(...lay.xs) - lay.vatWmm / 2;
+      const maxX = Math.max(...lay.xs) + lay.vatWmm / 2;
+      const minZ = lay.zMm - lay.vatDmm / 2;
+      const maxZ = lay.zMm + lay.vatDmm / 2;
+      const fitsW = minX >= -def.widthMM / 2 - 0.5 && maxX <= def.widthMM / 2 + 0.5;
+      const fitsD = minZ >= -0.5 && maxZ <= c.depthMM + 0.5;
+
+      lines.push(
+        `${c.label} (${c.id}) topFeature=${def.topFeature?.type}`,
+        `  nominal W×cutoutD: ${def.widthMM} × ${c.depthMM} mm`,
+        `  vat W×D (catalog): ${def.topFeature?.vatWidthMM} × ${def.topFeature?.vatDepthMM} mm`,
+        `  vat W×D (layout): ${lay.vatWmm.toFixed(1)} × ${lay.vatDmm.toFixed(1)} mm`,
+        `  basket W×D: ${lay.basketWmm.toFixed(1)} × ${lay.basketDmm.toFixed(1)} mm`,
+        `  side / between: ${lay.sideMm.toFixed(1)} / ${lay.betweenMm.toFixed(1)} mm`,
+        `  centers X: ${lay.xs.map((v) => v.toFixed(1)).join(' / ')} mm; Z ${lay.zMm.toFixed(1)}`,
+        `  expected vat X range: ${minX.toFixed(1)}–${maxX.toFixed(1)} (fitsWidth=${fitsW})`,
+        `  expected vat Z range: ${minZ.toFixed(1)}–${maxZ.toFixed(1)} (fitsDepth=${fitsD})`,
+        `  fryerVat meshes: ${vatCount}`,
+        `  vat Box3 size mm: ${(size.x * 1000).toFixed(1)} × ${(size.y * 1000).toFixed(1)} × ${(size.z * 1000).toFixed(1)} (X×Y×Z)`,
+        `  vat Box3 X range mm: ${(vatBox.min.x * 1000).toFixed(1)}–${(vatBox.max.x * 1000).toFixed(1)}`,
+        `  vat Box3 Z range mm: ${(vatBox.min.z * 1000).toFixed(1)}–${(vatBox.max.z * 1000).toFixed(1)}`,
+        ''
+      );
+      groups.push({ group, depthMM: c.depthMM, label: c.label, widthMM: def.widthMM });
+    }
+
+    document.getElementById('out').textContent = lines.join('\n');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a2a2e);
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(2, 5, 3);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+    // fr88 left, fr1010 right
+    groups.forEach((g, i) => {
+      const wrap = new THREE.Group();
+      wrap.add(g.group);
+      wrap.position.x = i === 0 ? -0.45 : 0.45;
+      scene.add(wrap);
+    });
+
+    const cam = new THREE.OrthographicCamera(-1.0, 1.0, 0.65, -0.55, 0.01, 20);
+    cam.position.set(0, 4, 0.35);
+    cam.lookAt(0, 0, 0.35);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+    renderer.setSize(720, 480, false);
+    renderer.render(scene, cam);
+
+    window.__fryer2Verify = { lines, groups };
+  </script>
+</body>
+</html>

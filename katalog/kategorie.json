@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "types": [
+    {
+      "type": "gas_range",
+      "name": {
+        "en": "Gas range",
+        "de": "Gasherd",
+        "pl": "Kuchenka gazowa",
+        "cs": "Sporák plynový",
+        "sk": "Sporák plynový"
+      }
+    },
+    {
+      "type": "electric_range",
+      "name": {
+        "en": "Electric range",
+        "de": "Elektroherd",
+        "pl": "Kuchenka elektryczna",
+        "cs": "Sporák elektrický",
+        "sk": "Sporák elektrický"
+      }
+    },
+    {
+      "type": "ceramic",
+      "name": {
+        "en": "Ceramic hob",
+        "de": "Glaskeramik",
+        "pl": "Płyta ceramiczna",
+        "cs": "Sklokeramika",
+        "sk": "Sklokeramika"
+      }
+    },
+    {
+      "type": "induction",
+      "name": {
+        "en": "Induction",
+        "de": "Induktion",
+        "pl": "Indukcja",
+        "cs": "Indukce",
+        "sk": "Indukcia"
+      }
+    },
+    {
+      "type": "griddle",
+      "name": {
+        "en": "Griddle",
+        "de": "Grillplatte",
+        "pl": "Płyta grillowa",
+        "cs": "Grilovací deska",
+        "sk": "Grilovacia doska"
+      }
+    },
+    {
+      "type": "fryer",
+      "name": {
+        "en": "Fryer",
+        "de": "Fritteuse",
+        "pl": "Frytownica",
+        "cs": "Fritéza",
+        "sk": "Fritéza"
+      }
+    },
+    {
+      "type": "bain_marie",
+      "name": {
+        "en": "Bain-marie",
+        "de": "Bain-Marie",
+        "pl": "Bemar",
+        "cs": "Vodní lázeň",
+        "sk": "Vodný kúpeľ"
+      }
+    },
+    {
+      "type": "pasta",
+      "name": {
+        "en": "Pasta cooker",
+        "de": "Nudelkocher",
+        "pl": "Gotownik do makaronu",
+        "cs": "Těstovinová mísa / vařič",
+        "sk": "Cestovinový varič"
+      }
+    },
+    {
+      "type": "multipan",
+      "name": {
+        "en": "Multipan",
+        "de": "Multifunktionspfanne",
+        "pl": "Patelnia wielofunkcyjna",
+        "cs": "Multifunkční pánev",
+        "sk": "Multifunkčná panvica"
+      }
+    },
+    {
+      "type": "other",
+      "name": {
+        "en": "Other",
+        "de": "Sonstige",
+        "pl": "Inne",
+        "cs": "Ostatní",
+        "sk": "Ostatné"
+      }
+    }
+  ]
+}

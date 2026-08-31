@@ -48,7 +48,13 @@ import {
   ARM_CENTER_OFFSET_MAX,
   ARM_CENTER_OFFSET_DEFAULT,
 } from './arms.js';
-import { getById as getCatalogEntry, getCatalog, importCatalog } from './catalog.js';
+import {
+  getById as getCatalogEntry,
+  importCatalog,
+  loadManifest,
+  buildSnapshot,
+  getFactoryVersion,
+} from './catalog.js';
 // §ÚKOL MONO §1/§10 (balík A5) — konstanty pro výchozí hodnoty/meze nových
 // polí state.mono. Zdroj pravdy zůstává mono-geometry.js, main.js si čísla
 // NEDUPLIKUJE (na rozdíl od řetězců END_TYPES o pár řádků níž, kde je
@@ -58,6 +64,7 @@ import {
   COLLAR_HEIGHT_MIN_MM,
   COLLAR_HEIGHT_MAX_MM,
   COLLAR_HEIGHT_DEFAULT_MM,
+  HERDBLOK_DEPTH_DEFAULT_MM,
 } from './mono-geometry.js';
 // §ÚKOL MONO §2/§4 — computeMonoLayout je JEDINÁ funkce, která smí počítat
 // rozvržení pásů MONO (viz ZADANI-MONO-UI.md) — onMonoFillPodestavby a
@@ -77,6 +84,7 @@ import {
 import { setupUI } from './ui.js';
 import { setupCustomDialog } from './custom-dialog.js';
 import { setupDeviceManager } from './device-manager.js';
+import { setupCatalogBrowser } from './catalog-browser.js';
 import { buildFloorplanSVG, setupFloorplan } from './floorplan.js';
 import { buildReport } from './report.js';
 import { t, applyTranslations, onLangChange } from './i18n.js';
@@ -234,6 +242,9 @@ const state = {
   // řady tak neznamená změnu formátu uloženého souboru). 'segment' = dnešní
   // typ, výchozí i pro starší/cizí soubory bez tohoto pole (viz applyConfig).
   productType: 'segment', // 'segment' | 'mono'
+  // Etapa C — verze továrny při uložení / z načteného projektu (§10 ZADANI-KATALOG).
+  // Při bootu se doplní z getFactoryVersion() po loadManifest; při load z configu.
+  factoryVersion: 0,
   // §ÚKOL MONO — celý datový model produktu ALBA MONO (§1 zadání). U produktu
   // SEGMENT se NEPOUŽÍVÁ (SEGMENT tahle pole nikdy nečte ani nezobrazuje),
   // ale drží se vždy (přírůstková pole, viz serializeConfig/applyConfig
@@ -294,20 +305,27 @@ function markUnsavedChanges() {
 }
 
 // výchozí sestava strany A: neutrální + sporák plynový + fritéza + neutrální
+// (tovární id z katalog/ — generické gas_stove/fryer už v továrně nejsou)
 function createDefaultSegmentsA() {
   return [
     {
       id: nextId++, type: NEUTRAL_TYPE, widthMM: 400, podestavba: 'doors',
       hasPanel: false, hasShelf: false, plinth: DEFAULT_PLINTH, finish: DEFAULT_FINISH,
     },
-    createCatalogSegment('gas_stove'),
-    createCatalogSegment('fryer'),
+    createCatalogSegment('al-pg22-800-g'),
+    createCatalogSegment('al-fr10-400-e'),
     {
       id: nextId++, type: NEUTRAL_TYPE, widthMM: 400, podestavba: 'open',
       hasPanel: false, hasShelf: true, plinth: DEFAULT_PLINTH, finish: DEFAULT_FINISH,
     },
   ];
 }
+
+// Etapa B — továrna z JSON musí být načtená (a přednačtená) dřív, než
+// createDefaultSegmentsA/createCatalogSegment volají getById, a dřív než
+// první rebuildBlock / ui.setup.
+await loadManifest();
+state.factoryVersion = getFactoryVersion();
 state.segmentsA = createDefaultSegmentsA();
 
 // §ÚKOL MONO — PŘÁNÍ zadavatele: nový projekt MONO nezačíná s prázdnou řadou
@@ -649,25 +667,43 @@ function exportPNG() {
 
 // --- export / import JSON konfigurace -------------------------------------------
 
-/** Sada `type` hodnot použitých v aktuální sestavě, na obou stranách bloku
- *  (§ÚKOL 1) — čte přímo ze state.segmentsA/segmentsB, tedy včetně segmentů,
- *  které se do bloku aktuálně nevejdou a přetékají (buildBlock je z vstupu
- *  nijak neodstraňuje, jsou pořád součástí pole). Slouží k omezení ukládaného
- *  katalogu jen na skutečně použité přístroje (viz serializeConfig níže) —
- *  segmenty typu 'neutral'/'custom'/'drawers' (NEUTRAL_TYPE/CUSTOM_TYPE/
- *  DRAWERS_TYPE) nejsou katalogové položky a žádnému id v katalogu
- *  neodpovídají, takže tímhle filtrem přirozeně vypadnou samy, bez zvláštní
- *  výjimky (vlastní modul si svoji definici nese přímo v segmentu).
+/** Sada `type`/`id` hodnot použitých v aktuální sestavě (§ÚKOL 1 + etapa C).
+ *  SEGMENT: segmentsA/B (včetně přetékajících). MONO: herdblok mimo 'surface'.
+ *  neutral/custom/drawers nejsou v továrně — při sestavě snapshotu je odfiltruje
+ *  getCatalogEntry / buildSnapshot (null).
  */
 function usedCatalogTypes() {
   const types = new Set();
   state.segmentsA.forEach((s) => types.add(s.type));
   state.segmentsB.forEach((s) => types.add(s.type));
+  state.mono.herdblok.forEach((item) => {
+    if (item && typeof item.type === 'string' && item.type !== 'surface') {
+      types.add(item.type);
+    }
+  });
   return types;
 }
 
-function serializeConfig() {
-  const usedTypes = usedCatalogTypes();
+/** Plné definice jen použitých katalogových id (etapa C — catalogSnapshot). */
+async function buildUsedCatalogSnapshot() {
+  const usedIds = [...usedCatalogTypes()].filter((id) => getCatalogEntry(id));
+  if (typeof buildSnapshot === 'function') {
+    return buildSnapshot(usedIds);
+  }
+  // Fallback bez buildSnapshot: sync cache / snapshot vrstva přes getById.
+  const out = [];
+  const seen = new Set();
+  for (const id of usedIds) {
+    const item = getCatalogEntry(id);
+    if (!item || seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(JSON.parse(JSON.stringify(item)));
+  }
+  return out;
+}
+
+async function serializeConfig() {
+  const catalogSnapshot = await buildUsedCatalogSnapshot();
   return {
     version: CONFIG_VERSION,
     projectName: state.projectName,
@@ -691,15 +727,10 @@ function serializeConfig() {
     segmentsA: state.segmentsA.map((s) => ({ ...s })),
     segmentsB: state.segmentsB.map((s) => ({ ...s })),
     arms: state.arms.map((a) => ({ ...a })),
-    // Ukládáme jen POUŽITÉ přístroje (§ÚKOL 1), ne celý katalog — katalog čeká
-    // zásadní přestavbu a vestavěné přístroje z něj mohou zmizet nebo se
-    // nahradit; uložený projekt si proto musí nést definice použitých
-    // přístrojů s sebou, jinak by po přestavbě katalogu ztratil rozměry
-    // i vzhled a segmenty by se vykreslily jako prázdná výplň (viz
-    // sanitizeSegment/getCatalogEntry). Rozhoduje POUŽITÍ, ne příznak
-    // builtin — použitý vestavěný přístroj se uloží stejně jako použitý
-    // vlastní.
-    catalog: getCatalog().filter((entry) => usedTypes.has(entry.id)),
+    // Etapa C (§10 ZADANI-KATALOG): factoryVersion + snapshot jen použitých
+    // přístrojů. Pole `catalog` se už nezapisuje (legacy jen při načtení).
+    factoryVersion: getFactoryVersion(),
+    catalogSnapshot,
   };
 }
 
@@ -734,7 +765,7 @@ function projectFileName(name) {
 }
 
 async function saveConfig() {
-  const json = JSON.stringify(serializeConfig(), null, 2);
+  const json = JSON.stringify(await serializeConfig(), null, 2);
 
   // §ÚKOL B — ukládání do prohlížeče (localStorage) zrušeno, ikonka „poslední
   // uložené" se ruší jako nebezpečná a autosave se nezavádí. Zůstává jen
@@ -871,12 +902,12 @@ function applyConfig(config) {
   // proběhnout NAD SUROVÝMI poli konfigurace (config.segmentsA/B, config.arms,
   // config.mono.herdblok/podestavby), ne nad už sanitizovanými — sanitizace
   // segmentů níže (sanitizeSegment → getCatalogEntry) totiž potřebuje mít
-  // katalog z importu už sloučený (viz importCatalog níže), a to sloučení
-  // smí proběhnout až PO týhle kontrole: odmítnutý soubor (return) tak
-  // nezanechá žádnou stopu v katalogu uživatele ani v localStorage. Pole,
-  // která nejsou pole (chybí/jsou cizího typu), se počítají jako 0 prvků.
+  // katalog z importu už v paměťové vrstvě (viz importCatalog níže), a ta
+  // se smí naplnit až PO týhle kontrole: odmítnutý soubor (return) tak
+  // nezanechá žádnou stopu ve snapshot vrstvě. Pole, která nejsou pole
+  // (chybí/jsou cizího typu), se počítají jako 0 prvků.
   // Pozn.: soubor s neprázdnými poli, ale se všemi prvky nepoužitelnými (po
-  // sanitizaci níže samé null), touhle kontrolou projde a katalog se sloučí,
+  // sanitizaci níže samé null), touhle kontrolou projde a snapshot se načte,
   // i když nakonec nevznikne žádný segment — neškodné, řešit to netřeba.
   const rawSegmentsACount = Array.isArray(rawSegmentsA) ? rawSegmentsA.length : 0;
   const rawSegmentsBCount = Array.isArray(rawSegmentsB) ? rawSegmentsB.length : 0;
@@ -897,39 +928,36 @@ function applyConfig(config) {
   // §ÚKOL A — typ bloku (§ROZHRANÍ): tolerantní validace, žádné odmítnutí
   // souboru (na rozdíl od kontrol výše) — neplatná/chybějící hodnota prostě
   // spadne na výchozí 'segment'. Musí se ale spočítat TADY, ve stejné fázi
-  // jako kontroly výše a PŘED sloučením katalogu z importu níže — pořadí
-  // kontrol/sloučení je opravená chyba (odmítnutý soubor nesmí zanechat
-  // stopu v katalogu) a nesmí se rozbít vsunutím dalšího kroku doprostřed.
+  // jako kontroly výše a PŘED importem snapshotu níže — pořadí
+  // kontrol/importu je opravená chyba (odmítnutý soubor nesmí zanechat
+  // stopu ve snapshot vrstvě) a nesmí se rozbít vsunutím dalšího kroku doprostřed.
   const productType = config.productType === 'mono' ? 'mono' : 'segment';
 
   // §ÚKOL MONO — stejné pravidlo/stejná fáze jako productType výše: tolerantní
   // validace, žádné odmítnutí souboru. Chybějící/neplatná hodnota (nebo
   // úplně chybějící config.mono u starších/cizích souborů) spadne na výchozí
   // 'svislaDeska' na obou koncích. herdblok/podestavby/panelItems/limec se
-  // doplní NÍŽ, až po sloučení katalogu z importu (viz komentář tam).
+  // doplní NÍŽ, až po importu snapshotu (viz komentář tam).
   const monoConfig = {
     leftEndType: sanitizeMonoEndType(rawMono.leftEndType),
     rightEndType: sanitizeMonoEndType(rawMono.rightEndType),
   };
 
-  // katalog z importu (pokud existuje) sloučit až TEĎ — po všech kontrolách
-  // výše, které mohly vést k odmítnutí souboru (return), ale PŘED sanitizací
-  // segmentů hned pod tímto blokem. sanitizeSegment() hledá definici
-  // přístroje přes getCatalogEntry(raw.type) — bez sloučeného katalogu by
-  // u přístroje, který uživatel v katalogu nemá, vyšla `def` undefined a
-  // segmentu by se vůbec nenastavilo widthMM/bodyStyle ani rozměry vany
-  // u dřezu (uložená šířka by se ztratila, segment by se po sestavení
-  // vykreslil v katalogové výchozí šířce).
-  if (Array.isArray(config.catalog)) {
-    importCatalog(config.catalog);
-  }
+  // Etapa C — snapshot z projektu do PAMĚŤOVÉ vrstvy (importCatalog), NIKDY
+  // do localStorage továrny. Preferuj catalogSnapshot; legacy pole `catalog`
+  // (§12) přijmi stejně. Chybí-li obojí → prázdné pole (vyčistí předchozí
+  // projekt). Musí být PŘED sanitizeSegment / sanitizeMonoDevice.
+  const snapshotRaw = Array.isArray(config.catalogSnapshot)
+    ? config.catalogSnapshot
+    : (Array.isArray(config.catalog) ? config.catalog : []);
+  importCatalog(snapshotRaw);
 
   const segmentsA = (Array.isArray(rawSegmentsA) ? rawSegmentsA : []).map(sanitizeSegment).filter(Boolean);
   const segmentsB = (Array.isArray(rawSegmentsB) ? rawSegmentsB : []).map(sanitizeSegment).filter(Boolean);
 
   // §ÚKOL MONO §10 — herdblok může odkazovat na katalogové přístroje
   // (MonoDevice.type = klíč katalogu, viz sanitizeMonoDevice), proto se
-  // sanitizuje AŽ TEĎ, po sloučení katalogu z importu výše — stejný důvod
+  // sanitizuje AŽ TEĎ, po importu snapshotu výše — stejný důvod
   // jako u segmentsA/B. Chybějící seznam = prázdné pole, chybějící limec =
   // výchozí objekt (defaultMonoCollar) — starý soubor verze 4 nemá žádné
   // z těchto polí a musí se přesto načíst beze chyby.
@@ -971,8 +999,10 @@ function applyConfig(config) {
   state.environment = config.environment === 'dark' ? 'dark' : 'light';
   // starší uložené soubory pole projectName nemají — musí se otevřít bez chyby (§4.4 zadání)
   state.projectName = typeof config.projectName === 'string' ? config.projectName.slice(0, 60) : '';
-  state.productType = productType; // §ÚKOL A — spočítáno výše, PŘED sloučením katalogu
+  state.productType = productType; // §ÚKOL A — spočítáno výše, PŘED importem snapshotu
   state.mono = monoConfig; // §ÚKOL MONO — spočítáno výše, stejná fáze jako productType
+  // Etapa C — verze továrny ze souboru (dialog diff = etapa I, tady jen uložit).
+  state.factoryVersion = Number(config.factoryVersion) || 0;
   state.selectedId = null;
 
   floorMesh.material = createFloorMaterial(state.environment === 'dark');
@@ -1025,10 +1055,20 @@ function getStoredConfig() {
 
 const customDialog = setupCustomDialog();
 
-// --- správce přístrojů (SPEC v3 §3.4) — po každé změně katalogu (viditelnost,
-// uložení, duplikace, smazání) překreslí boční panel, ať se sekce „Přidat
-// segment" ihned zohlední aktuální katalog. ------------------------------------
+// --- správce přístrojů (SPEC v3 §3.4) — zůstává do etapy G; topbar otevírá katalog.
 const deviceManager = setupDeviceManager(() => ui.render(state));
+
+// --- e-shop katalog (etapa D) — správa palety; na blok až z palety po zavření.
+const catalogBrowser = setupCatalogBrowser({
+  getBlockDepthMM() {
+    if (state.productType === 'mono') return HERDBLOK_DEPTH_DEFAULT_MM;
+    const side = state.editSide === 'B' ? 'B' : 'A';
+    return side === 'B' ? state.dimensions.depthBMM : state.dimensions.depthAMM;
+  },
+  onPaletteChange() {
+    ui.render(state);
+  },
+});
 
 // --- tiskový dokument (report.js) nad 3D viewportem (§ČÁST 2) — čerpá aktuální
 // stav přímo ze `state`; `buildContent` spojuje report.js s kresbou půdorysu
@@ -1408,8 +1448,12 @@ const ui = setupUI({
     // nemá co reagovat (viz PREDANI-2026-08-05-VECER.md §4).
   },
 
+  onOpenCatalog() {
+    catalogBrowser.open();
+  },
   onOpenDeviceManager() {
-    deviceManager.open();
+    // Topbar/paleta otevírají katalog (etapa D); editor zůstává do etapy G.
+    catalogBrowser.open();
   },
   onToggleFloorplan() {
     // §1A — #floorplan-btn se chová jako přepínač (čtvrtý "pohled" ve
@@ -1491,6 +1535,9 @@ const ui = setupUI({
     state.arms = [];
     state.selectedId = null;
     state.productType = type === 'mono' ? 'mono' : 'segment';
+    // Etapa C — nový projekt = aktuální továrna, bez snapshotu cizího souboru.
+    state.factoryVersion = getFactoryVersion();
+    importCatalog([]);
     // §ÚKOL MONO — OPRAVA: reset na výchozí, stejně jako ostatní pole výše.
     // Dřívější verze tu zapomínala herdblok/podestavby/panelItems/limec —
     // po založení nového MONO projektu tak zůstávaly `undefined` a

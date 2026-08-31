@@ -1,0 +1,49 @@
+{
+  "id": "al-gr15-800-e",
+  "publicCode": "AL-GR15-800-E",
+  "supplier": "lotus",
+  "supplierCode": "FTLRD-88ET",
+  "origin": "IT",
+  "type": "griddle",
+  "minCutoutDepthMM": 900,
+  "name": {
+    "en": "Griddle combined · 800",
+    "de": "Grillplatte kombiniert · 800",
+    "pl": "Płyta grillowa kombinowana · 800",
+    "cs": "Grilovací deska kombinovaná · 800",
+    "sk": "Grilovacia doska kombinovaná · 800"
+  },
+  "description": {
+    "en": "Drop-in electric fry-top with combined (smooth/ribbed) surface, plate 800 × 800 mm / 14 mm thick, cooking area 680 × 760 mm, electric input 15 kW, dimensions 800 × 800 × 220 mm. Temperature 50–300 °C, fat collection, removable rim.",
+    "de": "Drop-in-Elektro-Fry-Top mit kombinierter (glatt/gerillt) Fläche, Platte 800 × 800 mm / 14 mm stark, Grillfläche 680 × 760 mm, Leistung 15 kW, Abmessungen 800 × 800 × 220 mm. Temperatur 50–300 °C, Fettauffang, abnehmbarer Rand.",
+    "pl": "Elektryczna płyta fry-top drop-in o powierzchni kombinowanej (gładka/ryflowana), płyta 800 × 800 mm / grubość 14 mm, powierzchnia 680 × 760 mm, moc 15 kW, wymiary 800 × 800 × 220 mm. Temperatura 50–300 °C, zbieranie tłuszczu, demontowalny rant.",
+    "cs": "Elektrická fry-top deska drop-in s kombinovaným (hladkým/rýhovaným) povrchem, deska 800 × 800 mm / tl. 14 mm, grilovací plocha 680 × 760 mm, příkon 15 kW, rozměry 800 × 800 × 220 mm. Teplota 50–300 °C, sběr tuku, snímatelný lem.",
+    "sk": "Elektrická fry-top doska drop-in s kombinovaným (hladkým/ryhovaným) povrchom, doska 800 × 800 mm / hr. 14 mm, grilovacia plocha 680 × 760 mm, príkon 15 kW, rozmery 800 × 800 × 220 mm. Teplota 50–300 °C, zber tuku, odnímateľný lem."
+  },
+  "construction": {
+    "en": "Stainless steel exterior and worktop, independent heating zones, safety thermostat, IPX5, includes stainless scraper. Series 900 (net depth 800 mm).",
+    "de": "Edelstahl außen und Arbeitsplatte, unabhängige Heizzonen, Sicherheitsthermostat, IPX5, inkl. Edelstahl-Schaber. Serie 900 (Nettotiefe 800 mm).",
+    "pl": "Stal nierdzewna na zewnątrz i blat, niezależne strefy grzewcze, termostat bezpieczeństwa, IPX5, w zestawie skrobak nierdzewny. Seria 900 (głębokość netto 800 mm).",
+    "cs": "Nerezový plášť a deska, nezávislé topné zóny, bezpečnostní termostat, IPX5, v balení nerezová stěrka. Řada 900 (čistá hloubka 800 mm).",
+    "sk": "Nerezový plášť a doska, nezávislé vyhrievacie zóny, bezpečnostný termostat, IPX5, v balení nerezová stierka. Rad 900 (čistá hĺbka 800 mm)."
+  },
+  "widthMM": 800,
+  "minWidthMM": 800,
+  "widthAdjustable": false,
+  "depthMM": 900,
+  "minDepthMM": 900,
+  "topFeature": {
+    "type": "grill",
+    "cookAreaWidthMM": 680,
+    "cookAreaDepthMM": 760
+  },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 2 },
+  "allowedBodyStyles": ["closed", "doors", "open"],
+  "powerKW": 15,
+  "voltage": "400 V / 3N - 50 Hz",
+  "gasKW": null,
+  "cardImage": "img/pristroje/al-gr15-800-e-card.webp",
+  "topImage": "img/pristroje/al-gr15-800-e-top.svg",
+  "geometryNotes": "minCutoutDepthMM 900 odvozeno z net depth 800 mm / kód FTLRD-88ET (řada 900). Grilovací plocha 680×760 mm; kombinace vlevo rýhovaná / vpravo hladká (fotka card). topFeature grill — ke schválení #4."
+}

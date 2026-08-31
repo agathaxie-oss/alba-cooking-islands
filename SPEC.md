@@ -75,7 +75,7 @@ Každý přístroj (vestavěný i uživatelský) je popsán objektem:
   bodyStyle: 'closed'|'doors'|'open'
 }
 ```
-`topFeature` typy: `burners4`, `ceramic4`, `fryer2`, `grill`, `bainmarie`,
+`topFeature` typy: `burners2`, `burners4`, `ceramic4`, `induction`, `fryer1`, `fryer2`, `grill`, `bainmarie`,
 `multipan`, `sink`, `induction`, `none`, `bitmap`.
 
 ### 3.2 Vestavěné přístroje (základ katalogu)

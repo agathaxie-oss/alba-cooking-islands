@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>verify burners2</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #1a1a1a; color: #eee; }
+    canvas { display: block; width: 640px; height: 480px; background: #2a2a2e; }
+    pre { background: #111; padding: 12px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>burners2 Box3 verify</h1>
+  <canvas id="c" width="640" height="480"></canvas>
+  <pre id="out">loading…</pre>
+  <script type="module">
+    import * as THREE from 'three';
+    import { createSegmentMesh } from './js/modules.js';
+    import { loadManifest, getById } from './js/catalog.js';
+
+    await loadManifest();
+
+    const cases = [
+      { id: 'al-pg11-400-g', depthMM: 900, label: 'PCD-84G' },
+      { id: 'al-pg13-400-g', depthMM: 700, label: 'PCD-64G' },
+    ];
+
+    const lines = [];
+    const workHeightM = 0.9;
+    let focusGroup = null;
+
+    for (const c of cases) {
+      const def = getById(c.id);
+      const segment = {
+        id: 1,
+        type: c.id,
+        widthMM: def.widthMM,
+        podestavba: 'closed',
+        hasPanel: true,
+        plinth: 'standard',
+        finish: 'brushed',
+        bodyStyle: 'closed',
+      };
+      const group = createSegmentMesh(segment, c.depthMM / 1000, workHeightM);
+      // top-feature meshes are those above the worktop (y > workHeightM - 0.001)
+      const boxAll = new THREE.Box3().setFromObject(group);
+      const topBox = new THREE.Box3();
+      let topCount = 0;
+      group.traverse((obj) => {
+        if (!obj.isMesh && !obj.isLineSegments) return;
+        const b = new THREE.Box3().setFromObject(obj);
+        if (b.min.y >= workHeightM - 0.002) {
+          topBox.union(b);
+          topCount += 1;
+        }
+      });
+      const size = topBox.getSize(new THREE.Vector3());
+      const center = topBox.getCenter(new THREE.Vector3());
+      lines.push(
+        `${c.label} (${c.id}) topFeature=${def.topFeature?.type}`,
+        `  nominal W×cutoutD: ${def.widthMM} × ${c.depthMM} mm`,
+        `  top meshes: ${topCount}`,
+        `  topFeature Box3 size mm: ${(size.x * 1000).toFixed(1)} × ${(size.y * 1000).toFixed(1)} × ${(size.z * 1000).toFixed(1)} (X×Y×Z)`,
+        `  topFeature center mm: x=${(center.x * 1000).toFixed(1)}, z=${(center.z * 1000).toFixed(1)} (z from front)`,
+        `  full segment Box3 X mm: ${((boxAll.max.x - boxAll.min.x) * 1000).toFixed(1)}`,
+        ''
+      );
+      if (c.id === 'al-pg11-400-g') focusGroup = group;
+    }
+
+    document.getElementById('out').textContent = lines.join('\n');
+
+    // top-down render of PCD-84G
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a2a2e);
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(2, 5, 3);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+    if (focusGroup) scene.add(focusGroup);
+
+    const cam = new THREE.OrthographicCamera(-0.55, 0.55, 0.55, -0.55, 0.01, 20);
+    cam.position.set(0, 3, 0.45);
+    cam.lookAt(0, 0, 0.45);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+    renderer.setSize(640, 480, false);
+    renderer.render(scene, cam);
+
+    window.__burners2Verify = { lines, focusGroup };
+  </script>
+</body>
+</html>

@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mockup katalog — ALBA e-shop + paleta</title>
+<!--
+  MOCKUP KATALOGU (schvalovací podklad) — ZADANI-KATALOG.md §4, §5, §7
+  Statický HTML, ne napojený na app. Data z katalog/manifest.json (3 položky).
+
+  UX MODEL (závazné — Jaroslav):
+  1. Katalog = správa obsahu palety (které tovární výrobky jsou v paletě).
+     Z katalogu se NEDÁ přidat výrobek rovnou na blok.
+  2. Na kartě: textové CTA „Přidat do palety“ / „Odebrat z palety“
+     (stav „V paletě“). Žádné očičko, žádné šedění karet.
+  3. Položky mimo paletu zůstávají plně viditelné (normální barvy).
+  4. Paleta vlevo: jen položky „v paletě“; po zavření katalogu klik =
+     přidat na blok (title/hint níže).
+  5. Speciální tlačítka (skříňka, zásuvky, dřez, vlastní) mimo katalog,
+     v paletě / pod ní — beze změny smyslu.
+  6. „Sestava“ = jen spodní pás projektu (assembly-strip), ne CTA katalogu.
+     Žádné „Přidat na blok“ / „Do sestavy“ v katalogu.
+
+  VARIANT A (schválená — hlavní rám níže):
+  - Overlay e-shop: toolbar filtrů + mřížka karet 3 sloupce
+    (foto nahoře / text + badge / CTA dole).
+  - CTA jen správa palety; bez režimu „Viditelnost“ a bez dimování.
+
+  Varianta B (horizontální karta) — neschválena, v tomto mockupu
+  záměrně vynechána, ať nemate.
+-->
+<style>
+/* Proměnné 1:1 z css/style.css :root */
+:root {
+  --bg-panel: #FEFEFE;
+  --bg-panel-alt: #EBECEC;
+  --bg-input: #F6F7F7;
+  --border: #D8D9D9;
+  --text-main: #2B2A29;
+  --text-muted: #5B5B5B;
+  --accent: #0083C6;
+  --accent-dark: #00639A;
+  --accent-darker: #004E78;
+  --accent-soft: rgba(0, 131, 198, 0.12);
+  --danger: #C0392B;
+  --warn: #B26A00;
+  --warn-soft: rgba(178, 106, 0, 0.12);
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(43, 42, 41, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-panel-alt);
+  color: var(--text-main);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+body { padding: 32px 24px 80px; }
+
+h1, h2, h3, p, ul, ol { margin: 0; padding: 0; list-style: none; }
+img, svg { display: block; max-width: 100%; }
+
+.mk-fake { cursor: default; user-select: none; }
+
+.mk-page-intro {
+  max-width: 1440px;
+  margin: 0 auto 20px;
+}
+.mk-page-intro h1 {
+  font-size: 20px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+.mk-page-intro p {
+  color: var(--text-muted);
+  max-width: 72ch;
+}
+.mk-page-intro .mk-ctx {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.mk-page-intro code {
+  font-size: 11px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.mk-section-label {
+  max-width: 1440px;
+  margin: 28px auto 10px;
+  font-size: 12px;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.mk-section-label.mk-approved {
+  color: var(--accent-dark);
+}
+
+/* ================= RÁM APLIKACE ================= */
+
+.mk-frame-wrap { display: flex; justify-content: center; }
+
+.mk-frame {
+  position: relative;
+  width: 1440px;
+  height: 900px;
+  flex: 0 0 auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mk-topbar {
+  flex: 0 0 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  background: var(--accent);
+  color: #fff;
+  z-index: 2;
+}
+.mk-topbar-brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.mk-topbar-spacer { flex: 1; }
+.mk-topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--accent-dark);
+  font-weight: 600;
+  font-size: 12px;
+}
+.mk-topbar-hint {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.mk-app-row {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+
+/* ---------- PALETA (levý sloupec) ---------- */
+
+.mk-sidebar {
+  flex: 0 0 240px;
+  width: 240px;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 14px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.mk-side-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.mk-side-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  padding: 6px 8px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(0, 131, 198, 0.22);
+  border-radius: var(--radius);
+}
+
+.mk-side-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mk-side-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.mk-fake-select,
+.mk-fake-search {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 11px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mk-fake-search { color: var(--text-muted); }
+
+.mk-side-list {
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.mk-side-tile {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  cursor: pointer;
+}
+.mk-side-tile:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.mk-side-tile img {
+  width: 44px;
+  height: 33px;
+  object-fit: cover;
+  border-radius: 3px;
+  background: var(--bg-panel-alt);
+  flex: 0 0 auto;
+}
+.mk-side-tile-body { min-width: 0; flex: 1; }
+.mk-side-tile-name {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mk-side-tile-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.mk-side-add {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mk-special {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mk-special-note {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.mk-special-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.mk-special-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  color: var(--text-main);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+.mk-special-btn svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-dark);
+}
+.mk-special-btn.mk-wide {
+  grid-column: 1 / -1;
+}
+
+/* ---------- VIEWPORT (pozadí) ---------- */
+
+.mk-viewport {
+  flex: 1 1 auto;
+  background:
+    linear-gradient(160deg, #dfe3e6 0%, #c9ced1 45%, #b8c0c6 100%);
+  position: relative;
+  min-width: 0;
+}
+.mk-viewport-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(43, 42, 41, 0.35);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+/* ================= OVERLAY KATALOG ================= */
+
+.mk-overlay {
+  position: absolute;
+  inset: 52px 0 0 0;
+  background: rgba(10, 12, 14, 0.55);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 28px 32px;
+  z-index: 10;
+}
+
+.mk-catalog {
+  width: 100%;
+  max-width: 1080px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(43, 42, 41, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mk-cat-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.mk-cat-head h2 {
+  font-size: 16px;
+  font-weight: 700;
+}
+.mk-cat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.mk-cat-head-spacer { flex: 1; }
+
+.mk-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--bg-panel-alt);
+  color: var(--text-main);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mk-cat-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 12px 18px;
+  background: var(--bg-panel-alt);
+  border-bottom: 1px solid var(--border);
+}
+.mk-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+.mk-filter-group label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.mk-filter-group .mk-fake-select,
+.mk-filter-group .mk-fake-search {
+  font-size: 12px;
+  padding: 7px 10px;
+  background: var(--bg-panel);
+}
+.mk-filter-search {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+.mk-depth-hint {
+  font-size: 11px;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border: 1px solid rgba(178, 106, 0, 0.28);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 280px;
+}
+
+.mk-cat-grid {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 16px 18px 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  align-content: start;
+  background: var(--bg-panel);
+}
+
+/* ---------- KARTA (varianta A) — bez šedění ---------- */
+
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+}
+
+.cat-card-media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--bg-panel-alt);
+  overflow: hidden;
+}
+.cat-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cat-flag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px 3px 4px;
+  background: rgba(254, 254, 254, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-main);
+  box-shadow: var(--shadow);
+}
+.cat-flag svg {
+  width: 18px;
+  height: 12px;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.cat-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  flex: 1;
+}
+.cat-card-name {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.cat-card-code {
+  font-size: 11px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color: var(--accent-dark);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.cat-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+.cat-chip {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--bg-panel-alt);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.cat-badge-depth {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid rgba(178, 106, 0, 0.35);
+}
+.cat-badge-depth svg { width: 12px; height: 12px; }
+
+.cat-card-status {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--accent-dark);
+  letter-spacing: 0.02em;
+}
+
+.cat-card-cta {
+  margin-top: auto;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: center;
+}
+.cat-card-cta:hover { background: var(--accent-dark); }
+
+/* Stav „v paletě“ — plná viditelnost karty, jen jiné CTA */
+.cat-card-cta.cat-in-palette {
+  background: var(--bg-panel);
+  color: var(--accent-dark);
+  border: 1px solid var(--accent);
+}
+.cat-card-cta.cat-in-palette:hover {
+  background: var(--accent-soft);
+}
+
+.mk-cat-foot {
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel-alt);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mk-approve {
+  max-width: 1440px;
+  margin: 36px auto 0;
+  padding: 16px 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.mk-approve h2 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.mk-approve ol {
+  list-style: decimal;
+  padding-left: 18px;
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mk-approve li { padding-left: 2px; }
+.mk-approve strong { font-weight: 650; }
+</style>
+</head>
+<body>
+
+<div class="mk-page-intro">
+  <h1>Mockup — tovární katalog (e-shop + paleta)</h1>
+  <p>
+    Statický schvalovací podklad. Overlay katalogu spravuje jen obsah palety;
+    na blok se přidává až po zavření katalogu klikem v paletě vlevo.
+    Data z <code>katalog/manifest.json</code>.
+    Kontext: hloubka desky projektu = <strong>600&nbsp;mm</strong> → položky
+    s <code>minCutoutDepthMM: 700</code> mají badge varování (přidání není zakázané).
+  </p>
+  <p class="mk-ctx">
+    <strong>Schváleno: varianta A</strong> + model „katalog = paleta“.
+    Žádné šedění, žádné „Přidat na blok“ v katalogu. Varianta B vynechána.
+  </p>
+</div>
+
+<p class="mk-section-label mk-approved">Varianta A — schváleno · katalog upravuje paletu</p>
+
+<div class="mk-frame-wrap">
+  <div class="mk-frame" aria-label="Mockup aplikace s otevřeným katalogem">
+
+    <!-- TOPBAR -->
+    <header class="mk-topbar">
+      <div class="mk-topbar-brand">ALBA</div>
+      <div class="mk-topbar-spacer"></div>
+      <div class="mk-topbar-pill mk-fake" title="Nahrazuje Správce přístrojů">Katalog</div>
+      <span class="mk-topbar-hint">topbar → otevře overlay</span>
+    </header>
+
+    <div class="mk-app-row">
+
+      <!-- ===== PALETA ===== -->
+      <aside class="mk-sidebar" aria-label="Paleta">
+        <div class="mk-side-title">Paleta</div>
+        <p class="mk-side-hint">Po zavření katalogu: klik = přidat na blok</p>
+
+        <div class="mk-side-filters">
+          <div class="mk-side-row">
+            <div class="mk-fake-select mk-fake" title="Filtr minCutoutDepthMM">700 mm ▾</div>
+            <div class="mk-fake-select mk-fake" title="Filtr type">Typ ▾</div>
+          </div>
+          <div class="mk-fake-search mk-fake">Hledat název / AL-…</div>
+        </div>
+
+        <div class="mk-side-list">
+          <!-- jen položky „v paletě“ (fritéza chybí — není v paletě) -->
+          <div class="mk-side-tile mk-fake" title="Po zavření katalogu: klik = přidat na blok">
+            <img src="img/pristroje/al-pg22-800-g-card.svg" alt="" width="44" height="33" />
+            <div class="mk-side-tile-body">
+              <div class="mk-side-tile-name">Sporák plynový 22 kW · 800</div>
+              <div class="mk-side-tile-meta">
+                <span class="cat-flag" style="position:static;padding:0;border:0;box-shadow:none;background:transparent;gap:4px;">
+                  <svg viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="4" y="0" fill="#009246"/><rect width="18" height="4" y="4" fill="#fff"/><rect width="18" height="4" y="8" fill="#CE2B37"/></svg>
+                  IT
+                </span>
+                <span>AL-PG22-800-G</span>
+              </div>
+            </div>
+            <button type="button" class="mk-side-add mk-fake" title="Po zavření katalogu: klik = přidat na blok">+</button>
+          </div>
+
+          <div class="mk-side-tile mk-fake" title="Po zavření katalogu: klik = přidat na blok">
+            <img src="img/pristroje/al-ind5-500-e-card.svg" alt="" width="44" height="33" />
+            <div class="mk-side-tile-body">
+              <div class="mk-side-tile-name">Indukce 1 zóna 5 kW · 500</div>
+              <div class="mk-side-tile-meta">
+                <span class="cat-flag" style="position:static;padding:0;border:0;box-shadow:none;background:transparent;gap:4px;">
+                  <svg viewBox="0 0 18 12" aria-hidden="true"><rect width="6" height="12" x="0" fill="#000"/><rect width="6" height="12" x="6" fill="#DD0000"/><rect width="6" height="12" x="12" fill="#FFCE00"/></svg>
+                  DE
+                </span>
+                <span>AL-IND5-500-E</span>
+              </div>
+            </div>
+            <button type="button" class="mk-side-add mk-fake" title="Po zavření katalogu: klik = přidat na blok">+</button>
+          </div>
+        </div>
+
+        <div class="mk-special">
+          <div class="mk-side-title">Podestavba</div>
+          <p class="mk-special-note">Mimo katalog — skříňky / dřez / vlastní modul (§8).</p>
+          <div class="mk-special-grid">
+            <div class="mk-special-btn mk-fake">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M12 10v9"/></svg>
+              Skříňka
+            </div>
+            <div class="mk-special-btn mk-fake">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 14h16M4 19h16"/></svg>
+              Zásuvky
+            </div>
+            <div class="mk-special-btn mk-fake">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="11" rx="1"/><path d="M8 7V5h8v2M12 11v4"/></svg>
+              Dřez
+            </div>
+            <div class="mk-special-btn mk-fake">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M8 12h8M12 8v8"/></svg>
+              Vlastní
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- VIEWPORT -->
+      <div class="mk-viewport">
+        <div class="mk-viewport-label">3D VIEWPORT</div>
+      </div>
+
+      <!-- ===== OVERLAY E-SHOP ===== -->
+      <div class="mk-overlay" role="dialog" aria-label="Katalog přístrojů">
+        <div class="mk-catalog">
+
+          <div class="mk-cat-head">
+            <div>
+              <h2>Katalog přístrojů</h2>
+              <p class="mk-cat-sub">Správa obsahu palety · na blok až z palety po zavření</p>
+            </div>
+            <div class="mk-cat-head-spacer"></div>
+            <button type="button" class="mk-close mk-fake" aria-label="Zavřít">×</button>
+          </div>
+
+          <div class="mk-cat-toolbar">
+            <div class="mk-filter-group">
+              <label>Hloubka řady</label>
+              <div class="mk-fake-select mk-fake">700 mm ▾</div>
+            </div>
+            <div class="mk-filter-group">
+              <label>Typ</label>
+              <div class="mk-fake-select mk-fake">Všechny typy ▾</div>
+            </div>
+            <div class="mk-filter-group mk-filter-search">
+              <label>Fulltext</label>
+              <div class="mk-fake-search mk-fake">název, AL-kód, tag…</div>
+            </div>
+            <div class="mk-depth-hint mk-fake">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM7.25 5h1.5v4.5h-1.5V5zm0 6h1.5v1.5h-1.5V11z"/></svg>
+              Deska projektu: 600 mm — položky 700 mm mají varování
+            </div>
+          </div>
+
+          <div class="mk-cat-grid">
+
+            <!-- KARTA 1 — v paletě -->
+            <article class="cat-card">
+              <div class="cat-card-media">
+                <img src="img/pristroje/al-pg22-800-g-card.svg" alt="Náhled AL-PG22-800-G" width="400" height="300" />
+                <span class="cat-flag" title="výrobce/dodavatel">
+                  <svg viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="4" y="0" fill="#009246"/><rect width="18" height="4" y="4" fill="#fff"/><rect width="18" height="4" y="8" fill="#CE2B37"/></svg>
+                  IT
+                </span>
+              </div>
+              <div class="cat-card-body">
+                <div class="cat-card-name">Sporák plynový 22 kW · 800</div>
+                <div class="cat-card-code">AL-PG22-800-G</div>
+                <div class="cat-card-meta">
+                  <span class="cat-chip">700 mm</span>
+                  <span class="cat-chip">Sporák plynový</span>
+                  <span class="cat-badge-depth">
+                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM7.25 5h1.5v4.5h-1.5V5zm0 6h1.5v1.5h-1.5V11z"/></svg>
+                    Vyžaduje ≥ 700 mm
+                  </span>
+                </div>
+                <div class="cat-card-status">V paletě</div>
+                <button type="button" class="cat-card-cta cat-in-palette mk-fake">Odebrat z palety</button>
+              </div>
+            </article>
+
+            <!-- KARTA 2 — mimo paletu (plně viditelná, bez šedění) -->
+            <article class="cat-card">
+              <div class="cat-card-media">
+                <img src="img/pristroje/al-fr10-400-e-card.svg" alt="Náhled AL-FR10-400-E" width="400" height="300" />
+                <span class="cat-flag" title="výrobce/dodavatel">
+                  <svg viewBox="0 0 18 12" aria-hidden="true"><rect width="18" height="4" y="0" fill="#009246"/><rect width="18" height="4" y="4" fill="#fff"/><rect width="18" height="4" y="8" fill="#CE2B37"/></svg>
+                  IT
+                </span>
+              </div>
+              <div class="cat-card-body">
+                <div class="cat-card-name">Fritéza 10 l · 400</div>
+                <div class="cat-card-code">AL-FR10-400-E</div>
+                <div class="cat-card-meta">
+                  <span class="cat-chip">700 mm</span>
+                  <span class="cat-chip">Fritéza</span>
+                  <span class="cat-badge-depth">
+                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM7.25 5h1.5v4.5h-1.5V5zm0 6h1.5v1.5h-1.5V11z"/></svg>
+                    Vyžaduje ≥ 700 mm
+                  </span>
+                </div>
+                <button type="button" class="cat-card-cta mk-fake">Přidat do palety</button>
+              </div>
+            </article>
+
+            <!-- KARTA 3 — v paletě -->
+            <article class="cat-card">
+              <div class="cat-card-media">
+                <img src="img/pristroje/al-ind5-500-e-card.svg" alt="Náhled AL-IND5-500-E" width="400" height="300" />
+                <span class="cat-flag" title="výrobce/dodavatel">
+                  <svg viewBox="0 0 18 12" aria-hidden="true"><rect width="6" height="12" x="0" fill="#000"/><rect width="6" height="12" x="6" fill="#DD0000"/><rect width="6" height="12" x="12" fill="#FFCE00"/></svg>
+                  DE
+                </span>
+              </div>
+              <div class="cat-card-body">
+                <div class="cat-card-name">Indukce 1 zóna 5 kW · 500</div>
+                <div class="cat-card-code">AL-IND5-500-E</div>
+                <div class="cat-card-meta">
+                  <span class="cat-chip">700 mm</span>
+                  <span class="cat-chip">Indukce</span>
+                  <span class="cat-badge-depth">
+                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM7.25 5h1.5v4.5h-1.5V5zm0 6h1.5v1.5h-1.5V11z"/></svg>
+                    Vyžaduje ≥ 700 mm
+                  </span>
+                </div>
+                <div class="cat-card-status">V paletě</div>
+                <button type="button" class="cat-card-cta cat-in-palette mk-fake">Odebrat z palety</button>
+              </div>
+            </article>
+
+          </div>
+
+          <div class="mk-cat-foot">
+            <span>3 položky · factoryVersion 1 · filtry jen z manifestu</span>
+            <span>Id v paletě → localStorage <code>alba-katalog-paleta-v1</code></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="mk-approve">
+  <h2>Schváleno (Jaroslav) — katalog = správa palety</h2>
+  <ol>
+    <li><strong>Layout</strong> — varianta A (e-shop mřížka, foto nahoře). B neimplementovat.</li>
+    <li><strong>Katalog</strong> — jen „Přidat do palety“ / „Odebrat z palety“ (+ stav „V paletě“). Žádné „na blok“ / „do sestavy“.</li>
+    <li><strong>Bez šedění</strong> — položky mimo paletu zůstávají plně viditelné; liší se jen CTA.</li>
+    <li><strong>Paleta</strong> — jen položky v paletě; po zavření katalogu klik = přidat na blok.</li>
+    <li><strong>Badge hloubky</strong> — „Vyžaduje ≥ N mm“ + warn; přidání stále povolené.</li>
+    <li><strong>Podestavba</strong> — speciální tlačítka mimo katalog, pod paletou.</li>
+  </ol>
+</div>
+
+</body>
+</html>

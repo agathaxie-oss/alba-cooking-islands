@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>verify grill</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #1a1a1a; color: #eee; }
+    canvas { display: block; width: 720px; height: 480px; background: #2a2a2e; }
+    pre { background: #111; padding: 12px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>grill Box3 verify (cookArea 680×760, half ribbed / half smooth)</h1>
+  <canvas id="c" width="720" height="480"></canvas>
+  <pre id="out">loading…</pre>
+  <script type="module">
+    import * as THREE from 'three';
+    import { createSegmentMesh } from './js/modules.js';
+    import { loadManifest, getById } from './js/catalog.js';
+
+    await loadManifest();
+
+    function layoutNums(widthMM, depthMM, feature) {
+      const mm = (v) => v / 1000;
+      const EDGE = mm(20);
+      const widthM = mm(widthMM);
+      const depthM = mm(depthMM);
+      let cookWM = mm(Number(feature.cookAreaWidthMM));
+      let cookDM = mm(Number(feature.cookAreaDepthMM));
+      cookWM = Math.min(cookWM, Math.max(widthM - 2 * EDGE, mm(200)));
+      cookDM = Math.min(cookDM, Math.max(depthM - 2 * EDGE, mm(200)));
+      const centerZ = depthM / 2;
+      return {
+        cookWmm: cookWM * 1000,
+        cookDmm: cookDM * 1000,
+        centerZMm: centerZ * 1000,
+        minX: -cookWM * 500,
+        maxX: cookWM * 500,
+        minZ: (centerZ - cookDM / 2) * 1000,
+        maxZ: (centerZ + cookDM / 2) * 1000,
+      };
+    }
+
+    const cases = [
+      { id: 'al-gr15-800-e', depthMM: 900, label: 'FTLRD-88ET' },
+    ];
+
+    const lines = [];
+    const workHeightM = 0.9;
+    const groups = [];
+
+    for (const c of cases) {
+      const def = getById(c.id);
+      const segment = {
+        id: 1,
+        type: c.id,
+        widthMM: def.widthMM,
+        podestavba: 'closed',
+        hasPanel: true,
+        plinth: 'standard',
+        finish: 'brushed',
+        bodyStyle: 'closed',
+      };
+      const group = createSegmentMesh(segment, c.depthMM / 1000, workHeightM);
+      const cookBox = new THREE.Box3();
+      let cookCount = 0;
+      let ribCount = 0;
+      group.traverse((obj) => {
+        if (!obj.isMesh) return;
+        if (obj.userData.featurePart === 'grillCookArea') {
+          cookBox.union(new THREE.Box3().setFromObject(obj));
+          cookCount += 1;
+        }
+        if (obj.userData.featurePart === 'grillRib') ribCount += 1;
+      });
+      const size = cookBox.getSize(new THREE.Vector3());
+      const lay = layoutNums(def.widthMM, c.depthMM, def.topFeature || {});
+      const fitsW = lay.minX >= -def.widthMM / 2 - 0.5 && lay.maxX <= def.widthMM / 2 + 0.5;
+      const fitsD = lay.minZ >= -0.5 && lay.maxZ <= c.depthMM + 0.5;
+
+      lines.push(
+        `${c.label} (${c.id}) topFeature=${def.topFeature?.type}`,
+        `  nominal W×cutoutD: ${def.widthMM} × ${c.depthMM} mm`,
+        `  cookArea catalog: ${def.topFeature?.cookAreaWidthMM} × ${def.topFeature?.cookAreaDepthMM} mm`,
+        `  cookArea layout: ${lay.cookWmm.toFixed(1)} × ${lay.cookDmm.toFixed(1)} mm`,
+        `  expected X range: ${lay.minX.toFixed(1)}–${lay.maxX.toFixed(1)} (fitsWidth=${fitsW})`,
+        `  expected Z range: ${lay.minZ.toFixed(1)}–${lay.maxZ.toFixed(1)} (fitsDepth=${fitsD})`,
+        `  grillCookArea meshes: ${cookCount}; ribs: ${ribCount}`,
+        `  cook Box3 size mm: ${(size.x * 1000).toFixed(1)} × ${(size.y * 1000).toFixed(1)} × ${(size.z * 1000).toFixed(1)} (X×Y×Z)`,
+        `  cook Box3 X range mm: ${(cookBox.min.x * 1000).toFixed(1)}–${(cookBox.max.x * 1000).toFixed(1)}`,
+        `  cook Box3 Z range mm: ${(cookBox.min.z * 1000).toFixed(1)}–${(cookBox.max.z * 1000).toFixed(1)}`,
+        `  split: left ribbed (front–back ribs) / right smooth`,
+        ''
+      );
+      groups.push({ group, depthMM: c.depthMM, label: c.label, widthMM: def.widthMM });
+    }
+
+    document.getElementById('out').textContent = lines.join('\n');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a2a2e);
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(2, 5, 3);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+    groups.forEach((g) => {
+      scene.add(g.group);
+    });
+
+    const cam = new THREE.OrthographicCamera(-0.7, 0.7, 0.65, -0.55, 0.01, 20);
+    cam.position.set(0, 4, 0.45);
+    cam.lookAt(0, 0, 0.45);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+    renderer.setSize(720, 480, false);
+    renderer.render(scene, cam);
+
+    window.__grillVerify = { lines, groups };
+  </script>
+</body>
+</html>

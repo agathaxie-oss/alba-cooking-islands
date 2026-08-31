@@ -1,0 +1,51 @@
+{
+  "id": "al-fr88-400-e",
+  "publicCode": "AL-FR88-400-E",
+  "supplier": "lotus",
+  "supplierCode": "F2/8D-64ET",
+  "origin": "IT",
+  "type": "fryer",
+  "minCutoutDepthMM": 700,
+  "name": {
+    "en": "Fryer 8+8 l · 400",
+    "de": "Fritteuse 8+8 l · 400",
+    "pl": "Frytownica 8+8 l · 400",
+    "cs": "Fritéza 8+8 l · 400",
+    "sk": "Fritéza 8+8 l · 400"
+  },
+  "description": {
+    "en": "Drop-in electric fryer with 2 basins (8+8 l), 2 baskets 120 × 300 × 150 mm, basin 148 × 350 × 327 mm, electric input 12 kW, fries output 12 kg/h, dimensions 400 × 600 × 460 mm.",
+    "de": "Drop-in-Elektrofritteuse mit 2 Wannen (8+8 l), 2 Körbe 120 × 300 × 150 mm, Wanne 148 × 350 × 327 mm, Leistung 12 kW, Pommes-Leistung 12 kg/h, Abmessungen 400 × 600 × 460 mm.",
+    "pl": "Frytownica elektryczna drop-in z 2 wannami (8+8 l), 2 kosze 120 × 300 × 150 mm, wanna 148 × 350 × 327 mm, moc 12 kW, wydajność frytek 12 kg/h, wymiary 400 × 600 × 460 mm.",
+    "cs": "Elektrická fritéza drop-in se 2 vanami (8+8 l), 2 koše 120 × 300 × 150 mm, vana 148 × 350 × 327 mm, příkon 12 kW, výkon hranolků 12 kg/h, rozměry 400 × 600 × 460 mm.",
+    "sk": "Elektrická fritéza drop-in s 2 vaňami (8+8 l), 2 koše 120 × 300 × 150 mm, vaňa 148 × 350 × 327 mm, príkon 12 kW, výkon hranolčekov 12 kg/h, rozmery 400 × 600 × 460 mm."
+  },
+  "construction": {
+    "en": "Stainless steel AISI 304, swivel heating element, cold zone, safety thermostat, drain through cabinet, includes 2 filter containers, lids and baskets. Series 700 (net depth 600 mm).",
+    "de": "Edelstahl AISI 304, klappbares Heizelement, Kaltzone, Sicherheitsthermostat, Ablauf durch Schrank, inkl. 2 Filterbehälter, Deckel und Körbe. Serie 700 (Nettotiefe 600 mm).",
+    "pl": "Stal nierdzewna AISI 304, uchylny element grzejny, strefa zimna, termostat bezpieczeństwa, spust przez szafkę, w zestawie 2 filtry, pokrywy i kosze. Seria 700 (głębokość netto 600 mm).",
+    "cs": "Nerez AISI 304, sklopné topné těleso, studená zóna, bezpečnostní termostat, výpust skrz skříň, v balení 2 filtry, víka a koše. Řada 700 (čistá hloubka 600 mm).",
+    "sk": "Nerez AISI 304, sklopné vyhrievacie teleso, studená zóna, bezpečnostný termostat, výpust cez skriňu, v balení 2 filtre, veka a koše. Rad 700 (čistá hĺbka 600 mm)."
+  },
+  "widthMM": 400,
+  "minWidthMM": 400,
+  "widthAdjustable": false,
+  "depthMM": 700,
+  "minDepthMM": 700,
+  "topFeature": {
+    "type": "fryer2",
+    "vatWidthMM": 148,
+    "vatDepthMM": 350,
+    "basketWidthMM": 120,
+    "basketDepthMM": 300
+  },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 2 },
+  "allowedBodyStyles": ["doors"],
+  "powerKW": 12,
+  "voltage": "400 V / 3N - 50 Hz",
+  "gasKW": null,
+  "cardImage": "img/pristroje/al-fr88-400-e-card.webp",
+  "topImage": "img/pristroje/al-fr88-400-e-top.svg",
+  "geometryNotes": "minCutoutDepthMM 700 odvozeno z net depth 600 mm / kód F2/8D-64ET (řada 700). fryer2 absolutní vany 148×350 mm, koše 120×300 (RM/JSON); layout resolveFryer2Layout — Ke schválení #3."
+}

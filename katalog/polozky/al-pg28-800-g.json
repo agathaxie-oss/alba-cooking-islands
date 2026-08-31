@@ -1,0 +1,51 @@
+{
+  "id": "al-pg28-800-g",
+  "publicCode": "AL-PG28-800-G",
+  "supplier": "lotus",
+  "supplierCode": "PCD-88G",
+  "origin": "IT",
+  "type": "gas_range",
+  "minCutoutDepthMM": 900,
+  "name": {
+    "en": "Gas range 28 kW · 800",
+    "de": "Gasherd 28 kW · 800",
+    "pl": "Kuchenka gazowa 28 kW · 800",
+    "cs": "Sporák plynový 28 kW · 800",
+    "sk": "Sporák plynový 28 kW · 800"
+  },
+  "description": {
+    "en": "Drop-in gas cooktop with 4 burners (10 / 7 / 7 / 4 kW), total gas input 28 kW, dimensions 800 × 800 × 110 mm. Standing pilot ignition, burner grate 390 × 360 mm.",
+    "de": "Drop-in-Gaskochfeld mit 4 Brennern (10 / 7 / 7 / 4 kW), Gesamtleistung Gas 28 kW, Abmessungen 800 × 800 × 110 mm. Zündung durch Dauerflamme, Brennerrost 390 × 360 mm.",
+    "pl": "Płyta gazowa drop-in z 4 palnikami (10 / 7 / 7 / 4 kW), całkowita moc gazowa 28 kW, wymiary 800 × 800 × 110 mm. Zapłon płomieniem dyżurnym, ruszt palnika 390 × 360 mm.",
+    "cs": "Plynová varná deska drop-in se 4 hořáky (10 / 7 / 7 / 4 kW), celkový plynový příkon 28 kW, rozměry 800 × 800 × 110 mm. Zapalování věčným plamenem, mřížka hořáku 390 × 360 mm.",
+    "sk": "Plynová varná doska drop-in so 4 horákmi (10 / 7 / 7 / 4 kW), celkový plynový príkon 28 kW, rozmery 800 × 800 × 110 mm. Zapaľovanie večným plameňom, mriežka horáka 390 × 360 mm."
+  },
+  "construction": {
+    "en": "Stainless steel body, drop-in construction, knob control, gas connection 1/2\". Series 900 (net depth 800 mm).",
+    "de": "Edelstahlgehäuse, Drop-in-Bauweise, Knebelbedienung, Gasanschluss 1/2\". Serie 900 (Nettotiefe 800 mm).",
+    "pl": "Korpus ze stali nierdzewnej, konstrukcja drop-in, sterowanie pokrętłami, przyłącze gazu 1/2\". Seria 900 (głębokość netto 800 mm).",
+    "cs": "Nerezové tělo, konstrukce drop-in, ovládání knoflíky, přípojka plynu 1/2\". Řada 900 (čistá hloubka 800 mm).",
+    "sk": "Nerezové telo, konštrukcia drop-in, ovládanie gombíkmi, prípojka plynu 1/2\". Rad 900 (čistá hĺbka 800 mm)."
+  },
+  "widthMM": 800,
+  "minWidthMM": 800,
+  "widthAdjustable": false,
+  "depthMM": 900,
+  "minDepthMM": 900,
+  "topFeature": { "type": "burners4" },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 4 },
+  "allowedBodyStyles": ["closed", "doors", "open"],
+  "powerKW": null,
+  "voltage": "",
+  "gasKW": 28,
+  "zones": [
+    { "powerKW": 10, "fuel": "gas", "position": "front-left" },
+    { "powerKW": 7, "fuel": "gas", "position": "back-left" },
+    { "powerKW": 7, "fuel": "gas", "position": "front-right" },
+    { "powerKW": 4, "fuel": "gas", "position": "back-right" }
+  ],
+  "cardImage": "img/pristroje/al-pg28-800-g-card.webp",
+  "topImage": "img/pristroje/al-pg28-800-g-top.svg",
+  "geometryNotes": "minCutoutDepthMM 900 (net depth 800 / PCD-88G řada 900). topFeature burners4 — absolutní mřížky 390×360 mm (RM, 2×2). Ke schválení #2 viz ZADANI-GEOMETRIE-RM.md. zones[] = RM zóny 1–4 (10 / 7 / 7 / 4 kW). Pozice: RM neuvádí půdorys zón → mapováno na resolveCastIronBurnerLayout(columns=2): FL, BL, FR, BR (front = menší Z / čelo)."
+}

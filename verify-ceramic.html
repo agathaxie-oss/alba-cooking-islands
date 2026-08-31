@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>verify ceramic4</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #1a1a1a; color: #eee; }
+    canvas { display: block; width: 720px; height: 480px; background: #2a2a2e; }
+    pre { background: #111; padding: 12px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>ceramic4 Box3 verify (sklo 750×770, zóny Ø220 / 2×2)</h1>
+  <canvas id="c" width="720" height="480"></canvas>
+  <pre id="out">loading…</pre>
+  <script type="module">
+    import * as THREE from 'three';
+    import { createSegmentMesh } from './js/modules.js';
+    import { loadManifest, getById } from './js/catalog.js';
+
+    await loadManifest();
+
+    function layoutNums(widthMM, depthMM, feature) {
+      const mm = (v) => v / 1000;
+      const EDGE = mm(20);
+      const widthM = mm(widthMM);
+      const depthM = mm(depthMM);
+      let glassWM = mm(Number(feature.glassWidthMM) || 750);
+      let glassDM = mm(Number(feature.glassDepthMM) || 770);
+      glassWM = Math.min(glassWM, Math.max(widthM - 2 * EDGE, mm(200)));
+      glassDM = Math.min(glassDM, Math.max(depthM - 2 * EDGE, mm(200)));
+      let zoneDia = mm(Number(feature.zoneDiameterMM) || 220);
+      const maxDia = Math.min(glassWM, glassDM) * 0.45;
+      zoneDia = Math.min(Math.max(zoneDia, mm(60)), Math.max(maxDia, mm(60)));
+      const centerZ = depthM / 2;
+      const pitchX = glassWM / 2;
+      const pitchZ = glassDM / 2;
+      const xs = [-pitchX / 2, pitchX / 2].map((v) => v * 1000);
+      const zs = [centerZ - pitchZ / 2, centerZ + pitchZ / 2].map((v) => v * 1000);
+      const r = zoneDia * 500;
+      return {
+        glassWmm: glassWM * 1000,
+        glassDmm: glassDM * 1000,
+        zoneDiaMm: zoneDia * 1000,
+        xs,
+        zs,
+        minX: xs[0] - r,
+        maxX: xs[1] + r,
+        minZ: zs[0] - r,
+        maxZ: zs[1] + r,
+        glassMinZ: (centerZ - glassDM / 2) * 1000,
+        glassMaxZ: (centerZ + glassDM / 2) * 1000,
+      };
+    }
+
+    const cases = [
+      { id: 'al-cer14-800-e', depthMM: 900, label: 'PCCD-88ET' },
+    ];
+
+    const lines = [];
+    const workHeightM = 0.9;
+    const groups = [];
+
+    for (const c of cases) {
+      const def = getById(c.id);
+      const segment = {
+        id: 1,
+        type: c.id,
+        widthMM: def.widthMM,
+        podestavba: 'closed',
+        hasPanel: true,
+        plinth: 'standard',
+        finish: 'brushed',
+        bodyStyle: 'closed',
+      };
+      const group = createSegmentMesh(segment, c.depthMM / 1000, workHeightM);
+      const zoneBox = new THREE.Box3();
+      const glassBox = new THREE.Box3();
+      let zoneCount = 0;
+      let innerCount = 0;
+      let glassCount = 0;
+      group.traverse((obj) => {
+        if (!obj.isMesh) return;
+        if (obj.userData.featurePart === 'ceramicZone') {
+          zoneBox.union(new THREE.Box3().setFromObject(obj));
+          zoneCount += 1;
+        }
+        if (obj.userData.featurePart === 'ceramicZoneInner') innerCount += 1;
+        if (obj.userData.featurePart === 'ceramicGlass') {
+          glassBox.union(new THREE.Box3().setFromObject(obj));
+          glassCount += 1;
+        }
+      });
+      const zSize = zoneBox.getSize(new THREE.Vector3());
+      const gSize = glassBox.getSize(new THREE.Vector3());
+      const lay = layoutNums(def.widthMM, c.depthMM, def.topFeature || {});
+      const fitsW = lay.minX >= -def.widthMM / 2 - 0.5 && lay.maxX <= def.widthMM / 2 + 0.5;
+      const fitsD = lay.minZ >= -0.5 && lay.maxZ <= c.depthMM + 0.5;
+
+      lines.push(
+        `${c.label} (${c.id}) topFeature=${def.topFeature?.type}`,
+        `  nominal W×cutoutD: ${def.widthMM} × ${c.depthMM} mm`,
+        `  glass catalog: ${def.topFeature?.glassWidthMM} × ${def.topFeature?.glassDepthMM} mm`,
+        `  glass layout: ${lay.glassWmm.toFixed(1)} × ${lay.glassDmm.toFixed(1)} mm`,
+        `  zone Ø catalog/layout: ${def.topFeature?.zoneDiameterMM} / ${lay.zoneDiaMm.toFixed(1)} mm (inner ${def.topFeature?.zoneInnerDiameterMM})`,
+        `  centers X mm: ${lay.xs.map((v) => v.toFixed(1)).join(' / ')}`,
+        `  centers Z mm: ${lay.zs.map((v) => v.toFixed(1)).join(' / ')} (FL/FR @ ${lay.zs[0].toFixed(1)}, BL/BR @ ${lay.zs[1].toFixed(1)})`,
+        `  expected zone X range: ${lay.minX.toFixed(1)}–${lay.maxX.toFixed(1)} (fitsWidth=${fitsW})`,
+        `  expected zone Z range: ${lay.minZ.toFixed(1)}–${lay.maxZ.toFixed(1)} (fitsDepth=${fitsD})`,
+        `  ceramicZone meshes: ${zoneCount}; inner: ${innerCount}; glass: ${glassCount}`,
+        `  zone Box3 size mm: ${(zSize.x * 1000).toFixed(1)} × ${(zSize.y * 1000).toFixed(1)} × ${(zSize.z * 1000).toFixed(1)} (X×Y×Z)`,
+        `  zone Box3 X range mm: ${(zoneBox.min.x * 1000).toFixed(1)}–${(zoneBox.max.x * 1000).toFixed(1)}`,
+        `  zone Box3 Z range mm: ${(zoneBox.min.z * 1000).toFixed(1)}–${(zoneBox.max.z * 1000).toFixed(1)}`,
+        `  glass Box3 size mm: ${(gSize.x * 1000).toFixed(1)} × ${(gSize.y * 1000).toFixed(1)} × ${(gSize.z * 1000).toFixed(1)}`,
+        `  glass Box3 Z range mm: ${(glassBox.min.z * 1000).toFixed(1)}–${(glassBox.max.z * 1000).toFixed(1)}`,
+        ''
+      );
+      groups.push({ group, depthMM: c.depthMM, label: c.label, widthMM: def.widthMM });
+    }
+
+    document.getElementById('out').textContent = lines.join('\n');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a2a2e);
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(2, 5, 3);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+    groups.forEach((g) => {
+      scene.add(g.group);
+    });
+
+    const cam = new THREE.OrthographicCamera(-0.7, 0.7, 0.65, -0.55, 0.01, 20);
+    cam.position.set(0, 4, 0.45);
+    cam.lookAt(0, 0, 0.45);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+    renderer.setSize(720, 480, false);
+    renderer.render(scene, cam);
+
+    window.__ceramicVerify = { lines, groups };
+  </script>
+</body>
+</html>

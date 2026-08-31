@@ -1,0 +1,51 @@
+{
+  "id": "al-fr1010-600-e",
+  "publicCode": "AL-FR1010-600-E",
+  "supplier": "lotus",
+  "supplierCode": "F2/10D-66ET",
+  "origin": "IT",
+  "type": "fryer",
+  "minCutoutDepthMM": 700,
+  "name": {
+    "en": "Fryer 10+10 l · 600",
+    "de": "Fritteuse 10+10 l · 600",
+    "pl": "Frytownica 10+10 l · 600",
+    "cs": "Fritéza 10+10 l · 600",
+    "sk": "Fritéza 10+10 l · 600"
+  },
+  "description": {
+    "en": "Drop-in electric fryer with 2 basins (10+10 l), 2 baskets 200 × 300 × 100 mm, basin 220 × 350 × 230 mm, electric input 13.2 kW (0.66 kW/l), fries output 20 kg/h, dimensions 600 × 600 × 390 mm.",
+    "de": "Drop-in-Elektrofritteuse mit 2 Wannen (10+10 l), 2 Körbe 200 × 300 × 100 mm, Wanne 220 × 350 × 230 mm, Leistung 13,2 kW (0,66 kW/l), Pommes-Leistung 20 kg/h, Abmessungen 600 × 600 × 390 mm.",
+    "pl": "Frytownica elektryczna drop-in z 2 wannami (10+10 l), 2 kosze 200 × 300 × 100 mm, wanna 220 × 350 × 230 mm, moc 13,2 kW (0,66 kW/l), wydajność frytek 20 kg/h, wymiary 600 × 600 × 390 mm.",
+    "cs": "Elektrická fritéza drop-in se 2 vanami (10+10 l), 2 koše 200 × 300 × 100 mm, vana 220 × 350 × 230 mm, příkon 13,2 kW (0,66 kW/l), výkon hranolků 20 kg/h, rozměry 600 × 600 × 390 mm.",
+    "sk": "Elektrická fritéza drop-in s 2 vaňami (10+10 l), 2 koše 200 × 300 × 100 mm, vaňa 220 × 350 × 230 mm, príkon 13,2 kW (0,66 kW/l), výkon hranolčekov 20 kg/h, rozmery 600 × 600 × 390 mm."
+  },
+  "construction": {
+    "en": "Stainless steel AISI 304, swivel heating element, cold zone, safety thermostat, drain through cabinet, includes filter container, lids and baskets. Series 700 (net depth 600 mm).",
+    "de": "Edelstahl AISI 304, klappbares Heizelement, Kaltzone, Sicherheitsthermostat, Ablauf durch Schrank, inkl. Filterbehälter, Deckel und Körbe. Serie 700 (Nettotiefe 600 mm).",
+    "pl": "Stal nierdzewna AISI 304, uchylny element grzejny, strefa zimna, termostat bezpieczeństwa, spust przez szafkę, w zestawie filtr, pokrywy i kosze. Seria 700 (głębokość netto 600 mm).",
+    "cs": "Nerez AISI 304, sklopné topné těleso, studená zóna, bezpečnostní termostat, výpust skrz skříň, v balení filtr, víka a koše. Řada 700 (čistá hloubka 600 mm).",
+    "sk": "Nerez AISI 304, sklopné vyhrievacie teleso, studená zóna, bezpečnostný termostat, výpust cez skriňu, v balení filter, veka a koše. Rad 700 (čistá hĺbka 600 mm)."
+  },
+  "widthMM": 600,
+  "minWidthMM": 600,
+  "widthAdjustable": false,
+  "depthMM": 700,
+  "minDepthMM": 700,
+  "topFeature": {
+    "type": "fryer2",
+    "vatWidthMM": 220,
+    "vatDepthMM": 350,
+    "basketWidthMM": 200,
+    "basketDepthMM": 300
+  },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 2 },
+  "allowedBodyStyles": ["doors"],
+  "powerKW": 13.2,
+  "voltage": "400 V / 3N - 50 Hz",
+  "gasKW": null,
+  "cardImage": "img/pristroje/al-fr1010-600-e-card.webp",
+  "topImage": "img/pristroje/al-fr1010-600-e-top.svg",
+  "geometryNotes": "minCutoutDepthMM 700 odvozeno z net depth 600 mm / kód F2/10D-66ET (řada 700). fryer2 absolutní vany 220×350 mm, koše 200×300 (RM/JSON); layout resolveFryer2Layout — Ke schválení #3."
+}

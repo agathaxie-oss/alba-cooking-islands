@@ -1,0 +1,45 @@
+{
+  "id": "al-fr10-400-e",
+  "publicCode": "AL-FR10-400-E",
+  "supplier": "lotus",
+  "supplierCode": "F10D-64ET",
+  "origin": "IT",
+  "type": "fryer",
+  "minCutoutDepthMM": 700,
+  "name": {
+    "en": "Fryer 10 l · 400",
+    "de": "Fritteuse 10 l · 400",
+    "pl": "Frytownica 10 l · 400",
+    "cs": "Fritéza 10 l · 400",
+    "sk": "Fritéza 10 l · 400"
+  },
+  "description": {
+    "en": "Drop-in electric fryer with 10 l capacity, dimensions 400 × 600 × 390 mm, tank 220 × 350 × 230 mm, basket 200 × 300 × 100 mm, output 10 kg/h.",
+    "de": "Drop-in-Elektrofritteuse mit 10 l Fassungsvermögen, Abmessungen 400 × 600 × 390 mm, Wanne 220 × 350 × 230 mm, Korb 200 × 300 × 100 mm, Leistung 10 kg/h.",
+    "pl": "Frytownica elektryczna drop-in o pojemności 10 l, wymiary 400 × 600 × 390 mm, wanna 220 × 350 × 230 mm, kosz 200 × 300 × 100 mm, wydajność 10 kg/h.",
+    "cs": "Elektrická fritéza drop-in o objemu 10 l, rozměry 400 × 600 × 390 mm, vana 220 × 350 × 230 mm, koš 200 × 300 × 100 mm, výkon 10 kg/h.",
+    "sk": "Elektrická fritéza drop-in o objeme 10 l, rozmery 400 × 600 × 390 mm, vaňa 220 × 350 × 230 mm, kôš 200 × 300 × 100 mm, výkon 10 kg/h."
+  },
+  "construction": {
+    "en": "Stainless steel AISI 304, dual thermostat (operating and safety), tank filter, tilting heating element for easy cleaning.",
+    "de": "Edelstahl AISI 304, Doppelthermostat (Betriebs- und Sicherheitsthermostat), Wannenfilter, klappbares Heizelement zur einfachen Reinigung.",
+    "pl": "Stal nierdzewna AISI 304, podwójny termostat (roboczy i bezpieczeństwa), filtr wanny, uchylny element grzejny do łatwego czyszczenia.",
+    "cs": "Nerez AISI 304, dvojitý termostat (provozní a bezpečnostní), filtr vany, sklopné topné těleso pro snadné čištění.",
+    "sk": "Nerez AISI 304, dvojitý termostat (prevádzkový a bezpečnostný), filter vane, sklopné vyhrievacie teleso pre ľahké čistenie."
+  },
+  "widthMM": 400,
+  "minWidthMM": 400,
+  "widthAdjustable": false,
+  "depthMM": 700,
+  "minDepthMM": 700,
+  "topFeature": { "type": "fryer1" },
+  "topFixed": true,
+  "controls": { "type": "knob", "count": 1 },
+  "allowedBodyStyles": ["doors"],
+  "powerKW": 7.15,
+  "voltage": "400 V~3N / 230 V~3, 50/60 Hz",
+  "gasKW": null,
+  "cardImage": "img/pristroje/al-fr10-400-e-card.svg",
+  "topImage": "img/pristroje/al-fr10-400-e-top.svg",
+  "geometryNotes": "Migrace z builtin lotus_f10d_64et; topFeature zatím bez nového screenshotu (etapa A)."
+}

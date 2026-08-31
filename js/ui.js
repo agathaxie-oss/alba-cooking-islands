@@ -98,6 +98,11 @@ const PALETTE_ICON_ATTRS = 'viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/sv
   + 'fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
 
 const PALETTE_ICONS = {
+  burners2: `<svg ${PALETTE_ICON_ATTRS}>
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <circle cx="12" cy="9" r="1.8" fill="currentColor" stroke="none"/>
+    <circle cx="12" cy="15" r="1.8" fill="currentColor" stroke="none"/>
+  </svg>`,
   burners4: `<svg ${PALETTE_ICON_ATTRS}>
     <rect x="4" y="4" width="16" height="16" rx="2"/>
     <circle cx="9" cy="9" r="1.8" fill="currentColor" stroke="none"/>
@@ -498,19 +503,19 @@ export function setupUI(callbacks) {
     const specials = [
       {
         key: 'neutral',
-        name: t('palette.neutral'),
+        name: t('palette.specialNeutral'),
         widthText: t('catalog.widthFrom', { mm: NEUTRAL_WIDTH_MIN }),
         onClick: () => callbacks.onAddNeutral(targetSide),
       },
       {
         key: 'drawers',
-        name: t('palette.drawers'),
+        name: t('palette.specialDrawers'),
         widthText: t('catalog.widthExact', { mm: DRAWERS_WIDTH_MM }),
         onClick: () => callbacks.onAddDrawers(targetSide),
       },
       {
         key: 'custom',
-        name: t('palette.custom'),
+        name: t('palette.specialCustom'),
         widthText: '—',
         onClick: () => callbacks.onOpenCustomNew(targetSide),
       },
@@ -745,11 +750,15 @@ export function setupUI(callbacks) {
     paletteEls.search.addEventListener('input', () => renderPaletteList());
   }
   if (paletteEls.editCatalogBtn) {
-    paletteEls.editCatalogBtn.addEventListener('click', () => callbacks.onOpenDeviceManager());
+    paletteEls.editCatalogBtn.addEventListener('click', () => {
+      (callbacks.onOpenCatalog || callbacks.onOpenDeviceManager)?.();
+    });
   }
 
-  // --- katalog přístrojů — Správce přístrojů (SPEC v3 §3.4) ---------------------
-  els.deviceManagerBtn.addEventListener('click', () => callbacks.onOpenDeviceManager());
+  // --- katalog přístrojů — topbar otevírá e-shop katalog (etapa D) ---------------
+  els.deviceManagerBtn.addEventListener('click', () => {
+    (callbacks.onOpenCatalog || callbacks.onOpenDeviceManager)?.();
+  });
 
   // --- srolování pásu sestavy (krok 3A) — posluchač jen jednou, popisek/ikona
   // a aria-expanded se dopočítávají v renderStripCollapseButton() při každém

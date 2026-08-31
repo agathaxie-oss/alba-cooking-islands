@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <title>verify burners4</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #1a1a1a; color: #eee; }
+    canvas { display: block; width: 720px; height: 480px; background: #2a2a2e; }
+    pre { background: #111; padding: 12px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>burners4 Box3 verify (absolutní mřížky 390×360)</h1>
+  <canvas id="c" width="720" height="480"></canvas>
+  <pre id="out">loading…</pre>
+  <script type="module">
+    import * as THREE from 'three';
+    import { createSegmentMesh } from './js/modules.js';
+    import { loadManifest, getById } from './js/catalog.js';
+
+    await loadManifest();
+
+    // stejná logika jako resolveCastIronBurnerLayout v modules.js (pro report čísel)
+    function layoutNums(widthMM, depthMM, columns = 2) {
+      const mm = (v) => v / 1000;
+      const widthM = mm(widthMM);
+      const depthM = mm(depthMM);
+      const EDGE = mm(20);
+      const halfW = widthM / columns;
+      const grateWM = Math.min(mm(390), Math.max(halfW - mm(10), mm(200)));
+      let grateDM = mm(360);
+      const usable = Math.max(depthM - 2 * EDGE, mm(200));
+      const fitDepth = (d) => d + Math.min(grateWM, d) * 0.95;
+      if (fitDepth(grateDM) > usable) grateDM = usable / 1.95;
+      const barLenZ = Math.min(grateWM, grateDM) * 0.95;
+      const pitchZ = Math.min(grateDM, Math.max(usable - barLenZ, barLenZ));
+      const midZ = depthM / 2;
+      const zs = [midZ - pitchZ / 2, midZ + pitchZ / 2];
+      const xs = [];
+      for (let c = 0; c < columns; c++) xs.push(-widthM / 2 + halfW * (c + 0.5));
+      return {
+        grateWmm: grateWM * 1000,
+        grateDmm: grateDM * 1000,
+        pitchZmm: pitchZ * 1000,
+        xs: xs.map((x) => x * 1000),
+        zs: zs.map((z) => z * 1000),
+        barLenmm: Math.min(grateWM, grateDM) * 0.95 * 1000,
+      };
+    }
+
+    const cases = [
+      { id: 'al-pg28-800-g', depthMM: 900, label: 'PCD-88G' },
+      { id: 'al-pg22-800-g', depthMM: 700, label: 'PCD-68G' },
+    ];
+
+    const lines = [];
+    const workHeightM = 0.9;
+    const groups = [];
+
+    for (const c of cases) {
+      const def = getById(c.id);
+      const segment = {
+        id: 1,
+        type: c.id,
+        widthMM: def.widthMM,
+        podestavba: 'closed',
+        hasPanel: true,
+        plinth: 'standard',
+        finish: 'brushed',
+        bodyStyle: 'closed',
+      };
+      const group = createSegmentMesh(segment, c.depthMM / 1000, workHeightM);
+      const boxAll = new THREE.Box3().setFromObject(group);
+      const topBox = new THREE.Box3();
+      let topCount = 0;
+      group.traverse((obj) => {
+        if (!obj.isMesh && !obj.isLineSegments) return;
+        const b = new THREE.Box3().setFromObject(obj);
+        if (b.min.y >= workHeightM - 0.002) {
+          topBox.union(b);
+          topCount += 1;
+        }
+      });
+      const size = topBox.getSize(new THREE.Vector3());
+      const center = topBox.getCenter(new THREE.Vector3());
+      const lay = layoutNums(def.widthMM, c.depthMM, 2);
+      const halfBar = lay.barLenmm / 2;
+      const minX = Math.min(...lay.xs) - halfBar;
+      const maxX = Math.max(...lay.xs) + halfBar;
+      const minZ = Math.min(...lay.zs) - halfBar;
+      const maxZ = Math.max(...lay.zs) + halfBar;
+      const fitsW = minX >= -def.widthMM / 2 - 0.5 && maxX <= def.widthMM / 2 + 0.5;
+      const fitsD = minZ >= -0.5 && maxZ <= c.depthMM + 0.5;
+
+      lines.push(
+        `${c.label} (${c.id}) topFeature=${def.topFeature?.type}`,
+        `  nominal W×cutoutD: ${def.widthMM} × ${c.depthMM} mm`,
+        `  grate W×D: ${lay.grateWmm.toFixed(1)} × ${lay.grateDmm.toFixed(1)} mm; pitchZ ${lay.pitchZmm.toFixed(1)}`,
+        `  centers X: ${lay.xs.map((v) => v.toFixed(1)).join(' / ')} mm`,
+        `  centers Z: ${lay.zs.map((v) => v.toFixed(1)).join(' / ')} mm`,
+        `  cross span (barLen): ${lay.barLenmm.toFixed(1)} mm`,
+        `  expected cross Z range: ${minZ.toFixed(1)}–${maxZ.toFixed(1)} (fitsDepth=${fitsD})`,
+        `  expected cross X range: ${minX.toFixed(1)}–${maxX.toFixed(1)} (fitsWidth=${fitsW})`,
+        `  top meshes: ${topCount}`,
+        `  topFeature Box3 size mm: ${(size.x * 1000).toFixed(1)} × ${(size.y * 1000).toFixed(1)} × ${(size.z * 1000).toFixed(1)} (X×Y×Z)`,
+        `  topFeature center mm: x=${(center.x * 1000).toFixed(1)}, z=${(center.z * 1000).toFixed(1)} (z from front)`,
+        `  topFeature Z range mm: ${(topBox.min.z * 1000).toFixed(1)}–${(topBox.max.z * 1000).toFixed(1)}`,
+        `  topFeature X range mm: ${(topBox.min.x * 1000).toFixed(1)}–${(topBox.max.x * 1000).toFixed(1)}`,
+        `  full segment Box3 X mm: ${((boxAll.max.x - boxAll.min.x) * 1000).toFixed(1)}`,
+        ''
+      );
+      groups.push({ group, depthMM: c.depthMM, label: c.label });
+    }
+
+    document.getElementById('out').textContent = lines.join('\n');
+
+    // top-down: both units side by side (pg28 left @ x=-0.55, pg22 right @ x=+0.55)
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a2a2e);
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(2, 5, 3);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+    groups.forEach((g, i) => {
+      const wrap = new THREE.Group();
+      wrap.add(g.group);
+      wrap.position.x = i === 0 ? -0.55 : 0.55;
+      scene.add(wrap);
+    });
+
+    const cam = new THREE.OrthographicCamera(-1.15, 1.15, 0.7, -0.7, 0.01, 20);
+    cam.position.set(0, 4, 0.4);
+    cam.lookAt(0, 0, 0.4);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+    renderer.setSize(720, 480, false);
+    renderer.render(scene, cam);
+
+    window.__burners4Verify = { lines, groups };
+  </script>
+</body>
+</html>

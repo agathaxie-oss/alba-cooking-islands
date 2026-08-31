@@ -49,6 +49,7 @@ i když server servíruje novou. Před KAŽDÝM ověřením:
 ```js
 (async () => {
   for (const f of ['js/arms.js','js/block.js','js/catalog.js',
+                   'js/catalog-browser.js',
                    'js/custom-dialog.js','js/device-manager.js',
                    'js/floorplan.js','js/i18n.js','js/main.js',
                    'js/materials.js','js/modules.js','js/mono-block.js',
@@ -135,7 +136,18 @@ nasazenou aplikaci se nesmí sahat, dokud zadavatel výslovně
 neřekne jinak.**
 
 Aplikace je interní a nenasazená, žádná uživatelská data → zpětná
-kompatibilita souborů se neřeší. Formát projektu je **verze 5**.
+kompatibilita souborů se neřeší. Formát projektu je **verze 6**.
+
+**KATALOG JE SLOUČENÝ DO MAIN (31. 8. 2026).** Fork
+`C:\Users\jaroslav.cerny\Documents\Cursor\3d_nerez` (kopie main na
+`c77bed6` + etapy katalogu A–E, 10 položek) je vmergovaný přes větev
+`katalog` (commit `7df988f` + merge `2088436`); jediný konflikt byl
+komentář v `main.js`. Ověřeno po merge: SEGMENT, MONO ostrov,
+katalogový prohlížeč (dialog, detail, SVG půdorys, fotky), čistá
+konzole. **Složka forku je od teď MRTVÁ — nic v ní neupravovat.**
+Stav katalogu popisuje `DOCS-KATALOG.md`; předání forku je v
+`archiv/PREDANI-KATALOG-FORK.md` (jeho pravidla o modelech Cursor
+u nás neplatí).
 
 ## B1. Co je hotové a ověřené
 
@@ -635,10 +647,10 @@ poslední odrážka. Geometrie je odblokovaná celá.**
 
 ## Nezablokuje, ale je potřeba
 
-**Výška soklu a pracovní výška (ÚKOL 13):** Novou logikou se výška soklu
-nastavuje (rozsah 50–150 mm) a pracovní výška se vypočítává (800–900 mm).
-Zbývá ale odpověď: **Platí tahle změna jen pro MONO, nebo i pro SEGMENT?**
-SEGMENT má dnes pracovní výšku také jako vstup. Viz ČÁST E.
+**Výška soklu a pracovní výška (ÚKOL 13): ZODPOVĚZENO 31. 8. 2026 —
+platí i pro SEGMENT.** Obě řady nastavují výšku soklu (50–150 mm),
+pracovní výška se dopočítává. SEGMENT tedy při úkolu 13 přechází z
+pracovní výšky jako vstupu na dopočítaný údaj stejně jako MONO.
 
 ## Odloženo — neřešit bez pokynu
 
@@ -686,8 +698,8 @@ SEGMENT má dnes pracovní výšku také jako vstup. Viz ČÁST E.
   hlavičky `ZADANI-MONO-UI.md`.
 - Zpětná kompatibilita uložených souborů se **neřeší** — aplikace je interní
   a nenasazená (platí dosavadní pravidlo projektu).
-- **ZŮSTÁVÁ OTEVŘENÉ:** platí tahle změna jen pro MONO, nebo i pro SEGMENT?
-  SEGMENT má dnes pracovní výšku taky jako vstup.
+- **ZODPOVĚZENO 31. 8. 2026: změna platí I PRO SEGMENT** — obě řady
+  nastavují sokl, pracovní výška je dopočítaná.
 
 ## Odpovědi zadavatele — už neptat, tohle je rozhodnuté
 
@@ -759,11 +771,10 @@ agenty podle smlouvy `ZADANI-MONO-OSTROV.md` — datový model a ukládání
 (`de22438`), rozhraní a přepínač stran (`5edafaa`), geometrie (`373ee11`).
 Oddíl níž o ní zůstává jako popis toho, co se stavělo a proč.
 
-**POZOR — ostrov NENÍ ověřený jako celek.** Každý ze tří agentů měřil proti
-repozitáři, ve kterém ostatní dva ještě hotoví nebyli; geometrický agent si
-dokonce musel postavit náhradní `mono-layout.js`. Závěrečné ověření
-integrace bylo spuštěno, ale **spadlo na limit session a nedoběhlo**.
-První práce příští session je ho zopakovat. Ověřit hlavně tohle:
+**OSTROV JE OVĚŘENÝ JAKO CELEK (31. 8. 2026)** — včetně opravy O2
+(deska na pracovní výšce, celková hloubka A+B), commit `62cd845`.
+Prošly všechny čtyři body níže + kontrolní čísla varianty u zdi,
+čistá konzole. Seznam se tu nechává jako popis, CO se ověřovalo:
 
 1. **Varianta u zdi se nesměla změnit.** Sáhli do ní tři agenti naráz.
    Kontrolní čísla (před vystředěním): deska x 0–2500 y 850–900 z 0–850,
@@ -796,10 +807,8 @@ podestaveb: **14** (police a dvířka — a s nimi zprovoznění `bodyStyle`,
 který dnes nemá ve 3D žádný účinek), **15** (zásuvkový blok) a **16**
 (skříňka se zásuvy na GN).
 
-**U výšky soklu a pracovní výšky zůstává otevřená:** Platí nová logika
-(výška soklu se nastavuje, pracovní výška se počítá) jen pro MONO, nebo i
-pro SEGMENT? SEGMENT má dnes pracovní výšku také jako vstup. Podrobněji viz
-ÚKOL 13 v ČÁSTI C a ČÁST E.
+**U výšky soklu a pracovní výšky ROZHODNUTO (31. 8. 2026): nová logika
+platí i pro SEGMENT.** Viz ÚKOL 13 v ČÁSTI C a ČÁST E.
 
 ## Zbývá — úkol 6, ostrovní varianta
 

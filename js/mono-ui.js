@@ -168,6 +168,15 @@ export function createMonoStrip({
   let activeTab = 'herdblok';
   let selected = null; // { layer, id } | null
   let lastState = null; // pro re-render po kliku na záložku/položku (mimo render())
+  // Editovaná strana ostrova ('A'|'B', u 'single' vždy 'A') — přepočítává se
+  // na začátku KAŽDÉHO renderAll (viz níže) a čtou ji všechny callbacky, které
+  // podle skutečných podpisů main.js (koordinátor, ne §5 ZADANI-MONO-OSTROV.md
+  // doslova — main.js dal `side` VŠEM handlerům jako poslední parametr s
+  // výchozí hodnotou 'A') potřebují vědět, na které straně se pracuje:
+  // onMonoSelect/onMonoRemove/onMonoUpdate/onMonoMove/onMonoAdd/
+  // onMonoFillPodestavby. Closure proměnná místo protažení parametrem přes
+  // desítky vnořených volání (handleSelect, buildSwapControl, param bary…).
+  let currentSide = 'A';
 
   // ---------------------------------------------------------------------------
   // Zachování rozepsané hodnoty přes úplné překreslení (zadání, viz hlavička).
@@ -210,10 +219,10 @@ export function createMonoStrip({
   function handleSelect(layer, id) {
     if (selected && selected.layer === layer && selected.id === id) {
       selected = null;
-      callbacks.onMonoSelect?.(layer, null);
+      callbacks.onMonoSelect?.(layer, null, currentSide);
     } else {
       selected = { layer, id };
-      callbacks.onMonoSelect?.(layer, id);
+      callbacks.onMonoSelect?.(layer, id, currentSide);
     }
     if (lastState) renderAll(lastState);
   }
@@ -277,7 +286,7 @@ export function createMonoStrip({
    *  leftId, +1), což prohodí levou položku s tou napravo od ní.
    *  `boundaryMM` je mm pozice hranice (= xMM pravé položky) pro pct(). */
   function buildSwapControl(layer, leftId, boundaryMM, lengthMM) {
-    const btn = makeButtonLike('span', 'strip-swap', () => callbacks.onMonoMove?.(layer, leftId, 1));
+    const btn = makeButtonLike('span', 'strip-swap', () => callbacks.onMonoMove?.(layer, leftId, 1, currentSide));
     btn.style.left = `${pct(boundaryMM, lengthMM)}%`;
     btn.title = tt('strip.swapNeighbors');
     btn.appendChild(svg('0 0 24 24', ICON_INNER.swap, {
@@ -485,7 +494,9 @@ export function createMonoStrip({
   // Dráha Podestavby — koncové zóny, řada skříněk/mezer, volba 2A („chybí").
   // ---------------------------------------------------------------------------
   function buildPodestavbyScale(layout, lengthMM, opts) {
-    const { selectable, dim } = opts;
+    const {
+      selectable, dim, currentSide,
+    } = opts;
     const scale = makeEl('div', 'mono-scale');
 
     if (layout.leftInsetMM > 0) {
@@ -532,7 +543,9 @@ export function createMonoStrip({
       });
       const fillBtn = makeButtonLike('span', 'mono-btn-warn', (ev) => {
         ev.stopPropagation();
-        callbacks.onMonoFillPodestavby?.();
+        // side je 'A' u 'single' (currentSide se tak počítá v renderAll) —
+        // viz §5 ZADANI-MONO-OSTROV.md, onMonoFillPodestavby(side).
+        callbacks.onMonoFillPodestavby?.(currentSide);
       });
       fillBtn.textContent = tt('mono.fillBtn');
       missing.appendChild(fillBtn);
@@ -632,7 +645,7 @@ export function createMonoStrip({
       {
         min: 0,
         fieldKey: `herdblok:${item.id}:frontOffsetMM`,
-        onCommit: (n) => callbacks.onMonoUpdate?.('herdblok', item.id, { frontOffsetMM: n }),
+        onCommit: (n) => callbacks.onMonoUpdate?.('herdblok', item.id, { frontOffsetMM: n }, currentSide),
       },
     )));
     fields.appendChild(paramField(tt('mono.field.guard'), paramNumberInput(
@@ -640,7 +653,7 @@ export function createMonoStrip({
       {
         min: 0,
         fieldKey: `herdblok:${item.id}:guardMM`,
-        onCommit: (n) => callbacks.onMonoUpdate?.('herdblok', item.id, { guardMM: n }),
+        onCommit: (n) => callbacks.onMonoUpdate?.('herdblok', item.id, { guardMM: n }, currentSide),
       },
     )));
     bar.appendChild(fields);
@@ -648,7 +661,7 @@ export function createMonoStrip({
     // v buildHerdblokScale) — úkol 5, PREDANI.md: pruh parametrů existuje
     // až po výběru, ale přeuspořádání je operace nad ŘADOU a musí být
     // vidět bez výběru.
-    bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('herdblok', item.id)));
+    bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('herdblok', item.id, currentSide)));
     return bar;
   }
 
@@ -672,31 +685,31 @@ export function createMonoStrip({
       fields.appendChild(paramField(tt('field.width'), paramNumberInput(Math.round(widthMM), {
         min: 0,
         fieldKey: `podestavby:${item.id}:widthMM`,
-        onCommit: (n) => callbacks.onMonoUpdate?.('podestavby', item.id, { widthMM: n }),
+        onCommit: (n) => callbacks.onMonoUpdate?.('podestavby', item.id, { widthMM: n }, currentSide),
       })));
 
       if (!isGap) {
         fields.appendChild(paramField(tt('field.baseType'), paramSelect(
           BODY_STYLE_OPTIONS, item.bodyStyle, (v) => tt(`bodyStyle.${v}`),
           `podestavby:${item.id}:bodyStyle`,
-          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { bodyStyle: v }),
+          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { bodyStyle: v }, currentSide),
         )));
         fields.appendChild(paramField(tt('field.plinth'), paramSelect(
           PLINTH_TYPES, item.plinth, (v) => tt(`plinth.${v}`),
           `podestavby:${item.id}:plinth`,
-          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { plinth: v }),
+          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { plinth: v }, currentSide),
         )));
         fields.appendChild(paramField(tt('field.finish'), paramSelect(
           FINISH_TYPES, item.finish, (v) => v,
           `podestavby:${item.id}:finish`,
-          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { finish: v }),
+          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { finish: v }, currentSide),
         )));
       }
 
       bar.appendChild(fields);
       // Šipky přeuspořádání odtud odešly na dlaždice, viz stejná poznámka
       // v buildHerdblokParamBar výše.
-      bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('podestavby', item.id)));
+      bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('podestavby', item.id, currentSide)));
     }
 
     // Tlačítko „volný prostor" tu ZÁMĚRNĚ NENÍ. Krátce tu bylo, ale zadavatel
@@ -724,14 +737,14 @@ export function createMonoStrip({
         min: Math.round(layout.usableFromMM),
         max: Math.round(layout.usableToMM),
         fieldKey: `panel:${item.id}:xMM`,
-        onCommit: (n) => callbacks.onMonoUpdate?.('panel', item.id, { xMM: n }),
+        onCommit: (n) => callbacks.onMonoUpdate?.('panel', item.id, { xMM: n }, currentSide),
       })));
       fields.appendChild(paramField(tt('mono.field.heightInPanel'), paramNumberInput(
         item.heightMM != null ? item.heightMM : 100,
         {
           min: 0,
           fieldKey: `panel:${item.id}:heightMM`,
-          onCommit: (n) => callbacks.onMonoUpdate?.('panel', item.id, { heightMM: n }),
+          onCommit: (n) => callbacks.onMonoUpdate?.('panel', item.id, { heightMM: n }, currentSide),
         },
       )));
       fields.appendChild(paramField(tt('mono.field.itemType'), paramDisplay(kindLabel)));
@@ -742,12 +755,15 @@ export function createMonoStrip({
     // Herdbloku/Podestaveb se sem přidává i bez výběru v paletě) — druh
     // nového prvku přebírá od právě vybraného, jinak 230 V jako výchozí.
     const kindForAdd = laid ? laid.item.kind : 'socket230';
-    const addBtn = makeButtonLike('span', 'mono-param-add', () => callbacks.onMonoAdd?.('panel', kindForAdd));
+    // side je 'A' u 'single' (currentSide se tak počítá v renderAll) — main.js
+    // dal `side` jako POSLEDNÍ parametr s výchozí hodnotou 'A' všem handlerům
+    // MONO (koordinátor, liší se od §5 ZADANI-MONO-OSTROV.md doslova).
+    const addBtn = makeButtonLike('span', 'mono-param-add', () => callbacks.onMonoAdd?.('panel', kindForAdd, currentSide));
     addBtn.textContent = tt('mono.panel.addItem');
     bar.appendChild(addBtn);
 
     if (laid) {
-      bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('panel', laid.item.id)));
+      bar.appendChild(buildTrashButton(() => callbacks.onMonoRemove?.('panel', laid.item.id, currentSide)));
     }
     return bar;
   }
@@ -823,13 +839,16 @@ export function createMonoStrip({
   /** Půdorysné schéma límců — jen grafika (žádný natvrdo psaný text uvnitř
    *  SVG, viz i18n pravidlo); solid+plná barva = zapnuto, přerušovaně = ne,
    *  stejná konvence jako mockup. <title> nese přístupný název (§ „Límce"). */
-  function buildLimecDiagram(collar) {
+  function buildLimecDiagram(collar, isIsland) {
     const rect = (x, y, w, h, on) => (on
       ? `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>`
       : `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>`);
 
+    // Ostrov nemá zadní hranu vůbec (§2 ZADANI-MONO-OSTROV.md) — schéma proto
+    // horní hranu nekreslí jako přepínatelnou (ani zapnutou, ani vypnutou),
+    // jen jako pevnou součást obrysu (stejnou barvou jako vnitřní obdélník).
     const inner = '<rect x="20" y="24" width="200" height="72" rx="3" fill="var(--bg-input)" stroke="var(--border)" stroke-width="1.5"/>'
-      + rect(20, 24, 200, 9, !!collar.back)
+      + (isIsland ? '' : rect(20, 24, 200, 9, !!collar.back))
       + rect(20, 24, 9, 72, !!collar.left)
       + rect(211, 24, 9, 72, !!collar.right);
 
@@ -840,7 +859,7 @@ export function createMonoStrip({
     return el;
   }
 
-  function buildLimecPanel(monoState) {
+  function buildLimecPanel(monoState, isIsland) {
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = activeTab !== 'limec';
 
@@ -851,8 +870,15 @@ export function createMonoStrip({
     const body = makeEl('div', 'mono-limec-body');
     const opts = makeEl('div', 'mono-limec-opts');
 
-    opts.appendChild(limecSwitchRow(tt('mono.collar.back'), !!collar.back,
-      (v) => callbacks.onMonoCollarChange?.({ back: v })));
+    // Zadní límec se u ostrova VŮBEC NENABÍZÍ — ani jako vypnutý přepínač
+    // (§2 ZADANI-MONO-OSTROV.md, ostrov nemá záda). Místo přepínače krátká
+    // vysvětlující poznámka (mono.collar.islandNote, §10 zadání).
+    if (isIsland) {
+      opts.appendChild(makeEl('p', 'mono-track-note', tt('mono.collar.islandNote')));
+    } else {
+      opts.appendChild(limecSwitchRow(tt('mono.collar.back'), !!collar.back,
+        (v) => callbacks.onMonoCollarChange?.({ back: v })));
+    }
 
     const leftRow = limecSwitchRow(tt('mono.collar.left'), !!collar.left,
       (v) => callbacks.onMonoCollarChange?.({ left: v }));
@@ -882,7 +908,7 @@ export function createMonoStrip({
     body.appendChild(opts);
 
     const diagram = makeEl('div', 'mono-limec-diagram');
-    diagram.appendChild(buildLimecDiagram(collar));
+    diagram.appendChild(buildLimecDiagram(collar, isIsland));
     body.appendChild(diagram);
 
     panel.appendChild(body);
@@ -940,12 +966,45 @@ export function createMonoStrip({
   }
 
   // ---------------------------------------------------------------------------
+  // Přepínač strany A/B (§4 ZADANI-MONO-OSTROV.md) — jen u ostrova a jen pro
+  // záložky herdblok/podestavby/panel (jejich obsah je PER-STRANA); limec a
+  // ramena mají sdílený obsah, tam se vůbec nevolá. Znovupoužívá STEJNÝ stav
+  // (state.editSide) a callback (onEditSideChange) jako SEGMENT v ui.js —
+  // žádný nový mechanismus, jen jiná kresba (§4: doslovné znovupoužití
+  // .strip-tab, vzhled přepínače je převzatý ze SEGMENTu). Obal má vlastní
+  // třídu `.mono-side-switch` (jediná nová CSS třída, §11 zadání).
+  // ---------------------------------------------------------------------------
+  function buildSideSwitch(currentSide) {
+    const wrap = makeEl('div', 'mono-side-switch');
+    wrap.setAttribute('role', 'tablist');
+    ['A', 'B'].forEach((side) => {
+      const isActive = currentSide === side;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = isActive ? 'strip-tab active' : 'strip-tab';
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(isActive));
+      btn.title = tt('strip.editSideTitle', { side });
+      btn.textContent = tt(side === 'A' ? 'side.sideA' : 'side.sideB');
+      btn.addEventListener('click', () => {
+        // stejná signatura jako SEGMENT (ui.js#renderStripTabs) — přepnutí
+        // editované strany zároveň otočí kameru.
+        callbacks.onEditSideChange?.(side, { turnCamera: true });
+      });
+      wrap.appendChild(btn);
+    });
+    return wrap;
+  }
+
+  // ---------------------------------------------------------------------------
   // Sestavení čtyř panelů (Herdblok+Podestavby sdílejí jeden, přesně jako
   // v mockupu) a záložek.
   // ---------------------------------------------------------------------------
-  function buildHerdPodePanel(monoState, layout, lengthMM) {
+  function buildHerdPodePanel(monoState, layout, lengthMM, isIsland, currentSide) {
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = !(activeTab === 'herdblok' || activeTab === 'podestavby');
+
+    if (isIsland) panel.appendChild(buildSideSwitch(currentSide));
 
     panel.appendChild(buildTrackViewport([
       buildRuler(lengthMM),
@@ -957,6 +1016,7 @@ export function createMonoStrip({
       trackRow(tt('mono.tab.podestavby'), buildPodestavbyScale(layout, lengthMM, {
         selectable: activeTab === 'podestavby',
         dim: activeTab !== 'podestavby',
+        currentSide,
       })),
     ]));
 
@@ -970,9 +1030,11 @@ export function createMonoStrip({
     return panel;
   }
 
-  function buildPanelPanel(state, monoState, layout, lengthMM) {
+  function buildPanelPanel(state, monoState, layout, lengthMM, isIsland, currentSide) {
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = activeTab !== 'panel';
+
+    if (isIsland) panel.appendChild(buildSideSwitch(currentSide));
 
     panel.appendChild(buildTrackViewport([
       buildRuler(lengthMM),
@@ -1027,7 +1089,17 @@ export function createMonoStrip({
   function renderAll(state) {
     if (!els.body) return;
     const monoState = (state && state.mono) || {};
-    const layout = computeMonoLayout(state);
+    // Ostrov edituje jednu ze dvou stran (§4 ZADANI-MONO-OSTROV.md) — stejný
+    // mechanismus jako SEGMENT (state.editSide/onEditSideChange, ui.js).
+    // U 'single' je vždy 'A', nezávisle na uložené hodnotě state.editSide.
+    const isIsland = !!(state && state.variant === 'island');
+    // POZOR: přiřazení, ne `const` — `currentSide` je closure proměnná (viz
+    // deklarace u activeTab/selected výše), kterou čtou callbacky hluboko
+    // vnořené v build* funkcích (handleSelect, buildSwapControl, param bary).
+    // Kdyby tu vzniklo stínění přes `const`, closure proměnná by zůstala
+    // navždy 'A' a odeslané callbacky by mířily na špatnou stranu.
+    currentSide = isIsland && state.editSide === 'B' ? 'B' : 'A';
+    const layout = computeMonoLayout(state, currentSide);
     const lengthMM = layout.lengthMM;
 
     const focusInfo = captureFocus();
@@ -1035,9 +1107,9 @@ export function createMonoStrip({
     renderTabs();
 
     els.body.textContent = '';
-    els.body.appendChild(buildHerdPodePanel(monoState, layout, lengthMM));
-    els.body.appendChild(buildPanelPanel(state, monoState, layout, lengthMM));
-    els.body.appendChild(buildLimecPanel(monoState));
+    els.body.appendChild(buildHerdPodePanel(monoState, layout, lengthMM, isIsland, currentSide));
+    els.body.appendChild(buildPanelPanel(state, monoState, layout, lengthMM, isIsland, currentSide));
+    els.body.appendChild(buildLimecPanel(monoState, isIsland));
     els.body.appendChild(buildArmsPanel(state, monoState, layout, lengthMM));
 
     // Musí běžet AŽ PO připojení výše — viz komentář u updateTrackOverflowHints.

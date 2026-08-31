@@ -3060,6 +3060,19 @@ html.cat-overlay-open body {
   display: none;
 }
 
+/* přepínač strany A/B v pásu MONO (§4 ZADANI-MONO-OSTROV.md) — zobrazuje se
+   jen u ostrova, nad dráhami záložek herdblok/podestavby/panel (jejich obsah
+   je PER-STRANA; limec a ramena mají sdílený obsah a přepínač nedostávají).
+   Vnitřní tlačítka jsou STEJNÁ třída .strip-tab jako záložky pásu — žádný
+   nový vzhled (§11 zadání, vzhled se přebírá ze SEGMENTu), tahle třída je
+   jen OBAL, který je zarovná a odsadí od pravítka pod ním. */
+.mono-side-switch {
+  display: flex;
+  gap: 4px;
+  padding: 10px 0 0;
+  flex: 0 0 auto;
+}
+
 /* ==========================================================================
    VODOROVNÉ POSOUVÁNÍ DRÁHY — úkol 11, varianta B1 (PREDANI.md +
    mockup-pas-varianty.html). Řeší přeplněnou řadu (součet položek >

@@ -34,6 +34,9 @@ import {
   ARM_BACK_OFFSET_MIN,
   ARM_BACK_OFFSET_MAX,
   ARM_BACK_OFFSET_DEFAULT,
+  ARM_CENTER_OFFSET_MIN,
+  ARM_CENTER_OFFSET_MAX,
+  ARM_CENTER_OFFSET_DEFAULT,
 } from './arms.js';
 import { applyTopFeature, FINISH_TYPES, DEFAULT_FINISH } from './modules.js';
 import { getById as getCatalogEntry } from './catalog.js';
@@ -97,14 +100,21 @@ function mirrorX(xMM, lengthMM, widthMM = 0) {
  * podmínka "left/right jen na konci VERTICAL_PLATE" uvnitř buildHerdblokUsek
  * i po záměně sedí na SPRÁVNÝ (odpovídající) konec.
  *
+ * ÚKOL 6 (ostrov): `back` se u `variant === 'island'` NIKDY nezapíše do
+ * výsledného pole, bez ohledu na uloženou hodnotu `limec.back` — ostrov
+ * nemá záda (zadání, §9). `left`/`right` zrcadlení (viz níž) je STEJNÉ pro
+ * obě varianty — je to o tom, jak se v UI čte "vlevo"/"vpravo" na obrazovce,
+ * nezávisí na single/island.
+ *
  * @param {object} [limec] MonoCollar ze state.mono — může chybět (starší/cizí stav)
+ * @param {string} [variant] state.variant — 'single'|'island'
  * @returns {Array<{edge:'back'|'left'|'right', heightMM:number}>}
  */
-function buildCollarSpec(limec) {
+function buildCollarSpec(limec, variant) {
   const l = limec || {};
   const heightMM = l.heightMM ?? COLLAR_HEIGHT_DEFAULT_MM;
   const collar = [];
-  if (l.back) collar.push({ edge: 'back', heightMM });
+  if (l.back && variant !== 'island') collar.push({ edge: 'back', heightMM });
   if (l.left) collar.push({ edge: 'right', heightMM }); // zrcadleno, viz JSDoc výš
   if (l.right) collar.push({ edge: 'left', heightMM });  // zrcadleno, viz JSDoc výš
   return collar;
@@ -121,7 +131,8 @@ function buildCollarSpec(limec) {
  *   z block.js.
  */
 export function buildMonoScene(state) {
-  const { depthAMM, heightMM } = state.dimensions;
+  const { depthAMM, depthBMM, heightMM } = state.dimensions;
+  const isIsland = state.variant === 'island';
 
   // §krok 1 zadání — pracovní výška MONO je 850–900, na rozdíl od SEGMENTu
   // (850–950, viz modules.js HEIGHT_MIN/MAX) — ořízne se tu, ne až uvnitř
@@ -130,23 +141,27 @@ export function buildMonoScene(state) {
   const workHeightMM = clamp(heightMM, WORK_HEIGHT_MIN_MM, WORK_HEIGHT_MAX_MM);
 
   // §krok 2 zadání — typy konců; chybějící state.mono (starší/cizí stav)
-  // nespadne, jen se použije výchozí typ na obou koncích.
+  // nespadne, jen se použije výchozí typ na obou koncích. SDÍLENÉ pro obě
+  // strany A/B (viz ZADANI-MONO-OSTROV.md §3) — je to pořád tentýž blok.
   const monoState = state.mono || {};
   const leftEndType = readEndType(monoState.leftEndType);
   const rightEndType = readEndType(monoState.rightEndType);
 
   // §krok 3 zadání — JEDINÝ zdroj poloh podél X (délka, podestavby, prvky
-  // panelu) je computeMonoLayout(state) — mono-layout.js. Tenhle adaptér
-  // si nic z toho sám nedopočítává (viz hlavička souboru).
-  const layout = computeMonoLayout(state);
-  const lengthMM = layout.lengthMM;
+  // panelu) je computeMonoLayout(state, side) — mono-layout.js. Tenhle
+  // adaptér si nic z toho sám nedopočítává (viz hlavička souboru). Strana A
+  // je vždy počítaná; strana B jen u `island` (u `single` je vždy prázdná,
+  // viz smlouva ZADANI-MONO-OSTROV.md §3 — nepovinný 2. parametr spadá na 'A').
+  const layoutA = computeMonoLayout(state, 'A');
+  const layoutB = isIsland ? computeMonoLayout(state, 'B') : null;
+  const lengthMM = layoutA.lengthMM;
 
-  // Podestavby: geometrii zajímají jen SKUTEČNÉ skříňky (kind:'cabinet') —
-  // 'gap' je úmyslně vynechané místo (most), layout ho vrací kvůli UI
-  // (kreslí se šedě jako volný prostor), ale žádné těleso pro něj nevzniká.
-  // xMM se ZRCADLÍ (viz mirrorX výš) — layout dává xMM jako levou hranu v
-  // pásu, mirrorX ji převede na odpovídající levou hranu v prohozené
-  // geometrii.
+  // Podestavby strany A: geometrii zajímají jen SKUTEČNÉ skříňky
+  // (kind:'cabinet') — 'gap' je úmyslně vynechané místo (most), layout ho
+  // vrací kvůli UI (kreslí se šedě jako volný prostor), ale žádné těleso pro
+  // něj nevzniká. xMM se ZRCADLÍ (viz mirrorX výš) — layout dává xMM jako
+  // levou hranu v pásu, mirrorX ji převede na odpovídající levou hranu v
+  // prohozené geometrii.
   //
   // `finish` (PREDANI.md úkol 9b) je vlastnost KAŽDÉ SKŘÍŇKY ZVLÁŠŤ, ne
   // celého bloku — čte se z item.finish (MonoCabinet.finish) TADY, uvnitř
@@ -154,7 +169,7 @@ export function buildMonoScene(state) {
   // sousední skříňky v jedné řadě mohou mít každá jinou úpravu a tím pádem
   // i jiný tvar spodních koutů (viz buildPodestavba/FINISH_H2 v
   // mono-geometry.js). readFinish() ošetřuje chybějící/neznámou hodnotu.
-  const podestavby = layout.podestavby
+  const podestavbyA = layoutA.podestavby
     .filter(({ item }) => item.kind === 'cabinet')
     .map(({ item, xMM, widthMM }) => ({
       xMM: mirrorX(xMM, lengthMM, widthMM),
@@ -162,21 +177,43 @@ export function buildMonoScene(state) {
       finish: readFinish(item.finish),
     }));
 
-  // Prvky panelu: computeMonoLayout() je vrací už oříznuté do použitelného
-  // rozsahu (zadání §2); tady se jen převedou na tvar, který čeká
-  // buildMonoBlock/buildPanelItem (kind/xMM/heightMM, xMM ABSOLUTNÍ po délce
-  // bloku — na lokální souřadnici úseku je převádí až mono-geometry.js).
+  // Podestavby strany B (jen `island`) — ÚKOL 6: BEZ mirrorX. Strana B se
+  // staví v LOKÁLNÍCH souřadnicích a celá podskupina se ve mono-geometry.js
+  // otočí rotation.y=Math.PI — druhé zrcadlení (mirrorX i teď) by se s tou
+  // rotací vyrušilo špatným směrem (viz JSDoc buildMonoBlock v
+  // mono-geometry.js pro odvození). ŽÁDNÉ záporné měřítko se nepoužívá.
+  const podestavbyB = isIsland ? layoutB.podestavby
+    .filter(({ item }) => item.kind === 'cabinet')
+    .map(({ item, xMM, widthMM }) => ({
+      xMM,
+      widthMM,
+      finish: readFinish(item.finish),
+    })) : [];
+
+  // Prvky panelu strany A: computeMonoLayout() je vrací už oříznuté do
+  // použitelného rozsahu (zadání §2); tady se jen převedou na tvar, který
+  // čeká buildMonoBlock/buildPanelItem (kind/xMM/heightMM, xMM ABSOLUTNÍ po
+  // délce bloku — na lokální souřadnici úseku je převádí až mono-geometry.js).
   // xMM je poloha STŘEDU prvku (ZADANI-MONO-UI.md §1, MonoPanelItem.xMM), ne
   // levá hrana — mirrorX se proto volá BEZ widthMM (bodové zrcadlení).
-  const panelItems = layout.panelItems.map(({ item, xMM }) => ({
+  const panelItemsA = layoutA.panelItems.map(({ item, xMM }) => ({
     kind: item.kind,
     xMM: mirrorX(xMM, lengthMM),
     heightMM: item.heightMM,
   }));
 
-  // §krok 4 zadání — jediný úsek herdbloku přes celou délku bloku (fyzicky
-  // existuje jen jedna deska/korpus/panel/lišta — přístroje se do něj jen
-  // OSAZUJÍ, nekreslí se ve 3D samostatně, viz "Co se teď NEDĚLÁ").
+  // Prvky panelu strany B (jen `island`) — BEZ mirrorX, stejný důvod jako
+  // u podestavbyB výš.
+  const panelItemsB = isIsland ? layoutB.panelItems.map(({ item, xMM }) => ({
+    kind: item.kind,
+    xMM,
+    heightMM: item.heightMM,
+  })) : [];
+
+  // §krok 4 zadání — jediný úsek herdbloku strany A přes celou délku bloku
+  // (fyzicky existuje jen jedna deska/korpus/panel/lišta na stranu —
+  // přístroje se do něj jen OSAZUJÍ, nekreslí se ve 3D samostatně, viz
+  // "Co se teď NEDĚLÁ").
   //
   // xMM se zrcadlí stejně jako u podestaveb (tady vyjde beze změny, protože
   // úsek pokrývá celou délku 0..lengthMM, ale vzorec se používá pořád stejný
@@ -185,31 +222,63 @@ export function buildMonoScene(state) {
   // x = widthMM (kladné world X po vystředění = vlevo na obrazovce), tu ale
   // buildHerdblokUsek staví jako svůj rightEndType — proto se sem posílá
   // prohozeně (stejná záměna jako v buildCollarSpec výš).
-  const herdblok = [{
+  //
+  // ÚKOL 6: `collar` se posílá jen u `single` — u `island` se limec staví
+  // JEDNOU nad kombinovaným obrysem (viz buildMonoBlock v mono-geometry.js,
+  // top-level parametr `collar` níž), ne uvnitř tohohle úseku.
+  const herdblokA = [{
     xMM: mirrorX(0, lengthMM, lengthMM),
     widthMM: lengthMM,
     depthMM: depthAMM,
     leftEndType: rightEndType,
     rightEndType: leftEndType,
-    collar: buildCollarSpec(monoState.limec),
+    collar: isIsland ? [] : buildCollarSpec(monoState.limec, state.variant),
   }];
 
-  const { group } = buildMonoBlock({ workHeightMM, podestavby, herdblok, panelItems });
+  // Úsek herdbloku strany B (jen `island`) — ÚKOL 6: leftEndType/rightEndType
+  // SDÍLENÉ a NEPROHOZENÉ (na rozdíl od herdblokA výš) — rotation.y=Math.PI
+  // fyzicky otočí celý tvar, takže žádná záměna typů není potřeba (ověřeno
+  // odvozením v mono-geometry.js#buildMonoBlock JSDoc i měřením v přejímce).
+  const depthBMMNum = isIsland ? (Number(depthBMM) || 0) : 0;
+  const herdblokB = isIsland ? [{
+    xMM: 0,
+    widthMM: lengthMM,
+    depthMM: depthBMMNum,
+    leftEndType,
+    rightEndType,
+    collar: [],
+  }] : [];
+
+  const { group } = buildMonoBlock({
+    workHeightMM,
+    variant: state.variant,
+    depthAMM,
+    depthBMM: depthBMMNum,
+    podestavbyA,
+    herdblokA,
+    panelItemsA,
+    podestavbyB,
+    herdblokB,
+    panelItemsB,
+    // ÚKOL 6, §9 — límec left/right nad kombinovaným obrysem, jen `island`.
+    // `back` se sem NIKDY nepošle (buildCollarSpec ho pro island vynechá) —
+    // a i kdyby, buildMonoBlock ho defenzivně ignoruje taky.
+    collar: isIsland ? buildCollarSpec(monoState.limec, state.variant) : [],
+  });
 
   // §doplněno (vada "přístroje se ve 3D nekreslí") — přístroje řady herdbloku
-  // se osadí NA rovinu pracovní desky přes tentýž dispatcher vrchních detailů,
-  // jaký používá SEGMENT (modules.js applyTopFeature, viz zadání ÚKOL A/B).
-  // Poloha je VÝHRADNĚ z computeMonoLayout(state).herdblok — layout.herdblok
-  // se tu (na rozdíl od komentáře v hlavičce souboru, který popisoval STAV
-  // PŘED touto opravou) už čte, adaptér si ale žádnou polohu sám nedopočítává,
-  // jen výstup layoutu převádí do prostoru, ve kterém staví build*Top.
+  // strany A se osadí NA rovinu pracovní desky přes tentýž dispatcher
+  // vrchních detailů, jaký používá SEGMENT (modules.js applyTopFeature, viz
+  // zadání ÚKOL A/B). Poloha je VÝHRADNĚ z computeMonoLayout(state,'A').herdblok
+  // — adaptér si žádnou polohu sám nedopočítává, jen výstup layoutu převádí
+  // do prostoru, ve kterém staví build*Top.
   //
   // TODO: výřez v desce pro vestavěný přístroj se v tomto kole VĚDOMĚ
   // NEDĚLÁ (rozhodnutí zadavatele) — přístroj jen sedí na celé, neděravé
   // desce; THREE.Shape.holes se nepoužívá. Až bude výřez zadaný, patří sem.
   const devicesGroup = new THREE.Group();
   devicesGroup.name = 'pristroje';
-  layout.herdblok.forEach(({ item, xMM, widthMM }) => {
+  layoutA.herdblok.forEach(({ item, xMM, widthMM }) => {
     if (item.type === 'surface') return; // pracovní plocha, ne přístroj — přeskočit
 
     const def = getCatalogEntry(item.type);
@@ -254,22 +323,46 @@ export function buildMonoScene(state) {
   });
   group.add(devicesGroup);
 
+  // Přístroje strany B (jen `island`) — STEJNÝ princip jako zbytek strany B
+  // v mono-geometry.js#buildMonoBlock: RAW (nezrcadlené) lokální souřadnice
+  // uvnitř skupiny otočené o 180° kolem Y a umístěné stejně jako sideBGroup
+  // tam (position.x=lengthMM, position.z=totalDepthMM — ŽÁDNÉ záporné
+  // měřítko). totalDepthMM se tu počítá stejně jako uvnitř buildMonoBlock.
+  const totalDepthMM = depthAMM + depthBMMNum;
+  const devicesBGroup = new THREE.Group();
+  devicesBGroup.name = 'pristroje-strana-b';
+  if (isIsland) {
+    devicesBGroup.rotation.y = Math.PI;
+    devicesBGroup.position.set(mm(lengthMM), 0, mm(totalDepthMM));
+    layoutB.herdblok.forEach(({ item, xMM, widthMM }) => {
+      if (item.type === 'surface') return;
+      const def = getCatalogEntry(item.type);
+      if (!def) return;
+      const widthM = mm(widthMM);
+      const depthM = mm(def.depthMM);
+      // RAW xMM (bez mirrorX) — rotace zajistí správnou stranu, stejně jako
+      // u podestavbyB/panelItemsB výš.
+      const centerXM = mm(xMM + widthMM / 2);
+      const frontOffsetMM = item.frontOffsetMM ?? 100;
+      const deviceGroup = new THREE.Group();
+      deviceGroup.name = `pristroj-${item.type}`;
+      deviceGroup.position.set(centerXM, 0, mm(frontOffsetMM));
+      applyTopFeature(deviceGroup, def, item, widthM, depthM, mm(workHeightMM));
+      devicesBGroup.add(deviceGroup);
+    });
+  }
+  group.add(devicesBGroup);
+
   // §doplněno (vada "ramena se ve 3D nevykreslí") — napouštěcí ramena.
   // state.arms je SDÍLENÉ pole se SEGMENTem (main.js/ui.js
   // onAddArm/onArmPositionChange/onArmOffsetChange/onArmAngleChange), sem se
   // čte přímo ze `state`, protože buildMonoScene(state) dostává celý stav.
   //
-  // MONO zatím nemá ostrovní variantu (viz TODO v main.js rebuildScene()
-  // ~ř. 519 — MONO se chová jako 'single') — postaveno je tu proto jen
-  // umístění "u stěny": odsazení arm.offsetMM se měří OD ZADNÍ HRANY DESKY
-  // dopředu, stejný vzorec jako block.js computeArmPlacement (jednostranná
-  // větev, viz i18n klíč mono.armsNote). Rameno sedí NA DESCE (workHeightMM,
-  // stejná hodnota, jakou buildMonoScene výš předává do buildMonoBlock —
-  // nedopočítává se znovu z jiného zdroje), z-hloubka vychází z depthAMM
-  // (stejná hodnota, jaká jde výš do herdblok[0].depthMM).
-  // TODO(PREDANI.md úkol 6): až MONO dostane ostrovní variantu, přibude
-  // sem i druhá větev (odsazení od středu/spáry mezi stranami A/B) —
-  // ARM_CENTER_OFFSET_MIN/MAX/DEFAULT z arms.js, stejně jako u SEGMENTu.
+  // ÚKOL 6 (ostrov): JEDNA sada ramen na spáře mezi stranami A/B (ne dvě) —
+  // u `island` se odsazení měří od STŘEDU (spáry), u `single` od ZADNÍ
+  // HRANY desky, přesně jako block.js#computeArmPlacement pro SEGMENT.
+  // Poloha X (mirrorX) a negace úhlu se NEMĚNÍ mezi variantami — zrcadlením
+  // osy X se mění smysl otáčení kolem Y bez ohledu na to, jak se počítá Z.
   const armsGroup = new THREE.Group();
   armsGroup.name = 'ramena';
   (state.arms || []).forEach((arm) => {
@@ -280,15 +373,28 @@ export function buildMonoScene(state) {
     const clampedXMM = clamp(Number(arm.positionXMM) || 0, 0, lengthMM);
     const mirroredXMM = mirrorX(clampedXMM, lengthMM);
 
-    // Odsazení od zadní hrany — Z se zrcadlením OSY X NEMĚNÍ (viz zadání,
-    // bod 3), proto tu žádné zrcadlo není. Stejný vzorec jako block.js
-    // computeArmPlacement, jednostranná (wall) větev.
-    const offsetMM = clamp(
-      arm.offsetMM != null ? Number(arm.offsetMM) : ARM_BACK_OFFSET_DEFAULT,
-      ARM_BACK_OFFSET_MIN,
-      ARM_BACK_OFFSET_MAX
-    );
-    const zLocalMM = depthAMM - offsetMM;
+    let zLocalMM;
+    let baseDir;
+    if (isIsland) {
+      // odsazení od STŘEDU (spáry mezi stranami A/B) — kopíruje
+      // block.js#computeArmPlacement, větev island (viz zadání §8).
+      const offsetMM = clamp(
+        arm.offsetMM != null ? Number(arm.offsetMM) : ARM_CENTER_OFFSET_DEFAULT,
+        ARM_CENTER_OFFSET_MIN,
+        ARM_CENTER_OFFSET_MAX
+      );
+      zLocalMM = depthAMM + offsetMM;
+      baseDir = 1;
+    } else {
+      // odsazení od ZADNÍ HRANY desky — beze změny oproti dřívějšímu chování.
+      const offsetMM = clamp(
+        arm.offsetMM != null ? Number(arm.offsetMM) : ARM_BACK_OFFSET_DEFAULT,
+        ARM_BACK_OFFSET_MIN,
+        ARM_BACK_OFFSET_MAX
+      );
+      zLocalMM = depthAMM - offsetMM;
+      baseDir = -1;
+    }
 
     const armMesh = createArmMesh(
       {
@@ -298,9 +404,10 @@ export function buildMonoScene(state) {
         // (arms.js ~ř. 118: pivot.rotation.y = degToRad(arm.angleDeg)) —
         // rameno natočené v pásu o +30° musí ve zrcadlené geometrii dostat
         // −30°, jinak by mířilo na opačnou stranu, než uživatel zadal.
+        // Beze změny mezi variantami (§8 zadání — "úhel se dál neguje").
         angleDeg: -(Number(arm.angleDeg) || 0),
       },
-      { lengthMM, zLocalMM, baseDir: -1, workHeightM: mm(workHeightMM) }
+      { lengthMM, zLocalMM, baseDir, workHeightM: mm(workHeightMM) }
     );
     // arms.js interně počítá group.position.x = lengthMM/2 − positionXMM —
     // vzorec ušitý na CENTROVANÝ prostor block.js (SEGMENT), kde se `group`
@@ -330,11 +437,18 @@ export function buildMonoScene(state) {
   // hloubky (to je vlastnost katalogových přístrojů SEGMENTu, viz
   // computeSideDepth v block.js) — ui.js čte depthGrownA/B a depthReasonsA/B
   // u obou produktů bezpodmínečně, proto tu musí být i pro MONO.
+  //
+  // ÚKOL 6: depthBMM se u `island` už NESTAVÍ natvrdo na 0 — čte se ze
+  // state.dimensions.depthBMM stejně, jako to dělá block.js pro SEGMENT.
   const dimensions = {
     lengthMM: Math.round(lengthMM),
-    depthMM: Math.round(depthAMM),
+    // OPRAVA O2: u `island` je celková hloubka bloku součet obou stran
+    // (depthAMM + depthBMM) — stejné pravidlo jako block.js#totalDepthMM pro
+    // SEGMENT (ř. 199/261 tamtéž). U `single` zůstává beze změny (depthBMMNum
+    // je tam vždy 0, viz definice depthBMMNum výš).
+    depthMM: Math.round(isIsland ? depthAMM + depthBMMNum : depthAMM),
     depthAMM: Math.round(depthAMM),
-    depthBMM: 0,
+    depthBMM: isIsland ? Math.round(depthBMMNum) : 0,
     heightMM: Math.round(workHeightMM),
     depthGrownA: false,
     depthGrownB: false,

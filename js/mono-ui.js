@@ -16,9 +16,12 @@
 //      práce) nebo pro daný klíč nic nevrátí, spadneme zpátky na syrový klíč
 //      katalogu (item.type) — viz resolveDeviceName níže. Nikdy nespadnout,
 //      nikdy neukázat prázdno.
-//   2) Číselníky BODY_STYLE_OPTIONS/PLINTH_TYPES/FINISH_TYPES (modules.js)
-//      a konstanty ramene (arms.js) jsou tu přepsané jako lokální literály —
-//      duplicitně, ale schválně (jsou to jen pole řetězců/čísel, ne stav).
+//   2) Číselníky BODY_STYLE_OPTIONS/FINISH_TYPES (modules.js) a konstanty
+//      ramene (arms.js) jsou tu přepsané jako lokální literály — duplicitně,
+//      ale schválně (jsou to jen pole řetězců/čísel, ne stav). PLINTH_TYPES
+//      tenhle modul od ÚKOLU 13 (ZADANI-SOKL.md, 31. 8. 2026) VŮBEC
+//      nepotřebuje — volba soklu se z pásu MONO stěhuje do levého panelu
+//      (ui.js), sokl je vlastnost CELÉHO BLOKU, ne skříňky.
 //
 // Překreslení je vždy ÚPLNÉ (els.body.textContent = '' a stavba znovu) —
 // jednodušší a bezpečnější než ruční diffing pěti různě tvarovaných záložek.
@@ -36,7 +39,8 @@ const END_TYPE_VERTICAL = 'svislaDeska';
 const END_TYPE_CHAMFER = 'svislaDeskaZkos';
 
 const BODY_STYLE_OPTIONS = ['closed', 'doors', 'open']; // modules.js
-const PLINTH_TYPES = ['legs', 'building', 'construction']; // modules.js
+// PLINTH_TYPES SEM ZÁMĚRNĚ NEPATŘÍ — ÚKOL 13 (ZADANI-SOKL.md) ruší volbu
+// soklu z pásu MONO, viz hlavička modulu výše a buildPodestavbyParamBar níže.
 // H3 se od úkolu 9a (PREDANI.md) nenabízí — zdroj pravdy je modules.js,
 // tenhle literál se MUSÍ měnit SPOLU s ním, jinak se seznamy rozejdou.
 const FINISH_TYPES = ['HS+', 'H1', 'H2']; // modules.js — kódy, nepřekládají se
@@ -694,11 +698,10 @@ export function createMonoStrip({
           `podestavby:${item.id}:bodyStyle`,
           (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { bodyStyle: v }, currentSide),
         )));
-        fields.appendChild(paramField(tt('field.plinth'), paramSelect(
-          PLINTH_TYPES, item.plinth, (v) => tt(`plinth.${v}`),
-          `podestavby:${item.id}:plinth`,
-          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { plinth: v }, currentSide),
-        )));
+        // ÚKOL 13 (ZADANI-SOKL.md) — volba soklu ODSTRANĚNA (byl tu select
+        // field.plinth/PLINTH_TYPES nad podestavbyItem.plinth): sokl je od
+        // 31. 8. 2026 vlastnost CELÉHO BLOKU, nastavuje se v levém panelu
+        // (ui.js #select-plinth-type), ne tady u jednotlivé skříňky.
         fields.appendChild(paramField(tt('field.finish'), paramSelect(
           FINISH_TYPES, item.finish, (v) => v,
           `podestavby:${item.id}:finish`,

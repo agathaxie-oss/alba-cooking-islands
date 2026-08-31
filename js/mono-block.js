@@ -27,6 +27,10 @@ import {
   COLLAR_HEIGHT_DEFAULT_MM,
   WORK_HEIGHT_MIN_MM,
   WORK_HEIGHT_MAX_MM,
+  DESK_FACE_HEIGHT_MM,
+  PANEL_SETBACK_MM,
+  PANEL_HEIGHT_MM,
+  LISTA_HEIGHT_MM,
 } from './mono-geometry.js';
 import { computeMonoLayout } from './mono-layout.js';
 import {
@@ -38,7 +42,16 @@ import {
   ARM_CENTER_OFFSET_MAX,
   ARM_CENTER_OFFSET_DEFAULT,
 } from './arms.js';
-import { applyTopFeature, FINISH_TYPES, DEFAULT_FINISH } from './modules.js';
+import {
+  applyTopFeature,
+  renderControls,
+  FINISH_TYPES,
+  DEFAULT_FINISH,
+  PLINTH_TYPES,
+  PLINTH_HEIGHT_MIN_MM,
+  PLINTH_HEIGHT_MAX_MM,
+  PLINTH_HEIGHT_DEFAULT_MM,
+} from './modules.js';
 import { getById as getCatalogEntry } from './catalog.js';
 
 const mm = (v) => v / 1000;
@@ -62,6 +75,21 @@ function readFinish(value) {
   return FINISH_TYPES.includes(value) ? value : DEFAULT_FINISH;
 }
 
+/** Tolerantní čtení soklu (ZADANI-SOKL.md) — neznámý/chybějící type spadne
+ *  na výchozí 'construction', heightMM se zaclampe do rozsahu 50–150 a
+ *  zaokrouhlí na celé číslo (chybějící → 150, výchozí PLINTH_HEIGHT_DEFAULT_MM).
+ *  Adaptér si to ověřuje samostatně (state.plinth chází nebo je neznámý). */
+function sanitizePlinth(plinthObj) {
+  const p = plinthObj || {};
+  const type = PLINTH_TYPES.includes(p.type) ? p.type : 'construction';
+  const heightMM = clamp(
+    Math.floor(Number(p.heightMM) || PLINTH_HEIGHT_DEFAULT_MM),
+    PLINTH_HEIGHT_MIN_MM,
+    PLINTH_HEIGHT_MAX_MM
+  );
+  return { type, heightMM };
+}
+
 // --- zrcadlení osy X: pás čte polohy ZLEVA (mm od levé hrany bloku), ale
 // mono-geometry.js staví lokální x od 0 doprava beze změny a předává je
 // dál. Změřeno přes skutečnou kameru computeViews() (js/viewer.js): kamera
@@ -81,6 +109,61 @@ function readFinish(value) {
 // šířka — panelItems) stačí vynechat widthMM (výchozí 0): lengthMM − xMM.
 function mirrorX(xMM, lengthMM, widthMM = 0) {
   return lengthMM - xMM - widthMM;
+}
+
+/**
+ * ÚKOL 17 (PREDANI.md) — souřadnice čelního ovládacího panelu MONO pro
+ * renderControls(), v prostoru DEVICE GROUP (deviceGroup/`group` parametr
+ * volání níž), ne v absolutním prostoru bloku. POZOR: nesmí se přebírat ze
+ * SEGMENTu (modules.js#buildPanelBand) — MONO má panel jinde, viz
+ * mono-geometry.js hlavička ("Souřadný systém").
+ *
+ * Y (panelCenterY, ABSOLUTNÍ — beze změny na deviceGroup se nepřevádí):
+ * herdblokGroup/herdblokBGroup v mono-geometry.js#buildMonoBlock dostávají
+ * jen posun v Y (workHeight − HERDBLOK_HEIGHT_MM), Z posun žádný — a
+ * devicesGroup/devicesBGroup (tento soubor) mají position.y vždy 0 (viz
+ * deviceGroup.position.set(centerXM, 0, …) na obou voláních níž). `topY`,
+ * který dostává applyTopFeature, je tedy ABSOLUTNÍ Y stejného prostoru jako
+ * `group` vrácená z buildMonoBlock — přesně ten prostor, ve kterém
+ * mono-geometry.js hlavička počítá "Roviny v ose Y": panel (bez lišty) leží
+ * na workHeightMM − DESK_FACE_HEIGHT_MM (horní hrana) až o
+ * (PANEL_HEIGHT_MM − LISTA_HEIGHT_MM) níž (dolní hrana) — při workHeightMM
+ * 900 vychází 850..650, přesně jak PREDANI.md úkol 17 uvádí. Střed obou
+ * hran je panelCenterY. Vzorec je STEJNÝ pro stranu A i B — buildHerdblokUsek
+ * počítá obě strany se stejnými konstantami a rotace strany B (rotation.y =
+ * Math.PI) na ose Y nic neotáčí.
+ *
+ * Z (panelFrontZ, LOKÁLNÍ vůči deviceGroup): panel začíná (svou nejpřednější
+ * plochou) na PANEL_SETBACK_MM (25 mm) od líce desky — to je stejná
+ * "nejpřednější plocha panelu", odkud SEGMENT odvozuje frontZ v
+ * buildPanelBand (modules.js), jen v jiném číselném systému. Ve stejném
+ * prostoru jako výš (Z se u herdblokGroup/herdblokBGroup taky neposouvá,
+ * jen Y) je tedy PANEL_SETBACK_MM přímo Z souřadnice čela panelu v prostoru
+ * `group`/devicesGroup. deviceGroup ale dostává vlastní position.z =
+ * frontOffsetMM (odstup PŘÍSTROJE od líce desky, viz volání níž) — proto se
+ * do LOKÁLNÍHO prostoru deviceGroup panelFrontZ převádí odečtením
+ * frontOffsetMM. Stejný vzorec platí i pro stranu B: devicesBGroup sice celá
+ * nese rotation.y=Math.PI a position (mm(lengthMM), 0, mm(totalDepthMM)),
+ * ale deviceGroup uvnitř ní dostává STEJNOU raw (nezrcadlenou) konvenci jako
+ * strana A (viz komentář u panelItemsB/podestavbyB výš) — rotace pak sama
+ * převede klesající lokální Z (směrem k ovladačům, viz renderControls) na
+ * rostoucí Z v absolutním prostoru, tedy za depthAMM, na VNĚJŠÍ líc panelu
+ * B, přesně jak žádá PREDANI.md úkol 17.
+ *
+ * @param {number} workHeightMM pracovní výška bloku (stejná hodnota, jakou
+ *   dostává buildMonoBlock a mm(workHeightMM) jako topY do applyTopFeature)
+ * @param {number} frontOffsetMM item.frontOffsetMM přístroje (Z posun
+ *   deviceGroup vůči líci desky, viz volání applyTopFeature níž)
+ * @returns {{panelCenterY:number, panelFrontZ:number}} v metrech, lokální
+ *   souřadnice pro renderControls(deviceGroup, …)
+ */
+function monoPanelGeometry(workHeightMM, frontOffsetMM) {
+  const panelTopMM = workHeightMM - DESK_FACE_HEIGHT_MM; // horní hrana panelu (850 při 900)
+  const panelBottomMM = panelTopMM - (PANEL_HEIGHT_MM - LISTA_HEIGHT_MM); // dolní hrana bez lišty (650 při 900)
+  return {
+    panelCenterY: mm((panelTopMM + panelBottomMM) / 2),
+    panelFrontZ: mm(PANEL_SETBACK_MM - frontOffsetMM),
+  };
 }
 
 /**
@@ -249,6 +332,11 @@ export function buildMonoScene(state) {
     collar: [],
   }] : [];
 
+  // §krok sokl — ZADANI-SOKL.md: sanitizovaný sokl se předá do buildMonoBlock.
+  // Ověří se type proti PLINTH_TYPES (výchozí 'construction') a heightMM se
+  // zaclampuje na 50–150 (chybějící/neznámý → 150).
+  const plinth = sanitizePlinth(state.plinth);
+
   const { group } = buildMonoBlock({
     workHeightMM,
     variant: state.variant,
@@ -264,6 +352,7 @@ export function buildMonoScene(state) {
     // `back` se sem NIKDY nepošle (buildCollarSpec ho pro island vynechá) —
     // a i kdyby, buildMonoBlock ho defenzivně ignoruje taky.
     collar: isIsland ? buildCollarSpec(monoState.limec, state.variant) : [],
+    plinth,
   });
 
   // §doplněno (vada "přístroje se ve 3D nekreslí") — přístroje řady herdbloku
@@ -319,6 +408,16 @@ export function buildMonoScene(state) {
     // takže se uplatní výchozí hodnoty z modules.js (to je v pořádku, viz
     // zadání ÚKOL B).
     applyTopFeature(deviceGroup, def, item, widthM, depthM, mm(workHeightMM));
+
+    // §doplněno (ÚKOL 17 PREDANI.md — "přístrojům se nekreslí ovládací
+    // prvky") — knoflíky/tlačítka/vypínače na čelním panelu, stejný
+    // dispatcher jako SEGMENT (modules.js renderControls), jen se
+    // souřadnicemi panelu MONO (viz monoPanelGeometry výš, NE ze SEGMENTu).
+    // def.controls.{type,count} je vždy definované (katalog ho sanitizuje,
+    // viz js/catalog.js) — count 0 (přístroj bez ovladačů, např. dřez/deska)
+    // renderControls sama tiše přeskočí, žádný pád.
+    const { panelCenterY, panelFrontZ } = monoPanelGeometry(workHeightMM, frontOffsetMM);
+    renderControls(deviceGroup, widthM, panelCenterY, panelFrontZ, def.controls.type, def.controls.count);
     devicesGroup.add(deviceGroup);
   });
   group.add(devicesGroup);
@@ -348,6 +447,13 @@ export function buildMonoScene(state) {
       deviceGroup.name = `pristroj-${item.type}`;
       deviceGroup.position.set(centerXM, 0, mm(frontOffsetMM));
       applyTopFeature(deviceGroup, def, item, widthM, depthM, mm(workHeightMM));
+
+      // ÚKOL 17 — stejné volání jako strana A výš; monoPanelGeometry je
+      // beze změny pro obě strany (viz JSDoc), rotation.y=Math.PI
+      // devicesBGroup samo převede klesající lokální Z na vnější líc panelu
+      // B (z > depthAMM v absolutním prostoru), přesně jak žádá PREDANI.md.
+      const { panelCenterY, panelFrontZ } = monoPanelGeometry(workHeightMM, frontOffsetMM);
+      renderControls(deviceGroup, widthM, panelCenterY, panelFrontZ, def.controls.type, def.controls.count);
       devicesBGroup.add(deviceGroup);
     });
   }

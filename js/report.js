@@ -28,7 +28,7 @@ import { t, getLang } from './i18n.js';
 import { computeLayout } from './floorplan.js';
 import {
   getSegmentLabel, getInstrumentDef, DRAWERS_TYPE, getSegmentDrawerCount, SINK_VAT_HEIGHT_MM,
-  getSegmentBodyStyle, hasPanelFlag, hasShelfFlag, getSegmentPlinth, getSegmentFinish,
+  getSegmentBodyStyle, hasPanelFlag, hasShelfFlag, getSegmentFinish,
 } from './modules.js';
 import {
   ARM_SPOUT_HEIGHT, ARM_REACH, ARM_ANGLE_MAX, ARM_BACK_OFFSET_DEFAULT, ARM_CENTER_OFFSET_DEFAULT,
@@ -254,6 +254,8 @@ function buildBlockSection(ctx) {
     [t('dims.totalLength'), `${Math.round(layout.lengthMM)} mm`],
     [t('dims.totalDepth'), depthValue],
     [t('dims.totalHeight'), `${Math.round(layout.heightMM)} mm`],
+    [t('field.plinth'), state.plinth ? t(`plinth.${state.plinth.type}`) : '—'],
+    [t('field.plinthHeight'), state.plinth ? `${state.plinth.heightMM} mm` : '—'],
     [t('report.segmentCount'), String(layout.items.length)],
     [t('report.totalPowerEl'), `${totalKW.toFixed(1)} kW — ${t('report.powerApprox')}`],
     [t('report.totalPowerGas'), `${totalGasKW.toFixed(1)} kW — ${t('report.powerApprox')}`],
@@ -311,7 +313,6 @@ function buildPartsTable(items, heightMM) {
     t('field.catalogCode'),
     t('floorplan.colDimensions'),
     t('field.baseType'),
-    t('field.plinth'),
     t('field.finish'),
     t('report.colTechData'),
   ].forEach((label) => {
@@ -333,7 +334,6 @@ function buildPartsTable(items, heightMM) {
       (def && def.catalogCode) || '—',
       `${Math.round(item.widthMM)} × ${Math.round(item.plinthDepthMM)} × ${Math.round(heightMM)} mm`,
       buildBaseCellText(item),
-      t(`plinth.${getSegmentPlinth(seg)}`),
       getSegmentFinish(seg),
       buildTechDataCellText(def),
     ];

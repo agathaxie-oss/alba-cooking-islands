@@ -39,8 +39,11 @@ const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
 // --- Standardní rozměry (v metrech) -----------------------------------------
 export const TOP_THICKNESS = 0.05; // tloušťka pracovní desky (50 mm)
-export const PLINTH_HEIGHT = 0.15; // výška soklu (150 mm)
 export const PANEL_HEIGHT = 0.2; // výška čelního ovládacího panelu (200 mm)
+// PLINTH_HEIGHT (dřív pevná 0,15 m / 150 mm) SE RUŠÍ. Výška soklu je od
+// 31. 8. 2026 vlastnost CELÉHO BLOKU (ZADANI-SOKL.md), proměnná v rozsahu
+// PLINTH_HEIGHT_MIN_MM..PLINTH_HEIGHT_MAX_MM (viz níž) — chodí jako
+// parametr (v metrech) do buildPlinth()/createSegmentMesh()/createFillerMesh().
 
 // --- Meze zadatelných rozměrů (mm) ------------------------------------------
 export const LENGTH_MIN = 1200;
@@ -91,9 +94,28 @@ export const CONTROL_TYPES = ['knob', 'button', 'switch'];
 // allowedBodyStyles daného přístroje
 export const BODY_STYLE_OPTIONS = ['closed', 'doors', 'open'];
 
-// provedení soklu / podestavby (§11.2 SPEC v4) — INSTANCE pole `plinth`
-export const PLINTH_TYPES = ['legs', 'building', 'construction'];
+// provedení soklu / podestavby (§11.2 SPEC v4) — od 31. 8. 2026 (ZADANI-SOKL.md)
+// je to VLASTNOST CELÉHO BLOKU, ne jednotlivé skříňky/segmentu (viz
+// buildBlockPlinth() v block.js). INSTANCE pole `plinth` u skříňky/segmentu
+// SE PRO KRESLENÍ PŘESTÁVÁ ČÍST — jen se tolerantně načte ze starých
+// souborů projektu, nic nového se do něj neukládá.
+// `legs_plinth` (NOVÁ, 4. hodnota) je nožičky + soklová zástěna, která je
+// kryje — VYLUČOVACÍ volba, ne samostatný příznak (nejde mít zástěnu bez
+// nožiček). Žádná stávající hodnota se nepřejmenovává.
+export const PLINTH_TYPES = ['legs', 'building', 'construction', 'legs_plinth'];
 export const DEFAULT_PLINTH = 'construction';
+
+// výška soklové zóny (mm) — vlastnost CELÉHO BLOKU (state.plinth.heightMM);
+// rozsah i výchozí hodnota platí pro OBA produkty (SEGMENT i MONO).
+export const PLINTH_HEIGHT_MIN_MM = 50;
+export const PLINTH_HEIGHT_MAX_MM = 150;
+export const PLINTH_HEIGHT_DEFAULT_MM = 150;
+// pracovní výška = BODY_STACK_MM + výška soklu (OBA produkty, ZADANI-SOKL.md
+// bod 3) — dopočítává main.js, geometrie BODY_STACK_MM nepoužívá napřímo.
+export const BODY_STACK_MM = 750;
+// uskočení nerezového rámu/zástěny od líce bloku, ZE VŠECH STRAN
+// (buildBlockPlinth v block.js).
+export const PLINTH_INSET_MM = 50;
 
 // povrchové provedení (§11.2 SPEC v4) — INSTANCE pole `finish`; jde o kódy
 // (ne jazykový text), stejné ve všech jazycích — nepřekládá se.
@@ -252,38 +274,31 @@ const LEG_SIZE = 0.05;
 const LEG_INSET = 0.045;
 
 /**
- * Sokl / podestavba (§11.2 SPEC v4) — grafitový, provedení podle INSTANCE
- * pole `plinth`:
- *  - 'legs'        — čtyři viditelné nožičky místo plného soklu,
- *  - 'building'     — plný sokl, téměř v líci (stavební sokl),
- *  - 'construction' — plný sokl, o něco zapuštěnější (výchozí, konstrukční).
- * Výška zůstává vždy PLINTH_HEIGHT, aby se neměnila navazující geometrie
- * korpusu/panelu/desky — liší se jen vzhled (viz SPEC „alespoň vizuálně").
+ * Sokl PER SKŘÍŇKA/segment (§11.2 SPEC v4, ZADANI-SOKL.md 31. 8. 2026) —
+ * od téhle revize kreslí JEN nožičky (`legs`, `legs_plinth`).
+ * `building` nekreslí NIC (ani nožičky). `construction` taky nekreslí nic
+ * TADY — nerezový rám (`construction`) i soklová zástěna kryjící nožičky
+ * (`legs_plinth`) jsou GEOMETRIE NA ÚROVNI CELÉHO BLOKU (obvod půdorysu
+ * bloku, uskočení PLINTH_INSET_MM ze všech stran) — ty staví
+ * buildBlockPlinth() v block.js PŘI SESTAVOVÁNÍ BLOKU, ne tahle funkce.
+ * `heightM` je výška CELÉ soklové zóny bloku (metry) — nahrazuje dřívější
+ * pevnou konstantu PLINTH_HEIGHT (0,15), viz ZADANI-SOKL.md.
  */
-export function buildPlinth(group, widthM, depthM, plinthType = DEFAULT_PLINTH) {
+export function buildPlinth(group, widthM, depthM, plinthType = DEFAULT_PLINTH, heightM = mm(PLINTH_HEIGHT_DEFAULT_MM)) {
+  if (plinthType !== 'legs' && plinthType !== 'legs_plinth') return;
+
   const plinthMat = createPlinthMaterial();
-
-  if (plinthType === 'legs') {
-    const insetX = Math.min(LEG_INSET, Math.max(widthM / 2 - LEG_SIZE / 2, 0.01));
-    const insetZ = Math.min(LEG_INSET, Math.max(depthM / 2 - LEG_SIZE / 2, 0.01));
-    const xs = [-(widthM / 2 - insetX), widthM / 2 - insetX];
-    const zs = [insetZ, depthM - insetZ];
-    xs.forEach((x) => {
-      zs.forEach((z) => {
-        const leg = box(LEG_SIZE, PLINTH_HEIGHT, LEG_SIZE, plinthMat);
-        leg.position.set(x, PLINTH_HEIGHT / 2, z);
-        group.add(leg);
-      });
+  const insetX = Math.min(LEG_INSET, Math.max(widthM / 2 - LEG_SIZE / 2, 0.01));
+  const insetZ = Math.min(LEG_INSET, Math.max(depthM / 2 - LEG_SIZE / 2, 0.01));
+  const xs = [-(widthM / 2 - insetX), widthM / 2 - insetX];
+  const zs = [insetZ, depthM - insetZ];
+  xs.forEach((x) => {
+    zs.forEach((z) => {
+      const leg = box(LEG_SIZE, heightM, LEG_SIZE, plinthMat);
+      leg.position.set(x, heightM / 2, z);
+      group.add(leg);
     });
-    return;
-  }
-
-  // 'building' (stavební sokl) je téměř v líci korpusu, 'construction'
-  // (výchozí, konstrukční sokl) o něco zapuštěnější — vizuální odlišení.
-  const inset = plinthType === 'building' ? 0.002 : 0.006;
-  const plinth = box(widthM - inset, PLINTH_HEIGHT, depthM - inset, plinthMat);
-  plinth.position.set(0, PLINTH_HEIGHT / 2, depthM / 2);
-  group.add(plinth);
+  });
 }
 
 /**
@@ -1192,12 +1207,18 @@ function addBitmapOverlay(group, widthM, depthM, topY, dataURL) {
  * Vytvoří kompletní segment (podestavba + panel + ovládací prvky + typové
  * detaily na desce). `topY` je absolutní výška horní plochy průběžné desky
  * (workHeightM), použitá pro umístění detailů, které "sedí" na desce.
+ * `plinth` (`{type, heightMM}`) je vlastnost CELÉHO BLOKU (ZADANI-SOKL.md,
+ * 31. 8. 2026) — dodává ji volající (block.js), segment.plinth se pro
+ * kreslení nečte. Výchozí `{}` spadne na DEFAULT_PLINTH/PLINTH_HEIGHT_DEFAULT_MM.
  */
-export function createSegmentMesh(segment, depthM, workHeightM) {
+export function createSegmentMesh(segment, depthM, workHeightM, plinth = {}) {
   const widthMM = getSegmentWidthMM(segment);
   const widthM = mm(widthMM);
   const bodyTopY = workHeightM - TOP_THICKNESS; // podklad těsně pod průběžnou deskou
   const panelBottomY = bodyTopY - PANEL_HEIGHT;
+  const plinthType = PLINTH_TYPES.includes(plinth.type) ? plinth.type : DEFAULT_PLINTH;
+  const plinthHeightM = mm(clamp(Number(plinth.heightMM) || PLINTH_HEIGHT_DEFAULT_MM, PLINTH_HEIGHT_MIN_MM, PLINTH_HEIGHT_MAX_MM));
+  const bodyBottomY = plinthHeightM; // nahrazuje dřívější pevnou PLINTH_HEIGHT
 
   const group = new THREE.Group();
   group.userData.id = segment.id;
@@ -1205,7 +1226,7 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
   group.userData.widthMM = widthMM;
   group.userData.label = getSegmentLabel(segment);
 
-  buildPlinth(group, widthM, depthM, getSegmentPlinth(segment));
+  buildPlinth(group, widthM, depthM, plinthType, plinthHeightM);
 
   if (segment.type === NEUTRAL_TYPE) {
     // Dutina = vnitřní prostor podestavby; pokud má segment panel, dutina
@@ -1213,7 +1234,7 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
     // se bere ze sdílené getSegmentBodyStyle, ne z vlastního inline výrazu.
     const style = getSegmentBodyStyle(segment);
     const cavityTopY = segment.hasPanel ? panelBottomY : bodyTopY;
-    buildBodyByStyle(group, style, widthM, depthM, PLINTH_HEIGHT, bodyTopY, cavityTopY, !!segment.hasShelf);
+    buildBodyByStyle(group, style, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, !!segment.hasShelf);
     if (segment.hasPanel) {
       // ovládací panel je jen předsazená dekorace navíc před horní pás čela,
       // korpus pod ním zůstává celý (žádná díra vzadu)
@@ -1226,7 +1247,7 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
     // stejné pravidlo jako u neutrálního modulu — má-li segment panel,
     // prostor pro čela pod ním končí (panel do zásuvek nepatří)
     const cavityTopY = segment.hasPanel ? panelBottomY : bodyTopY;
-    buildDrawersBody(group, widthM, depthM, PLINTH_HEIGHT, bodyTopY, cavityTopY, getSegmentDrawerCount(segment));
+    buildDrawersBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, getSegmentDrawerCount(segment));
     if (segment.hasPanel) {
       buildPanelBand(group, widthM, panelBottomY, bodyTopY);
     }
@@ -1234,7 +1255,7 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
   }
 
   if (segment.type === CUSTOM_TYPE) {
-    buildClosedBody(group, widthM, depthM, PLINTH_HEIGHT, bodyTopY);
+    buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
     const { centerY, frontZ } = buildPanelBand(group, widthM, panelBottomY, bodyTopY);
     renderControls(group, widthM, centerY, frontZ, segment.controlsType || 'knob', segment.controlsCount || 0);
     if (segment.imageDataURL) {
@@ -1247,10 +1268,10 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
   const def = getCatalogEntry(segment.type);
   if (!def) {
     // neznámý typ — vykreslí se jako prázdná uzavřená výplň, ať aplikace nespadne
-    buildClosedBody(group, widthM, depthM, PLINTH_HEIGHT, bodyTopY);
+    buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
     return group;
   }
-  buildBodyByStyle(group, getSegmentBodyStyle(segment), widthM, depthM, PLINTH_HEIGHT, bodyTopY);
+  buildBodyByStyle(group, getSegmentBodyStyle(segment), widthM, depthM, bodyBottomY, bodyTopY);
   const { centerY, frontZ } = buildPanelBand(group, widthM, panelBottomY, bodyTopY);
   // §10.1 SPEC v4 — u topFixed přístrojů se prvek na desce i seskupení
   // ovládacích prvků kreslí ve JMENOVITÉ šířce (katalogové widthMM), vodorovně
@@ -1265,13 +1286,18 @@ export function createSegmentMesh(segment, depthM, workHeightM) {
   return group;
 }
 
-/** Vytvoří jednoduchou "výplňovou" podestavbu bez panelu (prázdný úsek desky). */
-export function createFillerMesh(widthMM, depthM, workHeightM) {
+/**
+ * Vytvoří jednoduchou "výplňovou" podestavbu bez panelu (prázdný úsek desky).
+ * `plinth` viz createSegmentMesh() výš — vlastnost CELÉHO BLOKU, ne výplně.
+ */
+export function createFillerMesh(widthMM, depthM, workHeightM, plinth = {}) {
   const widthM = mm(widthMM);
+  const plinthType = PLINTH_TYPES.includes(plinth.type) ? plinth.type : DEFAULT_PLINTH;
+  const plinthHeightM = mm(clamp(Number(plinth.heightMM) || PLINTH_HEIGHT_DEFAULT_MM, PLINTH_HEIGHT_MIN_MM, PLINTH_HEIGHT_MAX_MM));
   const group = new THREE.Group();
   group.userData.filler = true;
-  buildPlinth(group, widthM, depthM);
-  buildClosedBody(group, widthM, depthM, PLINTH_HEIGHT, workHeightM - TOP_THICKNESS);
+  buildPlinth(group, widthM, depthM, plinthType, plinthHeightM);
+  buildClosedBody(group, widthM, depthM, plinthHeightM, workHeightM - TOP_THICKNESS);
   return group;
 }
 

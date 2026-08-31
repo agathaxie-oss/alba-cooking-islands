@@ -153,9 +153,23 @@
           <span class="dim-unit">mm</span>
         </div>
         <p id="depth-b-grow-note" class="field-note" hidden></p>
+
+        <!-- ÚKOL 13 (ZADANI-SOKL.md) — sokl je vlastnost CELÉHO BLOKU, pro
+             OBA produkty (SEGMENT i MONO), proto tady a ne v pásu/parametrech
+             skříňky/segmentu. Pracovní výška (#input-height níže) se z téhle
+             dvojice DOPOČÍTÁVÁ (main.js), proto je až za nimi a je readonly. -->
+        <div class="dim-row">
+          <label for="input-plinth-height" data-i18n="field.plinthHeight">Plinth height</label>
+          <input type="number" id="input-plinth-height" min="50" max="150" step="10" value="150" />
+          <span class="dim-unit">mm</span>
+        </div>
+        <div class="dim-row">
+          <label for="select-plinth-type" data-i18n="field.plinth">Plinth</label>
+          <select id="select-plinth-type"></select>
+        </div>
         <div class="dim-row">
           <label for="input-height" data-i18n="field.heightShort">Work height</label>
-          <input type="number" id="input-height" min="850" max="950" step="10" value="900" />
+          <input type="number" id="input-height" readonly tabindex="-1" value="900" />
           <span class="dim-unit">mm</span>
         </div>
         <p id="dims-total-depth" class="dims-total" hidden></p>

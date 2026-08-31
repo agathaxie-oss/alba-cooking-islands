@@ -19,9 +19,6 @@ import {
   LENGTH_MIN,
   LENGTH_MAX,
   LENGTH_STEP,
-  HEIGHT_MIN,
-  HEIGHT_MAX,
-  HEIGHT_STEP,
   DEPTH_MIN,
   DEPTH_MAX,
   DEPTH_STEP,
@@ -35,6 +32,18 @@ import {
   SINK_WIDTH_MARGIN_MM,
   PLINTH_TYPES,
   DEFAULT_PLINTH,
+  // ÚKOL 13 (ZADANI-SOKL.md) — sokl je teď vlastnost CELÉHO BLOKU
+  // (state.plinth, viz níž), ne jednotlivé skříňky/segmentu. HEIGHT_MIN/
+  // HEIGHT_MAX/HEIGHT_STEP (validace ruční vstupní pracovní výšky 850–950)
+  // proto odsud MIZÍ — pracovní výška je teď DOPOČÍTANÁ (computeWorkHeightMM
+  // níže), ne vstup, a rozsah pro sokl hlídají PLINTH_HEIGHT_MIN_MM/MAX_MM.
+  // Zdroj pravdy zůstává modules.js (vlastník AGENT-GEOMETRIE) — v okamžiku
+  // psaní téhle změny je tam souběžně PŘIDÁVÁ, import podle smlouvy
+  // ZADANI-SOKL.md přesto píšeme rovnou (na konci session tam budou).
+  PLINTH_HEIGHT_MIN_MM,
+  PLINTH_HEIGHT_MAX_MM,
+  PLINTH_HEIGHT_DEFAULT_MM,
+  BODY_STACK_MM,
   FINISH_TYPES,
   DEFAULT_FINISH,
 } from './modules.js';
@@ -96,13 +105,43 @@ function clamp(v, min, max) {
   return Math.min(Math.max(v, min), max);
 }
 
-// §11.2 SPEC v4 — validace INSTANCE polí plinth/finish (tolerantní vůči
-// starším/cizím konfiguracím — chybějící/neplatná hodnota → výchozí).
+// §11.2 SPEC v4 — validace hodnoty PLINTH_TYPES/FINISH_TYPES (tolerantní
+// vůči starším/cizím konfiguracím — chybějící/neplatná hodnota → výchozí).
+// sanitizePlinth() sloužila dřív INSTANCE poli segmentu/MonoCabinet; od
+// ÚKOLU 13 (ZADANI-SOKL.md, 31. 8. 2026) validuje `state.plinth.type`
+// (vlastnost CELÉHO BLOKU, viz sanitizeBlockPlinth níže) — sanitizeFinish()
+// zůstává INSTANCE polem beze změny.
 function sanitizePlinth(value) {
   return PLINTH_TYPES.includes(value) ? value : DEFAULT_PLINTH;
 }
 function sanitizeFinish(value) {
   return FINISH_TYPES.includes(value) ? value : DEFAULT_FINISH;
+}
+// ÚKOL 13 (ZADANI-SOKL.md) — sokl je od 31. 8. 2026 vlastnost CELÉHO BLOKU
+// (state.plinth), ne jednotlivé skříňky/segmentu (viz state.plinth níže).
+// `type` sdílí validaci s dřívějším INSTANCE polem (sanitizePlinth výše —
+// PLINTH_TYPES/DEFAULT_PLINTH beze změny vlastní modules.js, jen přibyla
+// čtvrtá hodnota 'legs_plinth'). `heightMM` je nové INSTANCE pole jen tady:
+// celé číslo 50–150, chybějící/neplatná hodnota spadne na výchozí 150.
+function sanitizePlinthHeight(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? clamp(Math.round(n), PLINTH_HEIGHT_MIN_MM, PLINTH_HEIGHT_MAX_MM) : PLINTH_HEIGHT_DEFAULT_MM;
+}
+function sanitizeBlockPlinth(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return { type: sanitizePlinth(r.type), heightMM: sanitizePlinthHeight(r.heightMM) };
+}
+function defaultBlockPlinth() {
+  return { type: DEFAULT_PLINTH, heightMM: PLINTH_HEIGHT_DEFAULT_MM };
+}
+// Pracovní výška = BODY_STACK_MM (750, pevné tělo podestavby) + výška soklu
+// — PLATÍ PRO OBA PRODUKTY (ZADANI-SOKL.md, rozhodnutí zadavatele
+// 31. 8. 2026). state.dimensions.heightMM je od téhle chvíle DOPOČÍTANÝ
+// údaj — JEDINÉ místo, které do něj smí zapisovat, je main.js (viz volání
+// níže v state/applyConfig/onNewProject/callbacks.onPlinthChange);
+// geometrie (block.js/mono-geometry.js) ho dál dostává stejně jako dosud.
+function computeWorkHeightMM(plinth) {
+  return BODY_STACK_MM + plinth.heightMM;
 }
 // §10.2 SPEC v4 — validace INSTANCE pole bodyStyle katalogového segmentu
 // proti povoleným stylům přístroje (def.allowedBodyStyles).
@@ -132,6 +171,11 @@ function sanitizeMonoEndType(value) {
 // se kvůli verzi už NIKDY neodmítá. Konstanta tu zůstává (jediné místo, kde
 // se číslo objevuje natvrdo), ale slouží už jen k zápisu při ukládání
 // a k informativnímu hlášení při načtení starší verze.
+// ÚKOL 13 (ZADANI-SOKL.md, 31. 8. 2026) — nové top-level pole `plinth` a
+// zrušení INSTANCE pole `plinth` u segmentu/MonoCabinet se podle zadání
+// („Datový model — formát projektu v6") ŘADÍ POŘÁD DO v6, BEZ BUMPU: obojí
+// je tolerantní přírůstek (chybějící/starý tvar → výchozí/ignorováno),
+// stejný princip jako v4→v5 výše.
 const CONFIG_VERSION = 6;
 
 // §ÚKOL MONO §1/§10 (balík A5) — sanitizace nových seznamů state.mono
@@ -188,8 +232,13 @@ function sanitizeMonoDevice(raw) {
   return { id, type, widthMM, frontOffsetMM, guardMM };
 }
 
-// MonoCabinet (§1 zadání) — kind:'gap' nemá bodyStyle/plinth/finish (jen
-// widthMM): jde o úmyslně vynechaný most v řadě podestaveb, ne o skříňku.
+// MonoCabinet (§1 zadání) — kind:'gap' nemá bodyStyle/finish (jen widthMM):
+// jde o úmyslně vynechaný most v řadě podestaveb, ne o skříňku.
+// ÚKOL 13 (ZADANI-SOKL.md) — INSTANCE pole `plinth` se od 31. 8. 2026 na
+// MonoCabinet NEUKLÁDÁ ani NEVYTVÁŘÍ (sokl je vlastnost CELÉHO BLOKU, viz
+// state.plinth výše). Starší/cizí soubor s `raw.plinth` u položky se
+// TOLERUJE — hodnota se prostě nikam nezkopíruje, soubor se kvůli ní
+// nezamítá.
 function sanitizeMonoCabinet(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const id = nextId++;
@@ -202,7 +251,6 @@ function sanitizeMonoCabinet(raw) {
     kind: 'cabinet',
     widthMM,
     bodyStyle: sanitizeMonoCabinetBodyStyle(raw.bodyStyle),
-    plinth: sanitizePlinth(raw.plinth),
     finish: sanitizeFinish(raw.finish),
   };
 }
@@ -243,6 +291,9 @@ function defaultMonoCollar() {
 // --- stav aplikace -----------------------------------------------------------
 
 let nextId = 1;
+// ÚKOL 13 (ZADANI-SOKL.md) — výchozí sokl při startu aplikace; state.dimensions.heightMM
+// (viz `state` níže) se z něj hned dopočítává přes computeWorkHeightMM().
+const initialPlinth = defaultBlockPlinth();
 const state = {
   // Název projektu (přestavba horní části panelu) — ukládá se do konfigurace
   // a předvyplňuje název souboru při ukládání (viz projectFileName/saveConfig).
@@ -281,8 +332,17 @@ const state = {
     panelItemsB: [],
     limec: defaultMonoCollar(),
   },
-  dimensions: { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: 900 },
+  // dimensions.heightMM je od ÚKOLU 13 (ZADANI-SOKL.md) DOPOČÍTANÝ z plinth
+  // (viz computeWorkHeightMM výše) — 900 tu vychází z výchozího soklu 150 mm
+  // (750 + 150), ne z nezávislé konstanty; jediný zapisovatel je main.js.
+  dimensions: { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: computeWorkHeightMM(initialPlinth) },
   variant: 'single', // 'single' | 'island'
+  // ÚKOL 13 (ZADANI-SOKL.md) — typ a výška soklu jsou od 31. 8. 2026
+  // vlastností CELÉHO BLOKU (top-level, vedle `variant`), PRO OBA produkty —
+  // ne INSTANCE pole jednotlivé skříňky/segmentu, jak to bylo dřív (viz
+  // zrušené sanitizePlinth() volání u segmentů/MonoCabinet níže). Odtud se
+  // dopočítává state.dimensions.heightMM (viz výše i onPlinthChange níže).
+  plinth: initialPlinth, // { type: PLINTH_TYPES[…], heightMM: 50–150 }
   segmentsA: [],
   segmentsB: [], // jen 'island' — nezávislý seznam, žádné zrcadlení strany A
   arms: [],
@@ -326,15 +386,17 @@ function markUnsavedChanges() {
 // (tovární id z katalog/ — generické gas_stove/fryer už v továrně nejsou)
 function createDefaultSegmentsA() {
   return [
+    // ÚKOL 13 (ZADANI-SOKL.md) — segment už NEMÁ vlastní INSTANCE pole
+    // `plinth`, sokl je od 31. 8. 2026 vlastnost CELÉHO BLOKU (state.plinth).
     {
       id: nextId++, type: NEUTRAL_TYPE, widthMM: 400, podestavba: 'doors',
-      hasPanel: false, hasShelf: false, plinth: DEFAULT_PLINTH, finish: DEFAULT_FINISH,
+      hasPanel: false, hasShelf: false, finish: DEFAULT_FINISH,
     },
     createCatalogSegment('al-pg22-800-g'),
     createCatalogSegment('al-fr10-400-e'),
     {
       id: nextId++, type: NEUTRAL_TYPE, widthMM: 400, podestavba: 'open',
-      hasPanel: false, hasShelf: true, plinth: DEFAULT_PLINTH, finish: DEFAULT_FINISH,
+      hasPanel: false, hasShelf: true, finish: DEFAULT_FINISH,
     },
   ];
 }
@@ -359,9 +421,10 @@ state.segmentsA = createDefaultSegmentsA();
 // Stejná konvence jako createDefaultSegmentsA()/defaultMonoCollar() výše —
 // JEDNO místo pro výchozí hodnoty, ať se při případné budoucí změně
 // nerozejdou. Položky se skládají přes sanitizeMonoCabinet(), NE ručním
-// literálem — bodyStyle/plinth/finish tak dostanou stejnou výchozí hodnotu
-// jako všude jinde v souboru (closed / DEFAULT_PLINTH / DEFAULT_FINISH) a
-// id se přiděluje ze sdíleného čítače nextId, stejně jako zbytek souboru
+// literálem — bodyStyle/finish tak dostanou stejnou výchozí hodnotu jako
+// všude jinde v souboru (closed / DEFAULT_FINISH; plinth se od ÚKOLU 13
+// na MonoCabinet už vůbec nevytváří, viz sanitizeMonoCabinet výše) a id se
+// přiděluje ze sdíleného čítače nextId, stejně jako zbytek souboru
 // (sanitizeMonoCabinet uvnitř dělá `nextId++`).
 function createDefaultMonoPodestavby() {
   return [
@@ -411,13 +474,15 @@ function findMonoItem(layer, id, side = 'A') {
 }
 
 /** Vytvoří novou instanci katalogového segmentu (§3.1–3.3, §7.1 SPEC v3;
- *  §10.2/§11.2 SPEC v4 — bodyStyle/plinth/finish). Šířka je vlastností
+ *  §10.2 SPEC v4 — bodyStyle; §11.2 SPEC v4 — finish). Šířka je vlastností
  *  INSTANCE — výchozí hodnota = výchozí šířka přístroje v katalogu. Hloubka
  *  podestavby už NENÍ instance-level pole (§11.1) — odvozuje se jednotně
- *  z hloubky strany bloku (viz block.js computeSideDepth). */
+ *  z hloubky strany bloku (viz block.js computeSideDepth). ÚKOL 13
+ *  (ZADANI-SOKL.md) — `plinth` na segmentu už NENÍ, sokl je od 31. 8. 2026
+ *  vlastnost CELÉHO BLOKU (state.plinth). */
 function createCatalogSegment(type) {
   const def = getCatalogEntry(type);
-  const seg = { id: nextId++, type, plinth: DEFAULT_PLINTH, finish: DEFAULT_FINISH };
+  const seg = { id: nextId++, type, finish: DEFAULT_FINISH };
   if (def) {
     seg.widthMM = def.widthMM;
     const allowed = Array.isArray(def.allowedBodyStyles) && def.allowedBodyStyles.length
@@ -565,14 +630,14 @@ function rebuildScene() {
   // co se staví ve 3D (dřív šlo jen o evidenci v state.productType).
   let result;
   if (state.productType === 'mono') {
-    // TODO: varianta 'island' se u MONO zatím neřeší — chová se jako
-    // 'single' (buildMonoScene čte jen state.dimensions/state.mono, variantu
-    // vůbec nebere v potaz). Až MONO jednou dostane ostrovní variantu,
-    // přibude větev i tady.
     result = buildMonoScene(state);
   } else {
     const dims = { ...state.dimensions, variant: state.variant };
-    result = buildBlock(state.segmentsA, state.segmentsB, state.arms, dims);
+    // ÚKOL 13 (ZADANI-SOKL.md) — `plinth` (vlastnost CELÉHO BLOKU, viz
+    // state.plinth) je od AGENT-GEOMETRIE 5. parametr buildBlock(), NE pole
+    // v `dims` (viz JSDoc u buildBlock v block.js) — block-level rám/zástěna
+    // a pravidlo „nožičky per skříňka podle typu soklu" ho takhle čtou.
+    result = buildBlock(state.segmentsA, state.segmentsB, state.arms, dims, state.plinth);
   }
   blockGroup = result.group;
   selectable = result.selectable;
@@ -699,7 +764,7 @@ function exportPNG() {
 // --- export / import JSON konfigurace -------------------------------------------
 
 /** Sada `type`/`id` hodnot použitých v aktuální sestavě (§ÚKOL 1 + etapa C).
- *  SEGMENT: segmentsA/B (včetně přetékajících). MONO: herdblok mimo 'surface'.
+ *  SEGMENT: segmentsA/B (včetně přetékajících). MONO: herdblokA/B mimo 'surface'.
  *  neutral/custom/drawers nejsou v továrně — při sestavě snapshotu je odfiltruje
  *  getCatalogEntry / buildSnapshot (null).
  */
@@ -707,11 +772,21 @@ function usedCatalogTypes() {
   const types = new Set();
   state.segmentsA.forEach((s) => types.add(s.type));
   state.segmentsB.forEach((s) => types.add(s.type));
-  state.mono.herdblok.forEach((item) => {
-    if (item && typeof item.type === 'string' && item.type !== 'surface') {
-      types.add(item.type);
-    }
-  });
+  // MONO: zpracuj obě strany (herdblokA + herdblokB); tolerantní ochrana Array.isArray
+  if (Array.isArray(state.mono.herdblokA)) {
+    state.mono.herdblokA.forEach((item) => {
+      if (item && typeof item.type === 'string' && item.type !== 'surface') {
+        types.add(item.type);
+      }
+    });
+  }
+  if (Array.isArray(state.mono.herdblokB)) {
+    state.mono.herdblokB.forEach((item) => {
+      if (item && typeof item.type === 'string' && item.type !== 'surface') {
+        types.add(item.type);
+      }
+    });
+  }
   return types;
 }
 
@@ -759,7 +834,14 @@ async function serializeConfig() {
       limec: { ...state.mono.limec },
     },
     variant: state.variant,
+    // ÚKOL 13 (ZADANI-SOKL.md) — NOVÉ top-level pole, vedle `variant`. Typ
+    // a výška soklu jsou od 31. 8. 2026 vlastností CELÉHO BLOKU, PRO OBA
+    // produkty (viz state.plinth/sanitizeBlockPlinth v applyConfig níže).
+    plinth: { ...state.plinth },
     environment: state.environment,
+    // dimensions.heightMM je DOPOČÍTANÝ (viz computeWorkHeightMM) — ukládá
+    // se jen informativně, při načtení (applyConfig níže) se vždy počítá
+    // znovu ze state.plinth, NIKDY se nečte přímo odsud.
     dimensions: { ...state.dimensions },
     segmentsA: state.segmentsA.map((s) => ({ ...s })),
     segmentsB: state.segmentsB.map((s) => ({ ...s })),
@@ -839,9 +921,12 @@ async function saveConfig() {
 function sanitizeSegment(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const id = nextId++;
-  // §11.2 SPEC v4 — plinth/finish jsou INSTANCE pole u KAŽDÉHO segmentu;
-  // chybějící/neplatná hodnota → výchozí.
-  const plinth = sanitizePlinth(raw.plinth);
+  // §11.2 SPEC v4 — finish je INSTANCE pole u KAŽDÉHO segmentu; chybějící/
+  // neplatná hodnota → výchozí. ÚKOL 13 (ZADANI-SOKL.md) — `plinth` na
+  // segmentu se od 31. 8. 2026 NEČTE a NEUKLÁDÁ (sokl je vlastnost CELÉHO
+  // BLOKU, viz state.plinth): starší/cizí soubor s `raw.plinth` u segmentu
+  // se TOLERUJE — hodnota se prostě nikam nezkopíruje, soubor se kvůli ní
+  // nezamítá.
   const finish = sanitizeFinish(raw.finish);
   if (raw.type === NEUTRAL_TYPE) {
     return {
@@ -851,7 +936,6 @@ function sanitizeSegment(raw) {
       podestavba: raw.podestavba === 'open' ? 'open' : 'doors',
       hasPanel: !!raw.hasPanel,
       hasShelf: !!raw.hasShelf,
-      plinth,
       finish,
     };
   }
@@ -868,7 +952,6 @@ function sanitizeSegment(raw) {
       widthMM: DRAWERS_WIDTH_MM,
       hasPanel,
       drawerCount,
-      plinth,
       finish,
     };
   }
@@ -882,13 +965,12 @@ function sanitizeSegment(raw) {
       controlsType: raw.controlsType || 'knob',
       controlsCount: clamp(Number(raw.controlsCount) || 0, 0, 8),
       imageDataURL: typeof raw.imageDataURL === 'string' ? raw.imageDataURL : null,
-      plinth,
       finish,
     };
   }
   // katalogový přístroj — typ ověří modules.js/catalog.js při stavbě (neznámý = prázdná výplň)
   const def = getCatalogEntry(raw.type);
-  const seg = { id, type: raw.type, plinth, finish };
+  const seg = { id, type: raw.type, finish };
   if (def) {
     // šířka je vlastnost INSTANCE (§7.1); chybějící/neplatné widthMM se
     // doplní na výchozí hodnotu katalogu. Hloubka podestavby už NENÍ
@@ -1053,9 +1135,18 @@ function applyConfig(config) {
   const lengthMM = clamp(Number(d.lengthMM) || 3200, LENGTH_MIN, LENGTH_MAX);
   const depthAMM = clamp(Number(d.depthAMM) || 850, DEPTH_MIN, DEPTH_MAX);
   const depthBMM = clamp(Number(d.depthBMM) || 850, DEPTH_MIN, DEPTH_MAX);
-  const heightMM = clamp(Number(d.heightMM) || 900, HEIGHT_MIN, HEIGHT_MAX);
+  // ÚKOL 13 (ZADANI-SOKL.md) — `plinth` je top-level pole (vedle `variant`),
+  // chybějící/neplatné → výchozí (sanitizeBlockPlinth toleruje i úplně
+  // chybějící config.plinth u starších/cizích souborů). heightMM se od
+  // 31. 8. 2026 NIKDY nečte z d.heightMM (uložená hodnota je jen
+  // informativní, viz serializeConfig výše) — je to DOPOČÍTANÝ údaj, jediný
+  // zapisovatel je main.js, tady přes computeWorkHeightMM ze ZROVNA
+  // sanitizovaného soklu.
+  const plinth = sanitizeBlockPlinth(config.plinth);
+  const heightMM = computeWorkHeightMM(plinth);
 
   state.dimensions = { lengthMM, depthAMM, depthBMM, heightMM };
+  state.plinth = plinth;
   state.segmentsA = segmentsA;
   state.segmentsB = segmentsB;
   state.arms = arms;
@@ -1164,6 +1255,11 @@ const ui = setupUI({
     // pozn.: rebuildBlock() se NEVOLÁ — název projektu nemá vliv na geometrii.
   },
   onDimensionsChange(partial) {
+    // ÚKOL 13 (ZADANI-SOKL.md) — `heightMM` (pracovní výška) tu od
+    // 31. 8. 2026 NENÍ: pole se v levém panelu změnilo ze vstupu na
+    // zobrazený DOPOČÍTANÝ výsledek (viz index.html #input-height a
+    // ui.js render()). Nastavuje se výhradně přes onPlinthChange níže
+    // (computeWorkHeightMM), nikdy odsud.
     if (partial.lengthMM !== undefined) {
       state.dimensions.lengthMM = clamp(Math.round(partial.lengthMM / LENGTH_STEP) * LENGTH_STEP, LENGTH_MIN, LENGTH_MAX);
     }
@@ -1173,9 +1269,21 @@ const ui = setupUI({
     if (partial.depthBMM !== undefined) {
       state.dimensions.depthBMM = clamp(Math.round(partial.depthBMM / DEPTH_STEP) * DEPTH_STEP, DEPTH_MIN, DEPTH_MAX);
     }
-    if (partial.heightMM !== undefined) {
-      state.dimensions.heightMM = clamp(Math.round(partial.heightMM / HEIGHT_STEP) * HEIGHT_STEP, HEIGHT_MIN, HEIGHT_MAX);
+    rebuildBlock();
+  },
+  // ÚKOL 13 (ZADANI-SOKL.md) — NOVÝ callback: typ/výška soklu (vlastnost
+  // CELÉHO BLOKU, levý panel, OBA produkty). Po každé změně se z plinth
+  // znovu dopočítá state.dimensions.heightMM (jediný zapisovatel je
+  // main.js, viz computeWorkHeightMM) a scéna se překreslí stejně jako
+  // u ostatních rozměrů (onDimensionsChange výše).
+  onPlinthChange(partial) {
+    if (partial.type !== undefined) {
+      state.plinth.type = sanitizePlinth(partial.type);
     }
+    if (partial.heightMM !== undefined) {
+      state.plinth.heightMM = sanitizePlinthHeight(partial.heightMM);
+    }
+    state.dimensions.heightMM = computeWorkHeightMM(state.plinth);
     rebuildBlock();
   },
   onVariantChange(variant) {
@@ -1194,6 +1302,7 @@ const ui = setupUI({
     rebuildBlock();
   },
   onAddNeutral(side) {
+    // ÚKOL 13 (ZADANI-SOKL.md) — bez `plinth`, sokl je vlastnost CELÉHO BLOKU.
     getSideList(side).push({
       id: nextId++,
       type: NEUTRAL_TYPE,
@@ -1201,7 +1310,6 @@ const ui = setupUI({
       podestavba: 'doors',
       hasPanel: false,
       hasShelf: false,
-      plinth: DEFAULT_PLINTH,
       finish: DEFAULT_FINISH,
     });
     rebuildBlock();
@@ -1213,7 +1321,6 @@ const ui = setupUI({
       widthMM: DRAWERS_WIDTH_MM,
       hasPanel: false,
       drawerCount: DEFAULT_DRAWER_COUNT,
-      plinth: DEFAULT_PLINTH,
       finish: DEFAULT_FINISH,
     });
     rebuildBlock();
@@ -1221,7 +1328,7 @@ const ui = setupUI({
   onOpenCustomNew(side) {
     customDialog.open(null, (result) => {
       getSideList(side).push({
-        id: nextId++, type: CUSTOM_TYPE, plinth: DEFAULT_PLINTH, finish: DEFAULT_FINISH, ...result,
+        id: nextId++, type: CUSTOM_TYPE, finish: DEFAULT_FINISH, ...result,
       });
       rebuildBlock();
     });
@@ -1314,13 +1421,9 @@ const ui = setupUI({
     found.seg.bodyStyle = sanitizeBodyStyle(def, bodyStyle);
     rebuildBlock();
   },
-  onSegmentPlinthChange(id, plinth) {
-    // §11.2 SPEC v4 — provedení soklu (nožičky / stavební / konstrukční)
-    const found = findSegment(id);
-    if (!found) return;
-    found.seg.plinth = sanitizePlinth(plinth);
-    rebuildBlock();
-  },
+  // ÚKOL 13 (ZADANI-SOKL.md) — onSegmentPlinthChange ODSTRANĚN: provedení
+  // soklu se z per-segmentových parametrů stěhuje do levého panelu (viz
+  // onPlinthChange výše) a ui.js už tenhle callback nevolá.
   onSegmentFinishChange(id, finish) {
     // §11.2 SPEC v4 — povrchové provedení (HS+ / H1 / H2 / H3)
     const found = findSegment(id);
@@ -1613,7 +1716,10 @@ const ui = setupUI({
     // vyprázdnění sestavy do výchozího stavu (stejné hodnoty jako při startu
     // aplikace — viz state výše a createDefaultSegmentsA)
     state.projectName = '';
-    state.dimensions = { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: 900 };
+    // ÚKOL 13 (ZADANI-SOKL.md) — „Nový projekt" (OBA produkty) začíná
+    // s výchozím soklem; heightMM se z něj rovnou dopočítá (computeWorkHeightMM).
+    state.plinth = defaultBlockPlinth();
+    state.dimensions = { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: computeWorkHeightMM(state.plinth) };
     state.segmentsA = createDefaultSegmentsA();
     state.segmentsB = [];
     state.arms = [];

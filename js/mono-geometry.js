@@ -27,16 +27,21 @@
 //   825 zadní líc korpusu herdbloku (850 − DESK_OVERHANG_BACK_MM)
 //   850 zadní hrana desky = rovina stěny (HERDBLOK_DEPTH_DEFAULT_MM) i zadní líc bočního krytu
 //
-// Roviny v ose Y (mm od podlahy, při pracovní výšce 900):
+// Roviny v ose Y (mm od podlahy, při pracovní výšce 900, sokl 150 — ZADANI-SOKL.md
+// 31. 8. 2026 změnilo soklovou zónu z pevných 150 na PROMĚNNOU plinth.heightMM,
+// čísla níž platí pro výchozí sokl 150; u jiné výšky soklu se posune vše od
+// řádku "horní hrana soklové zóny" výš, tělo podestavby (460) zůstává PEVNÉ):
 //   0   podlaha
-//   150 horní hrana nožiček = spodek korpusu podestavby (LEG_HEIGHT_MM)
+//   150 horní hrana soklové zóny = spodek korpusu podestavby (plinth.heightMM)
 //   610 horní hrana podestavby = spodek herdbloku
 //   650 horní hrana spodní lišty (610 + LISTA_HEIGHT_MM)
 //   850 horní hrana ovládacího panelu (610 + PANEL_HEIGHT_MM)
 //   900 horní plocha pracovní desky (workHeightMM)
 //
-// Výška bloku se mění VÝHRADNĚ tělem skříňky podestavby:
-//   bodyHeightMM = workHeightMM − HERDBLOK_HEIGHT_MM − LEG_HEIGHT_MM
+// Tělo podestavby je od 31. 8. 2026 PEVNÉ (ZADANI-SOKL.md), nezávislé na
+// soklu i na workHeightMM: bodyHeightMM = BODY_STACK_MM − HERDBLOK_HEIGHT_MM
+// = 750 − 290 = 460. Nižší sokl ⇒ CELÝ BLOK klesne o stejný rozdíl (tělo se
+// nezvětšuje) — workHeightMM = HERDBLOK_HEIGHT_MM + bodyHeightMM + plinth.heightMM.
 //
 // --- Dvě nezávislé vrstvy ----------------------------------------------------
 // `podestavby` a `herdblok` (segmenty herdbloku) jsou POLE PRVKŮ s vlastní
@@ -60,10 +65,26 @@ const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
 
 // --- výšky ----------------------------------------------------------------
 export const HERDBLOK_HEIGHT_MM = 290;      // konstrukčně pevné
-export const WORK_HEIGHT_MIN_MM = 850;
+export const WORK_HEIGHT_MIN_MM = 800;      // ZADANI-SOKL.md 31. 8. 2026: 850 → 800 (sokl 50)
 export const WORK_HEIGHT_MAX_MM = 900;
 export const WORK_HEIGHT_DEFAULT_MM = 900;
-export const LEG_HEIGHT_MM = 150;           // konstanta, nemění se
+// LEG_HEIGHT_MM (dřív pevných 150) SE RUŠÍ — výška soklové zóny je od
+// 31. 8. 2026 vlastnost CELÉHO BLOKU (state.plinth.heightMM, ZADANI-SOKL.md),
+// chodí jako parametr `plinth` do buildMonoBlock()/buildPodestavba().
+// Řetězcové hodnoty i rozsah MUSÍ sedět s modules.js PLINTH_TYPES/
+// PLINTH_HEIGHT_MIN_MM/MAX_MM/DEFAULT_MM — mono-geometry.js zůstává BEZ
+// importu z modules.js (viz hlavička souboru), proto je tu jen OPAKOVANÁ
+// holá hodnota jako lokální evidence (stejná technika jako FINISH_H2 níž).
+export const PLINTH_HEIGHT_MIN_MM = 50;
+export const PLINTH_HEIGHT_MAX_MM = 150;
+export const PLINTH_HEIGHT_DEFAULT_MM = 150;
+const DEFAULT_PLINTH_TYPE = 'construction'; // musí sedět s modules.js DEFAULT_PLINTH
+// tělo podestavby je PEVNÉ: bodyHeightMM = BODY_STACK_MM − HERDBLOK_HEIGHT_MM
+// (750 − 290 = 460) — musí sedět s modules.js BODY_STACK_MM.
+const BODY_STACK_MM = 750;
+// uskočení rámu/zástěny od líce bloku, ZE VŠECH STRAN — musí sedět
+// s modules.js PLINTH_INSET_MM.
+export const PLINTH_INSET_MM = 50;
 
 // --- typy zakončení ---------------------------------------------------------------
 // Řetězcové hodnoty MUSÍ zůstat přesně tyhle — ukládají se do souboru projektu.
@@ -861,7 +882,8 @@ export function buildHerdblokUsek(usek) {
  * @param {object} p
  * @param {number} p.widthMM
  * @param {number} p.depthMM  výchozí PODESTAVBA_DEPTH_MM
- * @param {number} p.bodyHeightMM  výška TĚLA skříňky (pracovní výška − 290 − 150)
+ * @param {number} p.bodyHeightMM  výška TĚLA skříňky (PEVNÁ, BODY_STACK_MM −
+ *   HERDBLOK_HEIGHT_MM = 460 — nezávisí na soklu, viz buildMonoBlock)
  * @param {string} [p.finish]  MonoCabinet.finish (ZADANI-MONO-UI.md §1) —
  *   VLASTNOST TÉTHLE JEDNÉ SKŘÍŇKY, ne bloku (PREDANI.md úkol 9b): náběhy
  *   H2 (buildH2Fillet) se STAVÍ pouze pro FINISH_H2 ('H2'); pro cokoli
@@ -869,8 +891,18 @@ export function buildHerdblokUsek(usek) {
  *   VŮBEC NEVYTVOŘÍ (ne jen schovají/zmenší na nulu). Viz FINISH_H2 výš,
  *   proč tenhle test sám o sobě správně pokrývá i chybějící/neznámou
  *   hodnotu (spadá na DEFAULT_FINISH='H1', který je taky bez radiusu).
+ * @param {string} [p.plinthType]  sokl JE VLASTNOST CELÉHO BLOKU
+ *   (ZADANI-SOKL.md), sem chodí jen PROTAŽENÝ z buildMonoBlock() — řídí,
+ *   jestli se pro tuhle skříňku staví nožičky (`legs`/`legs_plinth`), nebo
+ *   nic (`building`/`construction` — rám/zástěna jsou NA ÚROVNI BLOKU,
+ *   staví je buildBlockPlinth(), ne tahle funkce).
+ * @param {number} [p.plinthHeightMM]  výška soklové zóny (plinth.heightMM,
+ *   50–150) — nahrazuje dřívější pevnou LEG_HEIGHT_MM (150).
  */
-export function buildPodestavba({ widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHeightMM, finish }) {
+export function buildPodestavba({
+  widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHeightMM, finish,
+  plinthType = DEFAULT_PLINTH_TYPE, plinthHeightMM = PLINTH_HEIGHT_DEFAULT_MM,
+}) {
   const group = new THREE.Group();
   group.name = 'podestavba';
 
@@ -879,8 +911,8 @@ export function buildPodestavba({ widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHe
 
   const zFront = DESK_OVERHANG_FRONT_MM;   // 30 — líc podestavby
   const zBack = zFront + depthMM;          // 700 při depthMM 670 — zadní líc podestavby
-  const yBodyBottom = LEG_HEIGHT_MM;       // 150 — horní hrana nožiček
-  const yBodyTop = LEG_HEIGHT_MM + bodyHeightMM; // horní hrana podestavby
+  const yBodyBottom = plinthHeightMM;       // horní hrana soklové zóny
+  const yBodyTop = plinthHeightMM + bodyHeightMM; // horní hrana podestavby
 
   // --- 2 boční stěny (tloušťka WALL_MM, plná hloubka, plná výška těla) -----
   [0, widthMM - WALL_MM].forEach((xWall) => {
@@ -930,23 +962,28 @@ export function buildPodestavba({ widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHe
   group.add(rail);
 
   // --- 4 nožičky (LEG_SIZE_MM konstanta, NE dopočet ze šířky) ---------------
+  // OPRAVA (PREDANI.md úkol 13, VADA): dřív se stavěly NATVRDO bez ohledu na
+  // typ soklu — teď JEN pro `legs`/`legs_plinth` (ZADANI-SOKL.md), pro
+  // `building`/`construction` se tady nekreslí nic (viz JSDoc výš).
   // Vnější líc nožičky je LEG_INSET_MM od bočního i čelního/zadního líce.
-  const legXs = [
-    LEG_INSET_MM + LEG_SIZE_MM / 2,
-    widthMM - LEG_INSET_MM - LEG_SIZE_MM / 2,
-  ];
-  const legZs = [
-    zFront + LEG_INSET_MM + LEG_SIZE_MM / 2,
-    zBack - LEG_INSET_MM - LEG_SIZE_MM / 2,
-  ];
-  legXs.forEach((lx) => {
-    legZs.forEach((lz) => {
-      const leg = box(mm(LEG_SIZE_MM), mm(LEG_HEIGHT_MM), mm(LEG_SIZE_MM), plinth);
-      leg.position.set(mm(lx), mm(LEG_HEIGHT_MM) / 2, mm(lz));
-      leg.name = 'nozicka';
-      group.add(leg);
+  if (plinthType === 'legs' || plinthType === 'legs_plinth') {
+    const legXs = [
+      LEG_INSET_MM + LEG_SIZE_MM / 2,
+      widthMM - LEG_INSET_MM - LEG_SIZE_MM / 2,
+    ];
+    const legZs = [
+      zFront + LEG_INSET_MM + LEG_SIZE_MM / 2,
+      zBack - LEG_INSET_MM - LEG_SIZE_MM / 2,
+    ];
+    legXs.forEach((lx) => {
+      legZs.forEach((lz) => {
+        const leg = box(mm(LEG_SIZE_MM), mm(plinthHeightMM), mm(LEG_SIZE_MM), plinth);
+        leg.position.set(mm(lx), mm(plinthHeightMM) / 2, mm(lz));
+        leg.name = 'nozicka';
+        group.add(leg);
+      });
     });
-  });
+  }
 
   // --- hygienický stupeň H2: R16 v koutech MEZI PODLÁŽKOU A BOČNÍMI STĚNAMI
   // (dva kouty, zepředu vidět vlevo a vpravo dole) — STAVÍ SE JEN pro
@@ -992,9 +1029,15 @@ export function buildPodestavba({ widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHe
  * @param {number} [p.xMM=0]  MENŠÍ x kraj krytu — kryt zabírá x od xMM do
  *   xMM+thicknessMM. Umožňuje umístit kryt přímo, bez dodatečného posunu
  *   group.position.x volajícím.
+ * @param {number} [p.plinthHeightMM]  výška soklové zóny (plinth.heightMM) —
+ *   kryt sedí NAD ní, stejně jako podestavba (nahrazuje dřívější pevnou
+ *   LEG_HEIGHT_MM).
  * @returns {THREE.Group}
  */
-export function buildSideCover({ thicknessMM = SIDE_COVER_THICK_MM, heightMM, fromZMM, toZMM, xMM = 0 }) {
+export function buildSideCover({
+  thicknessMM = SIDE_COVER_THICK_MM, heightMM, fromZMM, toZMM, xMM = 0,
+  plinthHeightMM = PLINTH_HEIGHT_DEFAULT_MM,
+}) {
   const group = new THREE.Group();
   group.name = 'bocni-kryt';
 
@@ -1003,7 +1046,7 @@ export function buildSideCover({ thicknessMM = SIDE_COVER_THICK_MM, heightMM, fr
   const cover = box(mm(thicknessMM), mm(heightMM), mm(depthMM), stainless);
   cover.position.set(
     mm(xMM + thicknessMM / 2),
-    mm(LEG_HEIGHT_MM + heightMM / 2),
+    mm(plinthHeightMM + heightMM / 2),
     mm(fromZMM + depthMM / 2)
   );
   // Pozn.: vnitřní mesh se NEPOJMENOVÁVÁ stejně jako group ('bocni-kryt') —
@@ -1015,6 +1058,69 @@ export function buildSideCover({ thicknessMM = SIDE_COVER_THICK_MM, heightMM, fr
   group.userData.thicknessMM = thicknessMM;
   group.userData.heightMM = heightMM;
   group.userData.xMM = xMM;
+  return group;
+}
+
+// ============================================================================
+// SOKL NA ÚROVNI BLOKU — rám (construction) / zástěna (legs_plinth)
+// ============================================================================
+// Nožičky se staví PER SKŘÍŇKA (buildPodestavba výš). Nerezový rám
+// (`construction`) a soklová zástěna kryjící nožičky (`legs_plinth`) jsou
+// ale VLASTNOSTÍ CELÉHO BLOKU (ZADANI-SOKL.md, 31. 8. 2026) — kreslí se
+// JEDNOU, po půdorysném obvodu bloku, ne po jednotlivých podestavbách. U
+// ostrova tím automaticky kryjí i mezeru mezi zády obou řad podestaveb.
+const PLINTH_WALL_THICKNESS_MM = 20; // v zadání není dané číslo tloušťky
+// plechu — 20 mm konzistentně s ostatními plechovými díly (WALL_MM výš).
+
+/**
+ * @param {object} p
+ * @param {number} p.lengthMM  délka bloku (půdorysná šířka, osa X)
+ * @param {number} p.depthMM  hloubka bloku (osa Z) — u ostrova KOMBINOVANÁ
+ *   (totalDepthMM, obě strany dohromady)
+ * @param {number} p.heightMM  výška soklové zóny (plinth.heightMM)
+ * @param {string} p.plinthType  jedna ze 4 hodnot PLINTH_TYPES (modules.js)
+ * @param {boolean} [p.hasBack=true]  false u varianty `single` PRO
+ *   `legs_plinth` (zadní strana u zdi se nekryje) — `construction` má VŽDY
+ *   všechny 4 strany bez ohledu na variantu (viz volání v buildMonoBlock).
+ * @returns {THREE.Group|null}  null pro `building`/`legs` — volající null
+ *   zahodí (nic se nekreslí).
+ */
+export function buildBlockPlinth({ lengthMM, depthMM, heightMM, plinthType, hasBack = true }) {
+  if (plinthType !== 'construction' && plinthType !== 'legs_plinth') return null;
+
+  const mat = createPlinthMaterial();
+  const heightM = mm(heightMM);
+  const t = PLINTH_WALL_THICKNESS_MM;
+  const xMin = PLINTH_INSET_MM;
+  const xMax = lengthMM - PLINTH_INSET_MM;
+  const zMin = PLINTH_INSET_MM;
+  const zMax = depthMM - PLINTH_INSET_MM;
+  const innerLengthMM = Math.max(xMax - xMin, 1);
+  const innerDepthMM = Math.max(zMax - zMin, 1);
+
+  const group = new THREE.Group();
+  group.name = plinthType === 'construction' ? 'sokl-ram' : 'sokl-zastena';
+
+  const front = box(mm(innerLengthMM), heightM, mm(t), mat);
+  front.position.set(mm(xMin + innerLengthMM / 2), heightM / 2, mm(zMin + t / 2));
+  front.name = 'sokl-predni';
+  group.add(front);
+
+  if (hasBack) {
+    const back = box(mm(innerLengthMM), heightM, mm(t), mat);
+    back.position.set(mm(xMin + innerLengthMM / 2), heightM / 2, mm(zMax - t / 2));
+    back.name = 'sokl-zadni';
+    group.add(back);
+  }
+
+  // boční stěny přes CELOU hloubku (zMin..zMax), aby v rozích nevznikla mezera
+  [xMin, xMax - t].forEach((xWall, i) => {
+    const side = box(mm(t), heightM, mm(innerDepthMM), mat);
+    side.position.set(mm(xWall + t / 2), heightM / 2, mm(zMin + innerDepthMM / 2));
+    side.name = i === 0 ? 'sokl-levy' : 'sokl-pravy';
+    group.add(side);
+  });
+
   return group;
 }
 
@@ -1265,6 +1371,13 @@ export function checkSupport(podestavby, herdblokUsek) {
  *   se, jen když `podestavbyA` chybí. Stejně `herdblok`→`herdblokA`,
  *   `panelItems`→`panelItemsA`. Drží v provozu mono-prototype.js, dokud
  *   nedostane vlastní aktualizaci volání (mimo rozsah tohoto souboru).
+ * @param {{type:string, heightMM:number}} [params.plinth]  sokl JE VLASTNOST
+ *   CELÉHO BLOKU (ZADANI-SOKL.md, 31. 8. 2026), ne skříňky — nahrazuje
+ *   dřívější pevnou LEG_HEIGHT_MM (150). Výchozí
+ *   `{type:'construction', heightMM:150}` zachovává dosavadní chování
+ *   (kontrolní čísla PREDANI ČÁST F bod 1), když volající parametr nedodá —
+ *   `state.plinth` protáhne až adaptér mono-block.js (fáze 2, mimo rozsah
+ *   tohoto souboru).
  * @returns {{group:THREE.Group, support: Array, bodyHeightMM:number, workHeightMM:number}}
  */
 export function buildMonoBlock({
@@ -1279,6 +1392,7 @@ export function buildMonoBlock({
   herdblokB = [],
   panelItemsB = [],
   collar = [],
+  plinth = { type: DEFAULT_PLINTH_TYPE, heightMM: PLINTH_HEIGHT_DEFAULT_MM },
   // zpětná kompatibilita — viz JSDoc výš
   podestavby: legacyPodestavby,
   herdblok: legacyHerdblok,
@@ -1289,9 +1403,32 @@ export function buildMonoBlock({
   const herA = herdblokA !== undefined ? herdblokA : (legacyHerdblok || []);
   const panA = panelItemsA !== undefined ? panelItemsA : (legacyPanelItems || []);
 
+  const plinthType = plinth && plinth.type ? plinth.type : DEFAULT_PLINTH_TYPE;
+  const plinthHeightMM = clamp(
+    Number(plinth && plinth.heightMM) || PLINTH_HEIGHT_DEFAULT_MM,
+    PLINTH_HEIGHT_MIN_MM,
+    PLINTH_HEIGHT_MAX_MM
+  );
+
   const workHeight = clamp(workHeightMM, WORK_HEIGHT_MIN_MM, WORK_HEIGHT_MAX_MM);
-  // výška bloku se mění VÝHRADNĚ tělem skříňky — herdblok i nožičky jsou pevné
-  const bodyHeightMM = workHeight - HERDBLOK_HEIGHT_MM - LEG_HEIGHT_MM;
+  // Tělo podestavby je od ZADANI-SOKL.md PEVNÉ — HARDCODED přes BODY_STACK_MM,
+  // NE dopočtem z workHeight/plinthHeightMM, aby zůstalo neměnné i kdyby
+  // volající (main.js) dodal workHeightMM nekonzistentní se soklem. Nižší
+  // sokl ⇒ celý blok klesne (workHeight = HERDBLOK_HEIGHT_MM + bodyHeightMM
+  // + plinthHeightMM), tělo skříňky se nezvětšuje.
+  const bodyHeightMM = BODY_STACK_MM - HERDBLOK_HEIGHT_MM; // 750 − 290 = 460
+
+  // --- půdorysný obrys CELÉHO BLOKU (délka × hloubka) — potřeba i pro
+  // `single` od ZADANI-SOKL.md (sokl na úrovni bloku, buildBlockPlinth níž);
+  // dřív se počítalo jen pro `island` (kombinovaná deska/nosy/límec).
+  // lengthMM: buildMonoScene VŽDY staví herdblokA/herdblokB jako JEDEN úsek
+  // přes celou délku bloku (existující konvence, i pro `single`) — widthMM
+  // toho úseku je tedy lengthMM. Robustně bereme z A, jinak z B.
+  const lengthMM = (herA[0] && herA[0].widthMM) || (herdblokB[0] && herdblokB[0].widthMM) || 0;
+  const totalDepthMM = isIsland
+    ? (Number(depthAMM) || (herA[0] && herA[0].depthMM) || 0)
+      + (Number(depthBMM) || (herdblokB[0] && herdblokB[0].depthMM) || 0)
+    : (Number(depthAMM) || (herA[0] && herA[0].depthMM) || HERDBLOK_DEPTH_DEFAULT_MM);
 
   const group = new THREE.Group();
   group.name = 'alba-mono-blok';
@@ -1302,7 +1439,9 @@ export function buildMonoBlock({
   const podestavbyGroup = new THREE.Group();
   podestavbyGroup.name = 'podestavby';
   podA.forEach((p) => {
-    const mesh = buildPodestavba({ widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish });
+    const mesh = buildPodestavba({
+      widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish, plinthType, plinthHeightMM,
+    });
     mesh.position.x = mm(p.xMM);
     podestavbyGroup.add(mesh);
   });
@@ -1348,6 +1487,7 @@ export function buildMonoBlock({
       fromZMM: DESK_OVERHANG_FRONT_MM,
       toZMM: depthMM,
       xMM,
+      plinthHeightMM,
     });
     sideCoversGroup.add(cover);
   });
@@ -1356,16 +1496,8 @@ export function buildMonoBlock({
   // ============================================================================
   // STRANA B + KOMBINOVANÉ DÍLY — jen `island` (ÚKOL 6, PREDANI.md)
   // ============================================================================
-  let lengthMM = 0;
-  let totalDepthMM = 0;
+  // lengthMM/totalDepthMM se počítají výš (potřeba i pro `single`, viz JSDoc).
   if (isIsland) {
-    // lengthMM: buildMonoScene VŽDY staví herdblokA/herdblokB jako JEDEN
-    // úsek přes celou délku bloku (existující konvence, i pro `single`) —
-    // widthMM toho úseku je tedy lengthMM. Robustně bereme z A, jinak z B.
-    lengthMM = (herA[0] && herA[0].widthMM) || (herdblokB[0] && herdblokB[0].widthMM) || 0;
-    totalDepthMM = (Number(depthAMM) || (herA[0] && herA[0].depthMM) || 0)
-      + (Number(depthBMM) || (herdblokB[0] && herdblokB[0].depthMM) || 0);
-
     // --- STRANA B: LOKÁLNÍ (nezrcadlené) souřadnice, celá podskupina se
     // otočí 180° kolem Y — viz JSDoc výš pro odvození position.x/position.z.
     const sideBGroup = new THREE.Group();
@@ -1376,7 +1508,9 @@ export function buildMonoBlock({
     const podestavbyBGroup = new THREE.Group();
     podestavbyBGroup.name = 'podestavby';
     podestavbyB.forEach((p) => {
-      const mesh = buildPodestavba({ widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish });
+      const mesh = buildPodestavba({
+        widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish, plinthType, plinthHeightMM,
+      });
       mesh.position.x = mm(p.xMM);
       podestavbyBGroup.add(mesh);
     });
@@ -1411,6 +1545,7 @@ export function buildMonoBlock({
         fromZMM: DESK_OVERHANG_FRONT_MM,
         toZMM: depthMM,
         xMM,
+        plinthHeightMM,
       });
       sideCoversBGroup.add(cover);
     });
@@ -1441,7 +1576,7 @@ export function buildMonoBlock({
       // herdblokBGroup, aby díly skončily ve stejném světovém Y.
       //
       // Boční kryty na X-koncích (coverLeft/coverRight, níž) sem NEPATŘÍ —
-      // buildSideCover počítá Y ABSOLUTNĚ (LEG_HEIGHT_MM + heightMM/2, viz
+      // buildSideCover počítá Y ABSOLUTNĚ (plinthHeightMM + heightMM/2, viz
       // jeho definice), takže je už teď správně a další posun by ho rozbil.
       const combinedGroup = new THREE.Group();
       combinedGroup.name = 'kombinovane-dily';
@@ -1507,18 +1642,34 @@ export function buildMonoBlock({
 
       if (allWorldPod.length > 0) {
         const coverLeft = buildSideCover({
-          thicknessMM: leftThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: leftEdgeX - leftThickness,
+          thicknessMM: leftThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: leftEdgeX - leftThickness, plinthHeightMM,
         });
         coverLeft.name = 'bocni-kryt-x-konec';
         group.add(coverLeft);
         const coverRight = buildSideCover({
-          thicknessMM: rightThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: rightEdgeX,
+          thicknessMM: rightThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: rightEdgeX, plinthHeightMM,
         });
         coverRight.name = 'bocni-kryt-x-konec';
         group.add(coverRight);
       }
     }
   }
+
+  // ============================================================================
+  // SOKL NA ÚROVNI BLOKU — rám (construction) / zástěna (legs_plinth)
+  // ============================================================================
+  // Nožičky se staví PER SKŘÍŇKA výš (buildPodestavba). Rám i zástěna jsou
+  // vlastností CELÉHO BLOKU — kreslí se JEDNOU, po půdorysném obvodu bloku
+  // (lengthMM × totalDepthMM), uskočené PLINTH_INSET_MM ze všech stran. U
+  // ostrova tím automaticky kryjí i mezeru mezi zády obou řad podestaveb
+  // (ZADANI-SOKL.md). `construction` má VŠECHNY strany VŽDY (i u `single`);
+  // `legs_plinth` u `single` vynechává zadní stranu (u zdi), u `island` má
+  // taky všechny čtyři.
+  const plinthHasBack = plinthType === 'construction' ? true : isIsland;
+  const blockPlinth = buildBlockPlinth({
+    lengthMM, depthMM: totalDepthMM, heightMM: plinthHeightMM, plinthType, hasBack: plinthHasBack,
+  });
+  if (blockPlinth) group.add(blockPlinth);
 
   const support = [
     ...herA.map((u) => ({ usek: u, side: 'A', ...checkSupport(podA, u) })),

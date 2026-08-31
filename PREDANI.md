@@ -505,6 +505,19 @@ podestavbách obecně.
 
 ## 13. Sokly se u MONO ve 3D nekreslí — VADA
 
+**HOTOVO 31. 8. 2026.** Implementováno podle `ZADANI-SOKL.md` (závazná
+smlouva, zůstává jako reference) + tři nová rozhodnutí zadavatele:
+**typ soklu je vlastnost CELÉHO BLOKU** (volba v levém panelu, per-item
+volba zrušena z pásu MONO i z parametrů segmentů), **pravidla kreslení
+platí i pro SEGMENT**, **pracovní výška = BODY_STACK_MM 750 + výška
+soklu** pro oba produkty (sokl 50–150 → výška 800–900, pole v levém
+panelu je jen zobrazený výsledek). Stav: `state.plinth = {type, heightMM}`,
+4. hodnota `legs_plinth` v `PLINTH_TYPES`. Rám/zástěna se staví po obvodu
+bloku (`sokl-predni/zadni/levy/pravy`), zástěna u `single` bez zadní
+strany. Tiskový dokument uvádí sokl jednou v parametrech bloku
+(`report.js`). Ověřeno měřením: MONO i SEGMENT, všechny 4 typy, posun
+bloku při nižším soklu, serializace + tolerantní načtení starého souboru.
+
 Zadavatel 9. 8. 2026 doslova:
 
 > „V 3D se neukazují správně sokly — teď a neukazují se vůbec. Stavební sokl
@@ -608,6 +621,13 @@ Rozhodnutí zadavatele (9. 8. 2026): **6 vsuvů, rozteč 70 mm.** Šířky pevn�
 **400 mm pro GN 1/1, 600 mm pro GN 2/1**. Provedení **otevřené nebo s dvířky**.
 
 ## 17. Přístrojům se nekreslí ovládací prvky — VADA
+
+**HOTOVO 31. 8. 2026.** `renderControls()` se volá po obou
+`applyTopFeature()` (strana A i B). Ověřeno měřením: 4 knoflíky ø34 se
+středem na y 750, strana A na z 7–25 (před lícem panelu), strana B na
+vnějším líci panelu B (z 1675–1693 při hloubce 1700). Pozn.: po merge
+katalogu už neexistují staré klíče přístrojů (`induction_hob` apod.) —
+platí id z `katalog/` (např. `al-pg22-800-g`).
 
 Zadavatel: „přístrojům se nevykreslují ovládací prvky."
 
@@ -800,12 +820,16 @@ příčina zatím není potvrzená — je to hlášení, ne diagnóza.
 **Zadavatel 9. 8. 2026 rozhodl o pořadí: nejdřív ověřit ostrov, teprve pak
 úkoly 13–17.**
 
-**Po ostrovu jsou na řadě úkoly 13 až 17** (ČÁST C). Dva z nich jsou VADY:
-**13** (sokly se nekreslí, typ soklu se ignoruje) a **17** (přístrojům
-chybí ovládací prvky). Tři jsou NOVÉ POŽADAVKY na rozšíření nabídky
-podestaveb: **14** (police a dvířka — a s nimi zprovoznění `bodyStyle`,
-který dnes nemá ve 3D žádný účinek), **15** (zásuvkový blok) a **16**
-(skříňka se zásuvy na GN).
+**Úkoly 13 a 17 jsou HOTOVÉ a ověřené (31. 8. 2026)** — viz ČÁST C.
+Zbývají NOVÉ POŽADAVKY na rozšíření nabídky podestaveb: **14** (police a
+dvířka — a s nimi zprovoznění `bodyStyle`, který dnes nemá ve 3D žádný
+účinek), **15** (zásuvkový blok) a **16** (skříňka se zásuvy na GN).
+
+**Pozor na latentní vady z merge katalogu:** funkce psané ve forku před
+ostrovem mohou sahat na stará pole bez přípony A/B — jedna taková
+(`usedCatalogTypes` četla `state.mono.herdblok`, čímž PADALO UKLÁDÁNÍ)
+byla nalezena a opravena 31. 8. 2026. Při další práci na `main.js` mít
+oči otevřené.
 
 **U výšky soklu a pracovní výšky ROZHODNUTO (31. 8. 2026): nová logika
 platí i pro SEGMENT.** Viz ÚKOL 13 v ČÁSTI C a ČÁST E.

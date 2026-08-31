@@ -10,10 +10,14 @@ import {
   getSegmentLabel,
   getSegmentWidthMM,
   getSegmentBodyStyle,
-  getSegmentPlinth,
   getSegmentFinish,
   getSegmentDrawerCount,
   BODY_STYLE_OPTIONS,
+  // ÚKOL 13 (ZADANI-SOKL.md) — PLINTH_TYPES se od 31. 8. 2026 nabízí jen
+  // v NOVÉM selectu soklu CELÉHO BLOKU v levém panelu (viz #select-plinth-type
+  // níže); getSegmentPlinth (INSTANCE pole segmentu) odsud mizí spolu se
+  // zrušenou per-segmentovou volbou soklu (bývalá appendPlinthFinishFields,
+  // teď appendFinishField, níže).
   PLINTH_TYPES,
   FINISH_TYPES,
   NEUTRAL_WIDTH_MIN,
@@ -242,7 +246,13 @@ export function setupUI(callbacks) {
     depthBRow: document.getElementById('depth-b-row'),
     depthAGrowNote: document.getElementById('depth-a-grow-note'),
     depthBGrowNote: document.getElementById('depth-b-grow-note'),
+    // ÚKOL 13 (ZADANI-SOKL.md) — #input-height je od 31. 8. 2026 JEN ke
+    // čtení (readonly v index.html): pracovní výška je DOPOČÍTANÝ výsledek
+    // (main.js computeWorkHeightMM), ne vstup. inputPlinthHeight/
+    // selectPlinthType jsou NOVÉ vstupy soklu CELÉHO BLOKU (viz níže).
     inputHeight: document.getElementById('input-height'),
+    inputPlinthHeight: document.getElementById('input-plinth-height'),
+    selectPlinthType: document.getElementById('select-plinth-type'),
     variantSingle: document.getElementById('variant-single'),
     variantIsland: document.getElementById('variant-island'),
     dimsTotalDepth: document.getElementById('dims-total-depth'),
@@ -285,6 +295,24 @@ export function setupUI(callbacks) {
     startCardBtnMono: document.getElementById('start-card-btn-mono'),
     startScreenOpenFile: document.getElementById('start-screen-open-file'),
   };
+
+  // ÚKOL 13 (ZADANI-SOKL.md) — naplnění selectu typu soklu CELÉHO BLOKU
+  // (levý panel, OBA produkty); přeloží se znovu i při změně jazyka (viz
+  // onLangChange níže), stejný vzorec jako refreshControlsTypeOptions
+  // v custom-dialog.js.
+  function refreshPlinthTypeOptions() {
+    const prevValue = els.selectPlinthType.value;
+    els.selectPlinthType.innerHTML = '';
+    PLINTH_TYPES.forEach((value) => {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = t(`plinth.${value}`);
+      els.selectPlinthType.appendChild(opt);
+    });
+    if (prevValue) els.selectPlinthType.value = prevValue;
+  }
+  refreshPlinthTypeOptions();
+  onLangChange(refreshPlinthTypeOptions);
 
   // --- typ řady bloku (segment/mono) — ui.js si ho drží jen jako kopii pro
   // vykreslení odznaku v panelu Projekt a pro tlačítko „Nový projekt" (to
@@ -745,8 +773,16 @@ export function setupUI(callbacks) {
   els.inputDepthB.addEventListener('change', () => {
     callbacks.onDimensionsChange({ depthBMM: Number(els.inputDepthB.value) });
   });
-  els.inputHeight.addEventListener('change', () => {
-    callbacks.onDimensionsChange({ heightMM: Number(els.inputHeight.value) });
+  // ÚKOL 13 (ZADANI-SOKL.md) — #input-height NEMÁ posluchač: je readonly
+  // (viz index.html), pracovní výška je od 31. 8. 2026 jen zobrazený
+  // DOPOČÍTANÝ výsledek (main.js computeWorkHeightMM). Sokl (výška + typ)
+  // je vlastnost CELÉHO BLOKU, OBOU produktů — proto tu, ne v pásu/parametrech
+  // segmentu.
+  els.inputPlinthHeight.addEventListener('change', () => {
+    callbacks.onPlinthChange({ heightMM: Number(els.inputPlinthHeight.value) });
+  });
+  els.selectPlinthType.addEventListener('change', () => {
+    callbacks.onPlinthChange({ type: els.selectPlinthType.value });
   });
   els.variantSingle.addEventListener('change', () => {
     if (els.variantSingle.checked) callbacks.onVariantChange('single');
@@ -900,26 +936,13 @@ export function setupUI(callbacks) {
     });
   }
 
-  // --- provedení soklu + povrchová úprava (§11.2 SPEC v4) — u KAŽDÉHO segmentu ----
-  function appendPlinthFinishFields(extra, seg) {
-    const plinthLabel = document.createElement('label');
-    plinthLabel.className = 'extra-field';
-    plinthLabel.textContent = t('field.plinth');
-    const plinthSelect = document.createElement('select');
-    PLINTH_TYPES.forEach((value) => {
-      const opt = document.createElement('option');
-      opt.value = value;
-      opt.textContent = t(`plinth.${value}`);
-      if (getSegmentPlinth(seg) === value) opt.selected = true;
-      plinthSelect.appendChild(opt);
-    });
-    plinthSelect.addEventListener('click', (ev) => ev.stopPropagation());
-    plinthSelect.addEventListener('change', () => {
-      callbacks.onSegmentPlinthChange(seg.id, plinthSelect.value);
-    });
-    plinthLabel.appendChild(plinthSelect);
-    extra.appendChild(plinthLabel);
-
+  // --- povrchová úprava (§11.2 SPEC v4) — u KAŽDÉHO segmentu ---------------------
+  // ÚKOL 13 (ZADANI-SOKL.md) — provedení soklu odsud 31. 8. 2026 ODEŠLO do
+  // levého panelu (viz #select-plinth-type výše, vlastnost CELÉHO BLOKU).
+  // Funkce se dřív jmenovala appendPlinthFinishFields a stavěla i sokl —
+  // teď staví jen finish, ale jméno volajících (níže) zůstává stejné až na
+  // přejmenování.
+  function appendFinishField(extra, seg) {
     const finishLabel = document.createElement('label');
     finishLabel.className = 'extra-field';
     finishLabel.textContent = t('field.finish');
@@ -1073,7 +1096,7 @@ export function setupUI(callbacks) {
       panelLabel.appendChild(document.createTextNode(` ${t('field.hasPanel')}`));
       extra.appendChild(panelLabel);
 
-      appendPlinthFinishFields(extra, seg);
+      appendFinishField(extra, seg);
     } else if (seg.type === DRAWERS_TYPE) {
       // §Zásuvky GN 1/1 — šířka je vždy pevná (400 mm, žádné pole pro
       // šířku); s panelem je počet zásuvek vynuceně 2, jinak volba 2/3.
@@ -1119,7 +1142,7 @@ export function setupUI(callbacks) {
       }
       extra.appendChild(countLabel);
 
-      appendPlinthFinishFields(extra, seg);
+      appendFinishField(extra, seg);
     } else if (seg.type === CUSTOM_TYPE) {
       extra = document.createElement('div');
       extra.className = 'strip-detail-grid';
@@ -1133,7 +1156,7 @@ export function setupUI(callbacks) {
       });
       extra.appendChild(editBtn);
 
-      appendPlinthFinishFields(extra, seg);
+      appendFinishField(extra, seg);
     } else {
       // katalogový přístroj — šířka podestavby je vlastní instance (§7.4
       // SPEC v3); hloubka podestavby je od §11.1 SPEC v4 jednotná pro celou
@@ -1226,7 +1249,7 @@ export function setupUI(callbacks) {
           extra.appendChild(vatDepthLabel);
         }
 
-        appendPlinthFinishFields(extra, seg);
+        appendFinishField(extra, seg);
       }
     }
 
@@ -1642,9 +1665,14 @@ export function setupUI(callbacks) {
 
     // rozměry — vstupy (jen pokud uživatel zrovna nepíše, jinak by skákala hodnota)
     if (document.activeElement !== els.inputLength) els.inputLength.value = String(state.dimensions.lengthMM);
+    // ÚKOL 13 (ZADANI-SOKL.md) — #input-height je readonly, ale hodnotu se
+    // pořád přepisuje stejně jako ostatní vstupy: dopočítaná pracovní výška
+    // (main.js computeWorkHeightMM) se musí ve výsledku ukázat.
     if (document.activeElement !== els.inputHeight) els.inputHeight.value = String(state.dimensions.heightMM);
     if (document.activeElement !== els.inputDepthA) els.inputDepthA.value = String(state.dimensions.depthAMM);
     if (document.activeElement !== els.inputDepthB) els.inputDepthB.value = String(state.dimensions.depthBMM);
+    if (document.activeElement !== els.inputPlinthHeight) els.inputPlinthHeight.value = String(state.plinth.heightMM);
+    els.selectPlinthType.value = state.plinth.type;
     els.variantSingle.checked = state.variant === 'single';
     els.variantIsland.checked = state.variant === 'island';
 

@@ -152,6 +152,8 @@ const DICTS = {
     'segment.overflowSuffix': ' — does not fit',
     'field.baseType': 'Base cabinet',
     'field.plinth': 'Plinth',
+    // ÚKOL 13 (ZADANI-SOKL.md) — nové pole levého panelu, sokl CELÉHO BLOKU.
+    'field.plinthHeight': 'Plinth height',
     'field.finish': 'Finish',
     'field.hasShelf': 'With shelf',
     'field.hasPanel': 'With control panel',
@@ -166,6 +168,8 @@ const DICTS = {
     'plinth.legs': 'Legs',
     'plinth.building': 'Building plinth',
     'plinth.construction': 'Construction plinth',
+    // ÚKOL 13 (ZADANI-SOKL.md) — 4. hodnota PLINTH_TYPES (modules.js), 'legs_plinth'.
+    'plinth.legs_plinth': 'Legs + plinth panel',
 
     'controlType.knob': 'Knob',
     'controlType.button': 'Button',
@@ -571,6 +575,7 @@ const DICTS = {
     'segment.overflowSuffix': ' — passt nicht',
     'field.baseType': 'Unterbau',
     'field.plinth': 'Sockel',
+    'field.plinthHeight': 'Sockelhöhe',
     'field.finish': 'Ausführung',
     'field.hasShelf': 'Mit Ablage',
     'field.hasPanel': 'Mit Bedienpanel',
@@ -585,6 +590,7 @@ const DICTS = {
     'plinth.legs': 'Füße',
     'plinth.building': 'Bausockel',
     'plinth.construction': 'Konstruktionssockel',
+    'plinth.legs_plinth': 'Füße + Sockelblende',
 
     'controlType.knob': 'Drehknopf',
     'controlType.button': 'Taster',
@@ -991,6 +997,7 @@ const DICTS = {
     'segment.overflowSuffix': ' — nie mieści się',
     'field.baseType': 'Szafka podblatowa',
     'field.plinth': 'Cokół',
+    'field.plinthHeight': 'Wysokość cokołu',
     'field.finish': 'Wykończenie',
     'field.hasShelf': 'Z półką',
     'field.hasPanel': 'Z panelem sterowania',
@@ -1005,6 +1012,7 @@ const DICTS = {
     'plinth.legs': 'Nóżki',
     'plinth.building': 'Cokół murowany',
     'plinth.construction': 'Cokół konstrukcyjny',
+    'plinth.legs_plinth': 'Nóżki + cokół osłonowy',
 
     'controlType.knob': 'Pokrętło',
     'controlType.button': 'Przycisk',
@@ -1414,6 +1422,7 @@ const DICTS = {
     'segment.overflowSuffix': ' — nevejde se',
     'field.baseType': 'Podestavba',
     'field.plinth': 'Sokl',
+    'field.plinthHeight': 'Výška soklu',
     'field.finish': 'Provedení',
     'field.hasShelf': 'S policí',
     'field.hasPanel': 'S panelem',
@@ -1428,6 +1437,7 @@ const DICTS = {
     'plinth.legs': 'Nožičky',
     'plinth.building': 'Stavební sokl',
     'plinth.construction': 'Konstrukční sokl',
+    'plinth.legs_plinth': 'Nožičky + soklová zástěna',
 
     'controlType.knob': 'Knoflík',
     'controlType.button': 'Tlačítko',
@@ -1836,6 +1846,7 @@ const DICTS = {
     'segment.overflowSuffix': ' — nezmestí sa',
     'field.baseType': 'Podstavba',
     'field.plinth': 'Sokel',
+    'field.plinthHeight': 'Výška sokla',
     'field.finish': 'Prevedenie',
     'field.hasShelf': 'S policou',
     'field.hasPanel': 'S panelom',
@@ -1850,6 +1861,7 @@ const DICTS = {
     'plinth.legs': 'Nožičky',
     'plinth.building': 'Stavebný sokel',
     'plinth.construction': 'Konštrukčný sokel',
+    'plinth.legs_plinth': 'Nožičky + soklová zástena',
 
     'controlType.knob': 'Gombík',
     'controlType.button': 'Tlačidlo',

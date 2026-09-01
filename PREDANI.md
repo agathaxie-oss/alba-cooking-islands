@@ -233,6 +233,51 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 21. Půdorys s popisky neumí MONO — VADA + PŘESTAVBA
+
+**ROZPRACOVÁNO 1. 9. 2026 — mockup hotový, implementace NEZAČALA.**
+
+Zadavatel nahlásil tři věci, které mají JEDNU společnou příčinu:
+neukazují se přístroje strany B, neukazuje se konkrétní skříňka, a půdorys
+vůbec nerozlišuje podestavbu / přístroj / neutrální plochu.
+
+**Příčina:** `js/floorplan.js` čte `state.segmentsA`/`segmentsB`, tedy datový
+model SEGMENTU. O `state.mono.herdblokA/B` ani `podestavbyA/B` neví NIC. To,
+co u strany A vypadá správně, je **výchozí řada SEGMENTU**, kterou
+`onNewProject()` zakládá i pro MONO — ne uživatelova sestava. Půdorys tedy
+pro MONO nekreslí nic z jeho dat; u strany A to jen náhodou vypadá věrohodně.
+
+**Zadavatel dodal vzor ze skutečného projektu** (CAD půdorys varného bloku)
+a rozhodl PŘEVZÍT tyhle konvence — jsou závazné:
+
+1. **Přístroje v pravé poloze a velikosti** na desce, včetně odsazení od čela
+   — ne schematický pás.
+2. **Podestavby čárkovanou čarou** (leží pod deskou, zakrytá hrana).
+3. **Zásuvkové bloky s POVYSUNUTÝMI šuplíky** — počet zásuvek musí jít
+   spočítat přímo z kresby.
+4. **Podestavby číslované přímo u sebe**, bez odkazové čáry.
+5. **Přístroje a napouštěcí ramena na odkazové šipce** vyvedené mimo blok.
+
+**Značení pozic** (rozhodl zadavatel 1. 9. 2026): `A1.x` přístroje, `A2.x`
+podestavby, `A3.x` zásuvky a prvky panelu; strana B stejně (`B1.x`…).
+**Písmeno H se NEPOUŽÍVÁ** — pletlo by se s typem podestavby. Výpisy jsou
+zvlášť pro každou kategorii.
+
+**Orientace kresby:** čelo strany A je DOLE (tak blok vidí obsluha u strany
+A), takže řada A běží zleva doprava jako v pásu a **řada B zprava doleva** —
+strana B se měří od svého vlastního levého kraje (viz úkol 18).
+
+Mockup: **`mockup-pudorys-mono.html`** (běží bez build kroku, otevřít přes
+lokální server). Kreslí ostrov 3200×1700 se všemi pěti konvencemi.
+
+**Otevřená otázka:** zakončovací plechy, sokl, límce a ramena nepatří jedné
+straně (u ostrova je vodopád vidět z obou). V mockupu jsou vedené jako
+„společné díly bloku" s prostým číslováním; druhá možnost je `A4.x`.
+Zadavatel zatím nerozhodl.
+
+**Rozsah: jen MONO.** SEGMENT se nechává být (výslovné rozhodnutí zadavatele
+1. 9. 2026) — jeho větev ve `floorplan.js` se nesmí změnit.
+
 ## 20. Přístroje kolidovaly s bočnicí — VADA
 
 **HOTOVO 1. 9. 2026.** Zadavatel: „Přístroje kolidují s bočnicí (máme dva

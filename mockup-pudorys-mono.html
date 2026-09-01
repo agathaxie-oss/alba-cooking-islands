@@ -2,338 +2,363 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<title>Mockup — půdorys a výpisy MONO</title>
+<title>Mockup — půdorys MONO podle výkresových zvyklostí</title>
 <style>
-  :root{
-    --alba:#0083C6; --ink:#1c2430; --mut:#5d6b7a; --line:#c9d2db;
-    --bg:#f4f6f8; --card:#fff;
-    --pristroj:#ffffff; --plocha:#e9edf1; --skrin:#dceaf5; --sokl:#3a4652;
-    --volno:#eef1f4; --chybi:#f0a03c;
-  }
+  :root{ --alba:#0083C6; --ink:#111820; --mut:#5d6b7a; --line:#c9d2db; --bg:#f4f6f8; }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
-       font:14px/1.55 "Segoe UI",system-ui,sans-serif;padding:28px}
-  .wrap{max-width:1180px;margin:0 auto}
+       font:14px/1.55 "Segoe UI",system-ui,sans-serif;padding:26px}
+  .wrap{max-width:1320px;margin:0 auto}
   h1{font-size:22px;margin:0 0 4px}
   h2{font-size:17px;margin:0 0 2px;color:var(--alba)}
-  .sub{color:var(--mut);margin:0 0 22px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;
-        padding:20px 22px;margin-bottom:22px}
-  .why{color:var(--mut);font-size:13px;margin:2px 0 16px}
-  .plus{color:#2b7a3d}.minus{color:#a3462f}
-  table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 18px}
+  .sub{color:var(--mut);margin:0 0 20px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:20px 22px;margin-bottom:20px}
+  .why{color:var(--mut);font-size:13px;margin:2px 0 14px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 16px}
   th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
   th{background:#eef3f7;font-weight:600}
-  td.k{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
-  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 4px;font-size:12.5px;color:var(--mut)}
-  .legend i{display:inline-block;width:15px;height:11px;border:1px solid #7d8a97;
-            margin-right:5px;vertical-align:-1px}
-  .note{background:#fff8ec;border:1px solid #f0d9ae;border-radius:7px;
-        padding:12px 15px;font-size:13px;margin-top:6px}
-  .q{background:#eef6fb;border:1px solid #b9dbef;border-radius:7px;
-     padding:12px 15px;font-size:13px;margin-top:14px}
-  svg{display:block;max-width:100%;height:auto;overflow:visible}
-  .vp{overflow-x:auto;padding:4px 0 2px}
+  td.k{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700}
+  .q{background:#eef6fb;border:1px solid #b9dbef;border-radius:7px;padding:12px 15px;font-size:13px;margin-top:12px}
+  .note{background:#fff8ec;border:1px solid #f0d9ae;border-radius:7px;padding:12px 15px;font-size:13px;margin:0 0 18px}
+  ul.k{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--mut)}
+  ul.k li{margin:3px 0}
+  .vp{overflow-x:auto;background:#fff;padding:6px 0}
+  svg{display:block}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<h1>Půdorys s popisky a výpisy — ALBA MONO</h1>
-<p class="sub">Tři varianty kresby k výběru. Sestava je ve všech stejná, aby se daly porovnat.
-Výpisy pod nimi jsou společné pro všechny varianty.</p>
+<h1>Půdorys MONO — podle výkresových zvyklostí</h1>
+<p class="sub">Přepracováno podle vzoru ze skutečného projektu. Dřívější tři schematické varianty
+tím padly — tohle je jeden výkres, ne nabídka stylů.</p>
 
 <div class="note">
-<b>Proč to není jen kosmetika:</b> dnešní půdorys čte datový model SEGMENTU
-(<code>segmentsA/segmentsB</code>) a o MONO neví vůbec nic. To, co u strany A vypadá správně,
-je výchozí řada SEGMENTU, která zůstává ve stavu i v projektu MONO — ne vaše sestava.
-Proto chybí i strana B a konkrétní skříňka. Kresba se pro MONO staví od nuly.
+<b>Převzaté konvence:</b>
+<ul class="k">
+<li><b>Přístroje v pravé poloze a velikosti</b> — kresleny tam, kde na desce skutečně jsou, včetně odsazení od čela.</li>
+<li><b>Podestavby čárkovaně</b> — leží pod deskou, jsou tedy zakryté; čárkovaná čára je pro zakrytou hranu.</li>
+<li><b>Zásuvkové bloky s povysunutými šuplíky</b> — počet zásuvek jde spočítat přímo z kresby.</li>
+<li><b>Podestavby číslované přímo u sebe</b>, bez odkazové čáry.</li>
+<li><b>Přístroje a napouštěcí ramena na odkazové šipce</b> vyvedené mimo blok.</li>
+</ul>
 </div>
 
 <div class="card">
-<h2>Kreslená sestava</h2>
-<p class="why">Ostrov 3200 mm, hloubka A 850 + B 850 = 1700 mm, pracovní výška 900, konstrukční sokl 150.
-Levé zakončení vodopád (50 mm), pravé zkosený vodopád (70 mm).</p>
-<div class="legend" id="leg"></div>
-<p class="why" style="margin-top:12px">
-<b>Pozor na stranu B:</b> její řada se měří od jejího vlastního levého kraje, takže v půdorysu
-(kreslený z pohledu strany A) běží zprava doleva. Je to týž fyzický blok, jen otočený —
-kresba to musí ukázat správně, jinak by dokument neodpovídal dílně.</p>
+<h2>Výkres</h2>
+<p class="why">Ostrov 3200 × 1700 mm (hloubka A 850 + B 850), pracovní výška 900, konstrukční sokl 150.
+Levé zakončení vodopád 50 mm, pravé zkosený vodopád 70 mm. Měřítko kresby cca 1 : 11.</p>
+<div class="vp"><svg id="dwg"></svg></div>
+<p class="why" style="margin-top:14px">
+<b>Orientace:</b> čelo strany A je dole — tak, jak blok vidí obsluha stojící u strany A, takže její řada
+běží zleva doprava stejně jako v pásu. Strana B je nahoře a její řada proto běží zprava doleva;
+je to týž fyzický blok, jen se na něj díváme z druhé strany.</p>
 </div>
 
 <div class="card">
-<h2>Varianta 1 — vrstvy oddělené, dvě kresby nad sebou</h2>
-<p class="why">
-<span class="plus">Pro:</span> nic se nepřekrývá, každá vrstva má vlastní kóty, nejsnáz se čte ve výrobě.
-&nbsp; <span class="minus">Proti:</span> vztah „který přístroj stojí nad kterou skříňkou" se musí odečítat porovnáním obou kreseb.</p>
-<div class="vp"><svg id="v1"></svg></div>
-</div>
-
-<div class="card">
-<h2>Varianta 2 — jedna kresba, podestavby jako podklad</h2>
-<p class="why">
-<span class="plus">Pro:</span> na první pohled je vidět, co nad čím stojí — tedy i mosty a převisy, což je u MONO podstata.
-&nbsp; <span class="minus">Proti:</span> hustší kresba, kóty se musí rozdělit nad a pod, u plné sestavy je víc čar.</p>
-<div class="vp"><svg id="v2"></svg></div>
-</div>
-
-<div class="card">
-<h2>Varianta 3 — jedna kresba, dělené pásy</h2>
-<p class="why">
-<span class="plus">Pro:</span> jediná kresba a přesto nulový překryv; každá strana má pás přístrojů a pás podestaveb pod sebou.
-&nbsp; <span class="minus">Proti:</span> pásy neodpovídají skutečné hloubce dílů — je to schéma, ne měřítkový řez.</p>
-<div class="vp"><svg id="v3"></svg></div>
-</div>
-
-<div class="card">
-<h2>Výpisy — společné pro všechny varianty</h2>
-<p class="why">Značení podle vaší volby: <code>A1.x</code> přístroje, <code>A2.x</code> podestavby,
-<code>A3.x</code> zásuvky a prvky panelu; strana B stejně. Písmeno H se nepoužívá.</p>
+<h2>Výpisy</h2>
+<p class="why">Značení <code>A1.x</code> přístroje, <code>A2.x</code> podestavby, <code>A3.x</code> zásuvky
+a prvky panelu; strana B stejně. Ramena jsou společná pro celý blok.</p>
 <div id="lists"></div>
 <div class="q">
-<b>K rozhodnutí:</b> zakončovací plechy, límce a napouštěcí ramena nepatří jedné straně —
-u ostrova je vodopád vidět z obou stran. Ve výpisu níž jsou proto vedené zvlášť jako
-<b>společné díly bloku</b> s prostým číslováním 1, 2, 3. Druhá možnost je přiřadit je straně A
-(pak by byly <code>A4.x</code>). Řekněte, co je vám bližší.
+<b>Zbývá rozhodnout:</b> zakončovací plechy, sokl, límce a ramena nepatří jedné straně — u ostrova je
+vodopád vidět z obou. Vedu je jako <b>společné díly bloku</b> s prostým číslováním. Druhá možnost je
+přiřadit je straně A jako <code>A4.x</code>.
 </div>
 </div>
 
 <script>
-const MM = 0.27;            // měřítko kresby
+/* ---------- měřítko a rám ------------------------------------------------ */
+const S = 0.30;                       // px na mm
 const L = 3200, DA = 850, DB = 850, TOT = DA + DB;
-const INSET_L = 50, INSET_R = 70;   // vodopád vlevo, zkosený vpravo
+const IN_L = 50, IN_R = 70;           // zatažení: vodopád / zkosený vodopád
+const PAD_T = 118, PAD_B = 178, PAD_L = 92, PAD_R = 58;
 
-// --- sestava (strip souřadnice každé strany) --------------------------------
-const dataA = {
-  pristroje:[
-    {k:'A1.1', n:'Sporák plynový 22 kW · 800', x:50,   w:800, t:'pristroj'},
-    {k:'A1.2', n:'Fritéza 10 l · 400',          x:850,  w:400, t:'pristroj'},
-    {k:'A1.3', n:'pracovní plocha',             x:1250, w:400, t:'plocha'},
-    {k:'A1.4', n:'Indukce 1 zóna 5 kW · 500',   x:1650, w:500, t:'pristroj'},
-    {k:null,   n:'volná plocha',                x:2150, w:980, t:'volno'},
-  ],
-  podestavby:[
-    {k:'A2.1', n:'Skříňka 600 · s dvířky',        x:50,   w:600, t:'skrin'},
-    {k:'A2.2', n:'Zásuvkový blok GN 1/1',         x:650,  w:400, t:'skrin'},
-    {k:null,   n:'volný prostor',                 x:1050, w:600, t:'volno'},
-    {k:'A2.3', n:'Skříňka se zásuvy GN 2/1',      x:1650, w:600, t:'skrin'},
-    {k:null,   n:'chybí 880 mm',                  x:2250, w:880, t:'chybi'},
-  ],
-  zasuvky:[ {k:'A3.1', n:'Zásuvka 230 V', x:1200}, {k:'A3.2', n:'Zásuvka CEE', x:2000} ],
-};
-const dataB = {
-  pristroje:[
-    {k:'B1.1', n:'Sporák plynový 11 kW · 400', x:70,   w:400, t:'pristroj'},
-    {k:'B1.2', n:'pracovní plocha',            x:470,  w:400, t:'plocha'},
-    {k:'B1.3', n:'Fritéza 8+8 l · 400',        x:870,  w:400, t:'pristroj'},
-    {k:null,   n:'volná plocha',               x:1270, w:1880, t:'volno'},
-  ],
-  podestavby:[
-    {k:'B2.1', n:'Skříňka 800 · otevřená s policí', x:70, w:800, t:'skrin'},
-    {k:null,   n:'chybí 2280 mm',                   x:870, w:2280, t:'chybi'},
-  ],
-  zasuvky:[ {k:'B3.1', n:'Zásuvka 230 V', x:600} ],
-};
-const spolecne = [
-  {k:'1', n:'Zakončovací plech levý — vodopád',        d:'50 × 1700 mm'},
+const px = v => v * S;
+const X  = mm => px(mm);
+const Y  = zmm => px(TOT - zmm);      // čelo strany A (z=0) je DOLE
+
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, a = {}) => { const e = document.createElementNS(NS, n);
+  for (const k in a) e.setAttribute(k, a[k]); return e; };
+const txt = (g, x, y, s, o = {}) => { const t = el('text', {x, y,
+  'font-size': o.fs || 10, fill: o.fill || '#111820', 'text-anchor': o.anchor || 'middle',
+  'font-weight': o.fw || 400, 'font-family': 'inherit'}); t.textContent = s; g.appendChild(t); return t; };
+
+/* ---------- sestava ------------------------------------------------------ */
+// přístroje: x/w ve strip souřadnicích té strany, d = hloubka, fo = odsazení od čela
+const A_DEV = [
+  {k:'A1.1', n:'Sporák plynový 22 kW', x:50,   w:800, d:700, fo:75, sym:'burners4'},
+  {k:'A1.2', n:'Fritéza 10 l',         x:850,  w:400, d:700, fo:75, sym:'fryer1'},
+  {k:'A1.3', n:'Pracovní plocha',      x:1250, w:400, d:700, fo:75, sym:'plain'},
+  {k:'A1.4', n:'Indukce 1 zóna 5 kW',  x:1650, w:500, d:700, fo:75, sym:'induction'},
+];
+const A_CAB = [
+  {k:'A2.1', n:'Skříňka · dvířka',        x:50,   w:600, sym:'door'},
+  {k:'A2.2', n:'Zásuvkový blok GN 1/1',   x:650,  w:400, sym:'drawers', drawers:2},
+  {k:null,   n:'volný prostor',           x:1050, w:600, sym:'gap'},
+  {k:'A2.3', n:'Skříňka se zásuvy GN 2/1',x:1650, w:600, sym:'runners', runners:6},
+];
+const B_DEV = [
+  {k:'B1.1', n:'Sporák plynový 11 kW', x:70,  w:400, d:700, fo:75, sym:'burners2'},
+  {k:'B1.2', n:'Pracovní plocha',      x:470, w:400, d:700, fo:75, sym:'plain'},
+  {k:'B1.3', n:'Fritéza 8+8 l',        x:870, w:400, d:700, fo:75, sym:'fryer2'},
+];
+const B_CAB = [
+  {k:'B2.1', n:'Skříňka · otevřená s policí', x:70, w:800, sym:'open'},
+];
+const A_SOC = [ {k:'A3.1', n:'Zásuvka 230 V', x:1200}, {k:'A3.2', n:'Zásuvka CEE', x:2000} ];
+const B_SOC = [ {k:'B3.1', n:'Zásuvka 230 V', x:600} ];
+// ramena sedí na spáře mezi řadami (střed bloku), x je absolutní po délce
+const ARMS = [ {k:'R1', n:'Napouštěcí rameno', x:1150}, {k:'R2', n:'Napouštěcí rameno', x:2350} ];
+const SPOL = [
+  {k:'1', n:'Zakončovací plech levý — vodopád', d:'50 × 1700 mm'},
   {k:'2', n:'Zakončovací plech pravý — zkosený vodopád', d:'70 × 1700 mm'},
-  {k:'3', n:'Sokl konstrukční, výška 150 mm',          d:'pod skříňkami, uskočení 50 mm'},
+  {k:'3', n:'Sokl konstrukční v. 150 mm', d:'pod skříňkami, uskočení 50 mm'},
+  {k:'4', n:'Napouštěcí ramena R1, R2', d:'na spáře mezi řadami'},
 ];
 
-const FILL = {pristroj:'var(--pristroj)', plocha:'var(--plocha)', skrin:'var(--skrin)',
-              volno:'var(--volno)', chybi:'url(#hatchO)'};
-const LEGEND = [['pristroj','Přístroj'],['plocha','Neutrální pracovní plocha'],
-                ['skrin','Podestavba (skříňka)'],['volno','Volný prostor'],
-                ['chybi','Chybějící úsek'],['sokl','Zakončovací plech']];
-document.getElementById('leg').innerHTML = LEGEND.map(([t,n])=>{
-  const bg = t==='sokl' ? 'var(--sokl)' : (t==='chybi' ? '#fbe3c4' : FILL[t]);
-  return `<span><i style="background:${bg}"></i>${n}</span>`;}).join('');
+const mirror = it => ({...it, x: L - it.x - it.w});
+const mirrorPt = x => L - x;
+// z-rozsah dílu podle strany: A měří od z=0 nahoru, B od z=1700 dolů
+const zr = (side, from, size) => side === 'A' ? [from, from + size] : [1700 - from - size, 1700 - from];
 
-// strana B se v půdorysu zrcadlí (měří se od svého vlastního levého kraje)
-const mir = (it) => ({...it, x: L - it.x - it.w});
-const mirX = (x) => L - x;
+/* ---------- kreslení ----------------------------------------------------- */
+const svg = document.getElementById('dwg');
+const W = X(L) + PAD_L + PAD_R, H = Y(0) + PAD_T + PAD_B;
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+svg.setAttribute('width', W); svg.setAttribute('height', H);
+svg.appendChild(el('rect', {x:0, y:0, width:W, height:H, fill:'#fff'}));
+const R = el('g', {transform:`translate(${PAD_L},${PAD_T})`}); svg.appendChild(R);
 
-const NS='http://www.w3.org/2000/svg';
-const el=(n,a={})=>{const e=document.createElementNS(NS,n);
-  for(const k in a) e.setAttribute(k,a[k]); return e;};
-const px = v => v*MM;
+const INK = '#111820', THIN = '#6b7783';
 
-function defs(svg){
-  const d = el('defs');
-  d.innerHTML = `
-   <pattern id="hatchO" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-     <rect width="7" height="7" fill="#fdf1e2"/><line x1="0" y1="0" x2="0" y2="7" stroke="#f0a03c" stroke-width="2.6"/></pattern>
-   <pattern id="hatchG" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-     <rect width="6" height="6" fill="#f3f5f7"/><line x1="0" y1="0" x2="0" y2="6" stroke="#cdd5dd" stroke-width="2"/></pattern>`;
-  svg.appendChild(d);
+/* obrys bloku (viditelná hrana — plná silná čára) */
+R.appendChild(el('rect', {x:0, y:0, width:X(L), height:Y(0),
+  fill:'none', stroke:INK, 'stroke-width':1.6}));
+/* zakončovací plechy */
+[[0, IN_L, '1'], [L - IN_R, IN_R, '2']].forEach(([x0, w]) => {
+  R.appendChild(el('rect', {x:X(x0), y:0, width:X(w), height:Y(0),
+    fill:'#e6eaee', stroke:INK, 'stroke-width':1.1}));
+});
+/* spára mezi řadami (osa bloku) — tenká čerchovaná */
+R.appendChild(el('line', {x1:0, y1:Y(DA), x2:X(L), y2:Y(DA),
+  stroke:THIN, 'stroke-width':.7, 'stroke-dasharray':'12 3 2 3'}));
+
+/* --- podestavby: ČÁRKOVANĚ (leží pod deskou) ----------------------------- */
+function drawCab(side, it){
+  if (it.sym === 'gap') return;
+  const [z1, z2] = zr(side, 30, 670);
+  const x = X(it.x), w = X(it.w), y = Y(z2), h = Y(z1) - Y(z2);
+  R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none',
+    stroke:INK, 'stroke-width':1, 'stroke-dasharray':'7 4'}));
+
+  if (it.sym === 'drawers')  drawDrawers(side, it, x, w, z1, z2);
+  if (it.sym === 'runners')  drawRunners(side, it, x, w, z1, z2);
+  if (it.sym === 'open')     drawShelf(side, x, w, z1, z2);
+  if (it.sym === 'door')     drawDoor(side, x, w, z1, z2);
+
+  // číslo PŘÍMO u podestavby (bez odkazové čáry), u ZADNÍ hrany skříňky —
+  // vpředu jsou dvířka a povysunuté šuplíky, tam by se značka pletla
+  const cx = x + w / 2;
+  const zLabel = side === 'A' ? z2 - 70 : z1 + 70;
+  const cy = Y(zLabel) + 3.5;
+  const bw = 36, bh = 15;
+  R.appendChild(el('rect', {x:cx - bw/2, y:cy - bh + 4, width:bw, height:bh, rx:2,
+    fill:'#fff', stroke:'#0083C6', 'stroke-width':1}));
+  txt(R, cx, cy, it.k, {fs:9.6, fw:700, fill:'#0083C6'});
 }
-// kóta s šipkami a textem
-function dim(g, x1, x2, y, txt, {above=true}={}){
-  const a=px(x1), b=px(x2);
-  g.appendChild(el('line',{x1:a,y1:y,x2:b,y2:y,stroke:'#8a97a5','stroke-width':.8}));
-  [a,b].forEach(x=>g.appendChild(el('line',{x1:x,y1:y-3.5,x2:x,y2:y+3.5,stroke:'#8a97a5','stroke-width':.8})));
-  const t=el('text',{x:(a+b)/2,y:above?y-4:y+10,'text-anchor':'middle',
-    'font-size':9.5,fill:'#5d6b7a','font-family':'inherit'});
-  t.textContent=txt; g.appendChild(t);
+/* šuplíky POVYSUNUTÉ — počet jde spočítat */
+function drawDrawers(side, it, x, w, z1, z2){
+  const n = it.drawers, step = 80, front = side === 'A' ? z1 : z2, sgn = side === 'A' ? -1 : 1;
+  for (let i = 0; i < n; i++){
+    const zf = front + sgn * (i + 1) * step;          // povysunutí ven z bloku
+    const zb = side === 'A' ? zf + 300 : zf - 300;
+    const yy = Math.min(Y(zf), Y(zb)), hh = Math.abs(Y(zb) - Y(zf));
+    R.appendChild(el('rect', {x:x + 10, y:yy, width:w - 20, height:hh,
+      fill:'#fff', stroke:INK, 'stroke-width':.9}));
+    // úchyt
+    const zh = side === 'A' ? zf - 14 : zf + 14;
+    R.appendChild(el('line', {x1:x + w*0.34, y1:Y(zh), x2:x + w*0.66, y2:Y(zh),
+      stroke:INK, 'stroke-width':1.6}));
+  }
 }
-function band(g, items, y, h, {marks=true}={}){
-  items.forEach(it=>{
-    const r = el('rect',{x:px(it.x), y, width:px(it.w), height:h,
-      fill: FILL[it.t], stroke: it.t==='volno'?'#cdd5dd':'#5d6b7a',
-      'stroke-width': it.t==='volno'?.7:1, 'stroke-dasharray': it.t==='volno'?'3 3':''});
-    g.appendChild(r);
-    if (it.w*MM > 40){
-      const t=el('text',{x:px(it.x+it.w/2), y:y+h/2+3.5,'text-anchor':'middle',
-        'font-size':9,fill:'#3a4652'}); t.textContent=it.n.length>26?it.n.slice(0,24)+'…':it.n;
-      g.appendChild(t);
+/* vsuvy GN — příčné čárky u obou boků */
+function drawRunners(side, it, x, w, z1, z2){
+  const n = it.runners, zA = z1 + 60, zB = z2 - 60, span = zB - zA;
+  for (let i = 0; i < n; i++){
+    const z = zA + span * (i / (n - 1));
+    [[x + 4, x + 22], [x + w - 22, x + w - 4]].forEach(([a, b]) =>
+      R.appendChild(el('line', {x1:a, y1:Y(z), x2:b, y2:Y(z), stroke:THIN, 'stroke-width':1})));
+  }
+}
+function drawShelf(side, x, w, z1, z2){
+  const z = (z1 + z2) / 2;
+  R.appendChild(el('line', {x1:x + 8, y1:Y(z), x2:x + w - 8, y2:Y(z),
+    stroke:THIN, 'stroke-width':1, 'stroke-dasharray':'4 3'}));
+}
+function drawDoor(side, x, w, z1, z2){
+  const zf = side === 'A' ? z1 : z2;
+  R.appendChild(el('line', {x1:x + w*0.30, y1:Y(zf), x2:x + w*0.70, y2:Y(zf),
+    stroke:INK, 'stroke-width':2.2}));
+}
+
+/* --- přístroje: PRAVÁ poloha i velikost na desce ------------------------- */
+function drawDev(side, it){
+  const [z1, z2] = zr(side, it.fo, it.d);
+  const x = X(it.x), w = X(it.w), y = Y(z2), h = Y(z1) - Y(z2);
+  if (it.sym === 'plain'){
+    R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none',
+      stroke:THIN, 'stroke-width':.8, 'stroke-dasharray':'10 3 2 3'}));
+    return;
+  }
+  // BEZ výplně — pod přístrojem leží čárkovaná podestavba a ta musí zůstat
+  // čitelná (zakrytá hrana se ve výkrese kreslí, ne zakrývá)
+  R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none',
+    stroke:INK, 'stroke-width':1.2}));
+  const cx = x + w/2, cy = y + h/2;
+  if (it.sym === 'burners4') burners(cx, cy, w, h, 2, 2);
+  if (it.sym === 'burners2') burners(cx, cy, w, h, 1, 2);
+  if (it.sym === 'fryer1')   fryer(x, y, w, h, 1);
+  if (it.sym === 'fryer2')   fryer(x, y, w, h, 2);
+  if (it.sym === 'induction')induction(cx, cy);
+}
+function burners(cx, cy, w, h, cols, rows){
+  const r = Math.min(w/(cols*2.6), h/(rows*2.6), 19);
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++){
+    const bx = cx + (i - (cols-1)/2) * (w/(cols+0.35));
+    const by = cy + (j - (rows-1)/2) * (h/(rows+0.35));
+    R.appendChild(el('circle', {cx:bx, cy:by, r, fill:'none', stroke:INK, 'stroke-width':1.1}));
+    R.appendChild(el('circle', {cx:bx, cy:by, r:r*0.34, fill:'none', stroke:INK, 'stroke-width':1}));
+    for (let a = 0; a < 6; a++){
+      const t = a * Math.PI/3;
+      R.appendChild(el('line', {x1:bx + Math.cos(t)*r*0.34, y1:by + Math.sin(t)*r*0.34,
+        x2:bx + Math.cos(t)*r, y2:by + Math.sin(t)*r, stroke:INK, 'stroke-width':.9}));
     }
-    if (marks && it.k){
-      const bx=px(it.x)+4, by=y+4;
-      g.appendChild(el('rect',{x:bx,y:by,width:30,height:13,rx:2.5,fill:'#fff',stroke:'#0083C6','stroke-width':1}));
-      const t=el('text',{x:bx+15,y:by+9.6,'text-anchor':'middle','font-size':8.6,
-        fill:'#0083C6','font-weight':'700'}); t.textContent=it.k; g.appendChild(t);
-    }
-  });
+  }
 }
-function ends(g, y, h){
-  g.appendChild(el('rect',{x:0,y,width:px(INSET_L),height:h,fill:'var(--sokl)'}));
-  g.appendChild(el('rect',{x:px(L-INSET_R),y,width:px(INSET_R),height:h,fill:'var(--sokl)'}));
+function fryer(x, y, w, h, n){
+  for (let i = 0; i < n; i++){
+    const vw = (w - 14) / n - 4;
+    R.appendChild(el('rect', {x:x + 7 + i*(vw + 4), y:y + h*0.22, width:vw, height:h*0.56,
+      rx:3, fill:'none', stroke:INK, 'stroke-width':1.1}));
+  }
 }
-function sockets(g, list, y, mirror){
-  list.forEach(s=>{
-    const x = px(mirror ? mirX(s.x) : s.x);
-    g.appendChild(el('circle',{cx:x,cy:y,r:4.2,fill:'#fff',stroke:'#0083C6','stroke-width':1.4}));
-    const t=el('text',{x:x,y:y-8,'text-anchor':'middle','font-size':8.2,fill:'#0083C6','font-weight':'700'});
-    t.textContent=s.k; g.appendChild(t);
-  });
-}
-function sideLabel(g,y,txt,sub){
-  const t=el('text',{x:-10,y,'text-anchor':'end','font-size':10,fill:'#1c2430','font-weight':'600'});
-  t.textContent=txt; g.appendChild(t);
-  if(sub){const s=el('text',{x:-10,y:y+12,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
-    s.textContent=sub; g.appendChild(s);}
+function induction(cx, cy){
+  R.appendChild(el('rect', {x:cx-24, y:cy-24, width:48, height:48, fill:'none',
+    stroke:INK, 'stroke-width':1.1}));
+  [17, 10].forEach(r => R.appendChild(el('circle', {cx, cy, r, fill:'none',
+    stroke:INK, 'stroke-width':.9})));
 }
 
-// ---------- VARIANTA 1: dvě kresby nad sebou --------------------------------
-(function(){
-  const svg=document.getElementById('v1'); defs(svg);
-  const W=px(L)+150, H=430; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W);
-  const g=el('g',{transform:'translate(110,34)'}); svg.appendChild(g);
-  const bh=44;
-  // kresba 1 — přístroje (obě strany)
-  const cap=el('text',{x:0,y:-16,'font-size':11,fill:'#0083C6','font-weight':'700'});
-  cap.textContent='Herdblok — přístroje na desce'; g.appendChild(cap);
-  dim(g,0,L,-4,`celková délka ${L} mm`);
-  ends(g,6,bh*2+6);
-  band(g,dataA.pristroje,6,bh);
-  sideLabel(g,6+bh/2,'STRANA A','přístroje');
-  band(g,dataB.pristroje.map(mir),6+bh+6,bh);
-  sideLabel(g,6+bh+6+bh/2,'STRANA B','přístroje');
-  sockets(g,dataA.zasuvky,6+bh+3,false);
-  // řetězec kót pro stranu A
-  let y=6+bh*2+22;
-  dataA.pristroje.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,y,`${it.w}`); });
-  const lbl=el('text',{x:-10,y:y+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
-  lbl.textContent='kóty A'; g.appendChild(lbl);
+/* --- napouštěcí rameno: symbol U na spáře -------------------------------- */
+function drawArm(a){
+  const x = X(a.x), y = Y(DA);
+  R.appendChild(el('path', {d:`M ${x-13} ${y+16} L ${x-13} ${y-6} A 13 13 0 0 1 ${x+13} ${y-6} L ${x+13} ${y+16}`,
+    fill:'none', stroke:INK, 'stroke-width':1.5}));
+  R.appendChild(el('circle', {cx:x, cy:y+16, r:3.4, fill:INK}));
+}
 
-  // kresba 2 — podestavby
-  const y2=y+52;
-  const cap2=el('text',{x:0,y:y2-16,'font-size':11,fill:'#0083C6','font-weight':'700'});
-  cap2.textContent='Podestavby — skříňky pod deskou'; g.appendChild(cap2);
-  ends(g,y2,bh*2+6);
-  band(g,dataA.podestavby,y2,bh);
-  sideLabel(g,y2+bh/2,'STRANA A','podestavby');
-  band(g,dataB.podestavby.map(mir),y2+bh+6,bh);
-  sideLabel(g,y2+bh+6+bh/2,'STRANA B','podestavby');
-  let y3=y2+bh*2+22;
-  dataA.podestavby.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,y3,`${it.w}`); });
-  const lbl2=el('text',{x:-10,y:y3+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
-  lbl2.textContent='kóty A'; g.appendChild(lbl2);
-})();
+/* --- zásuvky v panelu ---------------------------------------------------- */
+function drawSocket(side, s){
+  const x = X(side === 'A' ? s.x : mirrorPt(s.x)), y = side === 'A' ? Y(25) : Y(1675);
+  R.appendChild(el('rect', {x:x-7, y:y-5, width:14, height:10, fill:'#fff', stroke:INK, 'stroke-width':1}));
+  R.appendChild(el('circle', {cx:x, cy:y, r:2.4, fill:INK}));
+}
 
-// ---------- VARIANTA 2: jedna kresba, podestavby jako podklad ---------------
-(function(){
-  const svg=document.getElementById('v2'); defs(svg);
-  const W=px(L)+150, H=360; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W);
-  const g=el('g',{transform:'translate(110,40)'}); svg.appendChild(g);
-  const dh=px(TOT)/2.1;           // výška poloviny bloku v kresbě
-  dim(g,0,L,-8,`celková délka ${L} mm`);
-  ends(g,0,dh*2);
-  // podestavby jako světlý podklad přes celou hloubku strany
-  [[dataA.podestavby,0,false],[dataB.podestavby.map(mir),dh,true]].forEach(([arr,y0])=>{
-    arr.forEach(it=>{
-      g.appendChild(el('rect',{x:px(it.x),y:y0+4,width:px(it.w),height:dh-8,
-        fill: it.t==='chybi'?'url(#hatchO)':(it.t==='volno'?'url(#hatchG)':'var(--skrin)'),
-        stroke:'#9fb6c9','stroke-width':.9,'stroke-dasharray':'4 3'}));
-    });
-  });
-  // přístroje jako plné boxy nahoře v každém pásu
-  band(g,dataA.pristroje,10,34);
-  band(g,dataB.pristroje.map(mir),dh+dh-44,34);
-  sideLabel(g,16,'STRANA A','čelo nahoře');
-  sideLabel(g,dh*2-30,'STRANA B','čelo dole');
-  sockets(g,dataA.zasuvky,10+34+11,false);
-  sockets(g,dataB.zasuvky,dh*2-44-11,true);
-  // popisky podestaveb dole v pásu
-  [[dataA.podestavby,dh-14,false],[dataB.podestavby.map(mir),dh*2-8,true]].forEach(([arr,ty])=>{
-    arr.forEach(it=>{ if(it.w*MM>60 && it.k){
-      const t=el('text',{x:px(it.x+it.w/2),y:ty,'text-anchor':'middle','font-size':8.6,fill:'#41586b'});
-      t.textContent=`${it.k} · ${it.n}`; g.appendChild(t);} });
-  });
-  let y=dh*2+22;
-  dataA.podestavby.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,y,`${it.w}`); });
-  const l=el('text',{x:-10,y:y+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
-  l.textContent='kóty podestaveb A'; g.appendChild(l);
-})();
+/* --- odkazová čára se šipkou (přístroje a ramena) ------------------------ */
+const defs = el('defs'); svg.appendChild(defs);
+defs.innerHTML = `<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7"
+  markerHeight="7" orient="auto-start-reverse">
+  <path d="M0 0 L10 5 L0 10 z" fill="#111820"/></marker>`;
+function leader(labelX, labelY, tipX, tipY, key, name, up){
+  const kneeY = up ? labelY + 9 : labelY - 9;
+  R.appendChild(el('path', {d:`M ${labelX} ${kneeY} L ${labelX} ${(kneeY+tipY)/2} L ${tipX} ${tipY}`,
+    fill:'none', stroke:INK, 'stroke-width':.85, 'marker-end':'url(#ar)'}));
+  txt(R, labelX, labelY, key, {fs:10.5, fw:700});
+  txt(R, labelX, labelY + (up ? -12 : 12), name, {fs:8.6, fill:THIN});
+}
 
-// ---------- VARIANTA 3: jedna kresba, dělené pásy ---------------------------
-(function(){
-  const svg=document.getElementById('v3'); defs(svg);
-  const W=px(L)+150, H=350; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W);
-  const g=el('g',{transform:'translate(110,40)'}); svg.appendChild(g);
-  const bh=38, gap=3;
-  dim(g,0,L,-8,`celková délka ${L} mm`);
-  const total=bh*4+gap*3;
-  ends(g,0,total);
-  let y=0;
-  band(g,dataA.pristroje,y,bh);        sideLabel(g,y+bh/2,'STRANA A','přístroje'); y+=bh+gap;
-  band(g,dataA.podestavby,y,bh);       sideLabel(g,y+bh/2,'','podestavby');       y+=bh+gap;
-  band(g,dataB.podestavby.map(mir),y,bh); sideLabel(g,y+bh/2,'STRANA B','podestavby'); y+=bh+gap;
-  band(g,dataB.pristroje.map(mir),y,bh);  sideLabel(g,y+bh/2,'','přístroje');
-  sockets(g,dataA.zasuvky,bh+1,false);
-  let yd=total+22;
-  dataA.pristroje.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,yd,`${it.w}`); });
-  const l=el('text',{x:-10,y:yd+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
-  l.textContent='kóty A'; g.appendChild(l);
-  const n=el('text',{x:0,y:yd+26,'font-size':9.5,fill:'#5d6b7a'});
-  n.textContent='Pásy jsou schéma pořadí, ne měřítková hloubka — hloubky jsou v kótách vlevo.';
-  g.appendChild(n);
-})();
+/* pořadí vykreslení: podestavby (pod deskou) → přístroje → ramena → zásuvky */
+A_CAB.forEach(it => drawCab('A', it));
+B_CAB.map(mirror).forEach(it => drawCab('B', it));
+A_DEV.forEach(it => drawDev('A', it));
+B_DEV.map(mirror).forEach(it => drawDev('B', it));
+ARMS.forEach(drawArm);
+A_SOC.forEach(s => drawSocket('A', s));
+B_SOC.forEach(s => drawSocket('B', s));
 
-// ---------- výpisy ----------------------------------------------------------
+/* odkazy: strana A dolů, strana B nahoru */
+A_DEV.forEach(it => {
+  const [z1] = zr('A', it.fo, it.d);
+  leader(X(it.x + it.w/2), Y(0) + 138, X(it.x + it.w/2), Y(z1) + 2, it.k, it.n, false);
+});
+B_DEV.map(mirror).forEach(it => {
+  const [, z2] = zr('B', it.fo, it.d);
+  leader(X(it.x + it.w/2), -74, X(it.x + it.w/2), Y(z2) - 2, it.k, it.n, true);
+});
+ARMS.forEach((a, i) => {
+  const lx = X(a.x) + (i ? 60 : -60);
+  leader(lx, -30, X(a.x), Y(DA) - 20, a.k, a.n, true);
+});
+
+/* --- kótování ------------------------------------------------------------ */
+function dim(x1, x2, y, label, small){
+  const a = X(x1), b = X(x2);
+  R.appendChild(el('line', {x1:a, y1:y, x2:b, y2:y, stroke:THIN, 'stroke-width':.75}));
+  [a, b].forEach(x => R.appendChild(el('line', {x1:x, y1:y-3.5, x2:x, y2:y+3.5,
+    stroke:THIN, 'stroke-width':.75})));
+  txt(R, (a+b)/2, y - 4, label, {fs: small ? 8.6 : 9.6, fill:'#41505f'});
+}
+function vdim(z1, z2, x, label){
+  const a = Y(z1), b = Y(z2);
+  R.appendChild(el('line', {x1:x, y1:a, x2:x, y2:b, stroke:THIN, 'stroke-width':.75}));
+  [a, b].forEach(y => R.appendChild(el('line', {x1:x-3.5, y1:y, x2:x+3.5, y2:y,
+    stroke:THIN, 'stroke-width':.75})));
+  const t = txt(R, x - 5, (a+b)/2, label, {fs:9, fill:'#41505f'});
+  t.setAttribute('transform', `rotate(-90 ${x-5} ${(a+b)/2})`);
+}
+// vodorovné řetězce pod blokem (strana A) — až POD povysunutými šuplíky,
+// aby se kóty nepletly s kresbou zásuvek
+let yd = Y(0) + 62;
+A_CAB.forEach(it => { if (X(it.w) > 34) dim(it.x, it.x + it.w, yd, `${it.w}`, true); });
+txt(R, -8, yd + 3, 'podestavby A', {fs:8.6, fill:THIN, anchor:'end'});
+yd += 20;
+dim(0, IN_L, yd, `${IN_L}`, true);
+dim(L - IN_R, L, yd, `${IN_R}`, true);
+dim(IN_L, L - IN_R, yd, `použitelných ${L - IN_L - IN_R}`, true);
+yd += 22;
+dim(0, L, yd, `celková délka ${L}`);
+// svislé kóty vlevo
+vdim(0, DA, -26, `hloubka A ${DA}`);
+vdim(DA, TOT, -26, `hloubka B ${DB}`);
+vdim(0, TOT, -52, `celkem ${TOT}`);
+// popisky čel
+txt(R, X(L) + 16, Y(0) - 4, 'ČELO A', {fs:9, fill:THIN, anchor:'start'});
+txt(R, X(L) + 16, Y(TOT) + 10, 'ČELO B', {fs:9, fill:THIN, anchor:'start'});
+
+/* ---------- výpisy ------------------------------------------------------- */
 (function(){
-  const box=document.getElementById('lists');
-  const tbl=(nadpis,cols,rows)=>{
-    const h=`<h3 style="font-size:14px;margin:14px 0 4px">${nadpis}</h3>`;
-    const th=cols.map(c=>`<th>${c}</th>`).join('');
-    const tr=rows.map(r=>`<tr><td class="k">${r[0]}</td>`+r.slice(1).map(c=>`<td>${c}</td>`).join('')+`</tr>`).join('');
-    return h+`<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
-  };
-  const dev=(s)=>s.pristroje.filter(i=>i.k).map(i=>[i.k,i.n,
-      i.t==='plocha'?'—':'katalog',`${i.w} mm`, i.t==='plocha'?'neutrální plocha':'přístroj']);
-  const pod=(s)=>s.podestavby.filter(i=>i.k).map(i=>[i.k,i.n,`${i.w} mm`,'H1','—']);
-  const soc=(s)=>s.zasuvky.map(i=>[i.k,i.n,`x = ${i.x} mm`]);
-  box.innerHTML =
-    `<h3 style="font-size:15px;margin:18px 0 2px;color:#1c2430">Strana A</h3>`+
-    tbl('A1 — Přístroje',['Poz.','Název','Katalog','Šířka','Druh'],dev(dataA))+
-    tbl('A2 — Podestavby',['Poz.','Název','Šířka','Úprava','Pozn.'],pod(dataA))+
-    tbl('A3 — Zásuvky a prvky panelu',['Poz.','Název','Poloha'],soc(dataA))+
-    `<h3 style="font-size:15px;margin:22px 0 2px;color:#1c2430">Strana B</h3>`+
-    tbl('B1 — Přístroje',['Poz.','Název','Katalog','Šířka','Druh'],dev(dataB))+
-    tbl('B2 — Podestavby',['Poz.','Název','Šířka','Úprava','Pozn.'],pod(dataB))+
-    tbl('B3 — Zásuvky a prvky panelu',['Poz.','Název','Poloha'],soc(dataB))+
-    `<h3 style="font-size:15px;margin:22px 0 2px;color:#1c2430">Společné díly bloku</h3>`+
-    tbl('Zakončení a sokl',['Poz.','Název','Rozměr / pozn.'],spolecne.map(s=>[s.k,s.n,s.d]));
+  const t = (nadpis, cols, rows) =>
+    `<h3 style="font-size:14px;margin:14px 0 4px">${nadpis}</h3><table><thead><tr>` +
+    cols.map(c => `<th>${c}</th>`).join('') + `</tr></thead><tbody>` +
+    rows.map(r => `<tr><td class="k">${r[0]}</td>` +
+      r.slice(1).map(c => `<td>${c}</td>`).join('') + `</tr>`).join('') + `</tbody></table>`;
+  const dev = a => a.map(i => [i.k, i.n, `${i.w} × ${i.d} mm`, `${i.fo} mm od čela`]);
+  const cab = a => a.filter(i => i.k).map(i => [i.k, i.n, `${i.w} mm`,
+      i.drawers ? `${i.drawers} zásuvky` : (i.runners ? `${i.runners} párů vsuvů` : '—')]);
+  const soc = a => a.map(i => [i.k, i.n, `x = ${i.x} mm`]);
+  document.getElementById('lists').innerHTML =
+    `<h3 style="font-size:15px;margin:16px 0 2px">Strana A</h3>` +
+    t('A1 — Přístroje', ['Poz.','Název','Rozměr (š × h)','Poloha'], dev(A_DEV)) +
+    t('A2 — Podestavby', ['Poz.','Název','Šířka','Vybavení'], cab(A_CAB)) +
+    t('A3 — Zásuvky a prvky panelu', ['Poz.','Název','Poloha'], soc(A_SOC)) +
+    `<h3 style="font-size:15px;margin:20px 0 2px">Strana B</h3>` +
+    t('B1 — Přístroje', ['Poz.','Název','Rozměr (š × h)','Poloha'], dev(B_DEV)) +
+    t('B2 — Podestavby', ['Poz.','Název','Šířka','Vybavení'], cab(B_CAB)) +
+    t('B3 — Zásuvky a prvky panelu', ['Poz.','Název','Poloha'], soc(B_SOC)) +
+    `<h3 style="font-size:15px;margin:20px 0 2px">Společné díly bloku</h3>` +
+    t('Zakončení, sokl a ramena', ['Poz.','Název','Rozměr / poznámka'], SPOL.map(s => [s.k, s.n, s.d]));
 })();
 </script>
 </div>

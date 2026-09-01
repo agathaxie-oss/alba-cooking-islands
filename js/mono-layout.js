@@ -103,9 +103,14 @@ function readSide(side) {
 
 /**
  * Spočítá rozvržení celého pásu MONO ze state.mono PRO JEDNU STRANU
- * (`side`: 'A' nebo 'B') — herdblok od x = 0, podestavby od
- * sideInsetMM(leftEndType), panelItems ořezané do stejného použitelného
- * rozsahu (viz zadání §1 a §2). `leftEndType`/`rightEndType` jsou pořád JEDNO
+ * (`side`: 'A' nebo 'B') — herdblok i podestavby od usableFromMM
+ * (= sideInsetMM(leftEndType)) s limitem usableToMM, panelItems ořezané do
+ * stejného použitelného rozsahu (viz zadání §1 a §2). OPRAVA KOLIZE S
+ * BOČNICÍ (nahlášeno 1. 9. 2026): herdblok se dřív kladl od x = 0 přes celou
+ * délku bloku, takže krajní přístroje zasahovaly do koncových zón, kde stojí
+ * bočnice — sideInsetMM() vrací dvě různá zatažení (50 mm vodopád / 70 mm
+ * zkosený vodopád) podle typu bočnice a herdblok je ignoroval.
+ * `leftEndType`/`rightEndType` jsou pořád JEDNO
  * SDÍLENÉ úložiště ve state.mono (viz main.js) — ale OPRAVA VADA 1
  * (ZADANI-OPRAVY-B-A-SOKL.md §1.1) pro stranu B PROHAZUJE, který z nich řídí
  * LEVÝ a který PRAVÝ kraj PÁSU: souřadnice strany B se měří od JEJÍHO
@@ -164,9 +169,19 @@ export function computeMonoLayout(state, side) {
   const podestavbyItems = Array.isArray(monoState[`podestavby${s}`]) ? monoState[`podestavby${s}`] : [];
   const panelItemsRaw = Array.isArray(monoState[`panelItems${s}`]) ? monoState[`panelItems${s}`] : [];
 
-  // --- herdblok: klade se od x = 0, limit je celá délka bloku ---------------
-  const herdblokLayout = layoutSequential(herdblokItems, 0, lengthMM);
-  const herdblokFreeMM = Math.max(0, lengthMM - herdblokLayout.endMM);
+  // --- herdblok: OPRAVA KOLIZE S BOČNICÍ (nahlášeno 1. 9. 2026) — dřív se
+  // řada herdbloku kladla od x = 0 s limitem celé délky bloku, takže krajní
+  // přístroje zasahovaly do koncových zón, kde stojí bočnice (nos/vodopád).
+  // Naměřeno na bloku 3200 mm s přístrojem 400 mm na začátku řady: přístroj
+  // sahal do world X 1571, bočnice začínala na 1550 (vodopád, zatažení
+  // 50 mm) resp. 1530 (zkosený vodopád, zatažení 70 mm) — sideInsetMM()
+  // vrací tahle dvě zatažení podle typu bočnice a herdblok je ignoroval.
+  // Teď se řada herdbloku klade do STEJNÉHO použitelného rozsahu jako
+  // podestavby níž (usableFromMM..usableToMM) ----------------------------
+  const herdblokLayout = layoutSequential(herdblokItems, usableFromMM, usableToMM);
+  // Volná plocha musí vycházet ze stejného použitelného rozsahu (usableToMM),
+  // jinak by po opravě výš hlásila víc místa v řadě, než ve skutečnosti zbývá.
+  const herdblokFreeMM = Math.max(0, usableToMM - herdblokLayout.endMM);
 
   // --- podestavby: klade se od usableFromMM, limit je usableToMM ------------
   const podestavbyLayout = layoutSequential(podestavbyItems, usableFromMM, usableToMM);

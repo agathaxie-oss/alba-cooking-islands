@@ -233,6 +233,28 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 20. Přístroje kolidovaly s bočnicí — VADA
+
+**HOTOVO 1. 9. 2026.** Zadavatel: „Přístroje kolidují s bočnicí (máme dva
+typy bočnic)." Týká se JEN produktu MONO — SEGMENT se nechává být
+(rozhodnutí zadavatele 1. 9. 2026).
+
+**Příčina (změřená):** `computeMonoLayout()` kladlo řadu herdbloku
+`layoutSequential(herdblokItems, 0, lengthMM)`, tedy od nuly přes celou
+délku, zatímco podestavby od `usableFromMM` do `usableToMM`. Přístroje tak
+zasahovaly do koncových zón, kde je bočnice (nos/vodopád) — přesně proti
+poznámce, kterou pás sám pod dráhou zobrazuje. „Dva typy bočnic" jsou dvě
+zatažení, která vrací `sideInsetMM()`: 50 mm u vodopádu, 70 mm u zkoseného.
+
+Naměřeno před opravou (blok 3200, přístroj 400 na začátku řady): přístroj
+sahal do world X 1571, bočnice začíná na 1550 resp. 1530 → překryv **21 resp.
+41 mm**.
+
+Opraveno: herdblok se klade do STEJNÉHO použitelného rozsahu jako
+podestavby; `herdblokFreeMM` se počítá z `usableToMM`, ne z `lengthMM`.
+Ověřeno měřením: přístroje začínají na 50 resp. 70 a končí 29 mm PŘED
+bočnicí, u obou typů zakončení.
+
 ## 18. Strana B ostrova se stavěla zrcadleně — VADA
 
 **HOTOVO 1. 9. 2026.** Zadavatel: „Strana B Herdbloku se staví zleva ve

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Mockup — půdorys a výpisy MONO</title>
+<style>
+  :root{
+    --alba:#0083C6; --ink:#1c2430; --mut:#5d6b7a; --line:#c9d2db;
+    --bg:#f4f6f8; --card:#fff;
+    --pristroj:#ffffff; --plocha:#e9edf1; --skrin:#dceaf5; --sokl:#3a4652;
+    --volno:#eef1f4; --chybi:#f0a03c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:14px/1.55 "Segoe UI",system-ui,sans-serif;padding:28px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:17px;margin:0 0 2px;color:var(--alba)}
+  .sub{color:var(--mut);margin:0 0 22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;
+        padding:20px 22px;margin-bottom:22px}
+  .why{color:var(--mut);font-size:13px;margin:2px 0 16px}
+  .plus{color:#2b7a3d}.minus{color:#a3462f}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:6px 0 18px}
+  th,td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+  th{background:#eef3f7;font-weight:600}
+  td.k{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 4px;font-size:12.5px;color:var(--mut)}
+  .legend i{display:inline-block;width:15px;height:11px;border:1px solid #7d8a97;
+            margin-right:5px;vertical-align:-1px}
+  .note{background:#fff8ec;border:1px solid #f0d9ae;border-radius:7px;
+        padding:12px 15px;font-size:13px;margin-top:6px}
+  .q{background:#eef6fb;border:1px solid #b9dbef;border-radius:7px;
+     padding:12px 15px;font-size:13px;margin-top:14px}
+  svg{display:block;max-width:100%;height:auto;overflow:visible}
+  .vp{overflow-x:auto;padding:4px 0 2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Půdorys s popisky a výpisy — ALBA MONO</h1>
+<p class="sub">Tři varianty kresby k výběru. Sestava je ve všech stejná, aby se daly porovnat.
+Výpisy pod nimi jsou společné pro všechny varianty.</p>
+
+<div class="note">
+<b>Proč to není jen kosmetika:</b> dnešní půdorys čte datový model SEGMENTU
+(<code>segmentsA/segmentsB</code>) a o MONO neví vůbec nic. To, co u strany A vypadá správně,
+je výchozí řada SEGMENTU, která zůstává ve stavu i v projektu MONO — ne vaše sestava.
+Proto chybí i strana B a konkrétní skříňka. Kresba se pro MONO staví od nuly.
+</div>
+
+<div class="card">
+<h2>Kreslená sestava</h2>
+<p class="why">Ostrov 3200 mm, hloubka A 850 + B 850 = 1700 mm, pracovní výška 900, konstrukční sokl 150.
+Levé zakončení vodopád (50 mm), pravé zkosený vodopád (70 mm).</p>
+<div class="legend" id="leg"></div>
+<p class="why" style="margin-top:12px">
+<b>Pozor na stranu B:</b> její řada se měří od jejího vlastního levého kraje, takže v půdorysu
+(kreslený z pohledu strany A) běží zprava doleva. Je to týž fyzický blok, jen otočený —
+kresba to musí ukázat správně, jinak by dokument neodpovídal dílně.</p>
+</div>
+
+<div class="card">
+<h2>Varianta 1 — vrstvy oddělené, dvě kresby nad sebou</h2>
+<p class="why">
+<span class="plus">Pro:</span> nic se nepřekrývá, každá vrstva má vlastní kóty, nejsnáz se čte ve výrobě.
+&nbsp; <span class="minus">Proti:</span> vztah „který přístroj stojí nad kterou skříňkou" se musí odečítat porovnáním obou kreseb.</p>
+<div class="vp"><svg id="v1"></svg></div>
+</div>
+
+<div class="card">
+<h2>Varianta 2 — jedna kresba, podestavby jako podklad</h2>
+<p class="why">
+<span class="plus">Pro:</span> na první pohled je vidět, co nad čím stojí — tedy i mosty a převisy, což je u MONO podstata.
+&nbsp; <span class="minus">Proti:</span> hustší kresba, kóty se musí rozdělit nad a pod, u plné sestavy je víc čar.</p>
+<div class="vp"><svg id="v2"></svg></div>
+</div>
+
+<div class="card">
+<h2>Varianta 3 — jedna kresba, dělené pásy</h2>
+<p class="why">
+<span class="plus">Pro:</span> jediná kresba a přesto nulový překryv; každá strana má pás přístrojů a pás podestaveb pod sebou.
+&nbsp; <span class="minus">Proti:</span> pásy neodpovídají skutečné hloubce dílů — je to schéma, ne měřítkový řez.</p>
+<div class="vp"><svg id="v3"></svg></div>
+</div>
+
+<div class="card">
+<h2>Výpisy — společné pro všechny varianty</h2>
+<p class="why">Značení podle vaší volby: <code>A1.x</code> přístroje, <code>A2.x</code> podestavby,
+<code>A3.x</code> zásuvky a prvky panelu; strana B stejně. Písmeno H se nepoužívá.</p>
+<div id="lists"></div>
+<div class="q">
+<b>K rozhodnutí:</b> zakončovací plechy, límce a napouštěcí ramena nepatří jedné straně —
+u ostrova je vodopád vidět z obou stran. Ve výpisu níž jsou proto vedené zvlášť jako
+<b>společné díly bloku</b> s prostým číslováním 1, 2, 3. Druhá možnost je přiřadit je straně A
+(pak by byly <code>A4.x</code>). Řekněte, co je vám bližší.
+</div>
+</div>
+
+<script>
+const MM = 0.27;            // měřítko kresby
+const L = 3200, DA = 850, DB = 850, TOT = DA + DB;
+const INSET_L = 50, INSET_R = 70;   // vodopád vlevo, zkosený vpravo
+
+// --- sestava (strip souřadnice každé strany) --------------------------------
+const dataA = {
+  pristroje:[
+    {k:'A1.1', n:'Sporák plynový 22 kW · 800', x:50,   w:800, t:'pristroj'},
+    {k:'A1.2', n:'Fritéza 10 l · 400',          x:850,  w:400, t:'pristroj'},
+    {k:'A1.3', n:'pracovní plocha',             x:1250, w:400, t:'plocha'},
+    {k:'A1.4', n:'Indukce 1 zóna 5 kW · 500',   x:1650, w:500, t:'pristroj'},
+    {k:null,   n:'volná plocha',                x:2150, w:980, t:'volno'},
+  ],
+  podestavby:[
+    {k:'A2.1', n:'Skříňka 600 · s dvířky',        x:50,   w:600, t:'skrin'},
+    {k:'A2.2', n:'Zásuvkový blok GN 1/1',         x:650,  w:400, t:'skrin'},
+    {k:null,   n:'volný prostor',                 x:1050, w:600, t:'volno'},
+    {k:'A2.3', n:'Skříňka se zásuvy GN 2/1',      x:1650, w:600, t:'skrin'},
+    {k:null,   n:'chybí 880 mm',                  x:2250, w:880, t:'chybi'},
+  ],
+  zasuvky:[ {k:'A3.1', n:'Zásuvka 230 V', x:1200}, {k:'A3.2', n:'Zásuvka CEE', x:2000} ],
+};
+const dataB = {
+  pristroje:[
+    {k:'B1.1', n:'Sporák plynový 11 kW · 400', x:70,   w:400, t:'pristroj'},
+    {k:'B1.2', n:'pracovní plocha',            x:470,  w:400, t:'plocha'},
+    {k:'B1.3', n:'Fritéza 8+8 l · 400',        x:870,  w:400, t:'pristroj'},
+    {k:null,   n:'volná plocha',               x:1270, w:1880, t:'volno'},
+  ],
+  podestavby:[
+    {k:'B2.1', n:'Skříňka 800 · otevřená s policí', x:70, w:800, t:'skrin'},
+    {k:null,   n:'chybí 2280 mm',                   x:870, w:2280, t:'chybi'},
+  ],
+  zasuvky:[ {k:'B3.1', n:'Zásuvka 230 V', x:600} ],
+};
+const spolecne = [
+  {k:'1', n:'Zakončovací plech levý — vodopád',        d:'50 × 1700 mm'},
+  {k:'2', n:'Zakončovací plech pravý — zkosený vodopád', d:'70 × 1700 mm'},
+  {k:'3', n:'Sokl konstrukční, výška 150 mm',          d:'pod skříňkami, uskočení 50 mm'},
+];
+
+const FILL = {pristroj:'var(--pristroj)', plocha:'var(--plocha)', skrin:'var(--skrin)',
+              volno:'var(--volno)', chybi:'url(#hatchO)'};
+const LEGEND = [['pristroj','Přístroj'],['plocha','Neutrální pracovní plocha'],
+                ['skrin','Podestavba (skříňka)'],['volno','Volný prostor'],
+                ['chybi','Chybějící úsek'],['sokl','Zakončovací plech']];
+document.getElementById('leg').innerHTML = LEGEND.map(([t,n])=>{
+  const bg = t==='sokl' ? 'var(--sokl)' : (t==='chybi' ? '#fbe3c4' : FILL[t]);
+  return `<span><i style="background:${bg}"></i>${n}</span>`;}).join('');
+
+// strana B se v půdorysu zrcadlí (měří se od svého vlastního levého kraje)
+const mir = (it) => ({...it, x: L - it.x - it.w});
+const mirX = (x) => L - x;
+
+const NS='http://www.w3.org/2000/svg';
+const el=(n,a={})=>{const e=document.createElementNS(NS,n);
+  for(const k in a) e.setAttribute(k,a[k]); return e;};
+const px = v => v*MM;
+
+function defs(svg){
+  const d = el('defs');
+  d.innerHTML = `
+   <pattern id="hatchO" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+     <rect width="7" height="7" fill="#fdf1e2"/><line x1="0" y1="0" x2="0" y2="7" stroke="#f0a03c" stroke-width="2.6"/></pattern>
+   <pattern id="hatchG" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+     <rect width="6" height="6" fill="#f3f5f7"/><line x1="0" y1="0" x2="0" y2="6" stroke="#cdd5dd" stroke-width="2"/></pattern>`;
+  svg.appendChild(d);
+}
+// kóta s šipkami a textem
+function dim(g, x1, x2, y, txt, {above=true}={}){
+  const a=px(x1), b=px(x2);
+  g.appendChild(el('line',{x1:a,y1:y,x2:b,y2:y,stroke:'#8a97a5','stroke-width':.8}));
+  [a,b].forEach(x=>g.appendChild(el('line',{x1:x,y1:y-3.5,x2:x,y2:y+3.5,stroke:'#8a97a5','stroke-width':.8})));
+  const t=el('text',{x:(a+b)/2,y:above?y-4:y+10,'text-anchor':'middle',
+    'font-size':9.5,fill:'#5d6b7a','font-family':'inherit'});
+  t.textContent=txt; g.appendChild(t);
+}
+function band(g, items, y, h, {marks=true}={}){
+  items.forEach(it=>{
+    const r = el('rect',{x:px(it.x), y, width:px(it.w), height:h,
+      fill: FILL[it.t], stroke: it.t==='volno'?'#cdd5dd':'#5d6b7a',
+      'stroke-width': it.t==='volno'?.7:1, 'stroke-dasharray': it.t==='volno'?'3 3':''});
+    g.appendChild(r);
+    if (it.w*MM > 40){
+      const t=el('text',{x:px(it.x+it.w/2), y:y+h/2+3.5,'text-anchor':'middle',
+        'font-size':9,fill:'#3a4652'}); t.textContent=it.n.length>26?it.n.slice(0,24)+'…':it.n;
+      g.appendChild(t);
+    }
+    if (marks && it.k){
+      const bx=px(it.x)+4, by=y+4;
+      g.appendChild(el('rect',{x:bx,y:by,width:30,height:13,rx:2.5,fill:'#fff',stroke:'#0083C6','stroke-width':1}));
+      const t=el('text',{x:bx+15,y:by+9.6,'text-anchor':'middle','font-size':8.6,
+        fill:'#0083C6','font-weight':'700'}); t.textContent=it.k; g.appendChild(t);
+    }
+  });
+}
+function ends(g, y, h){
+  g.appendChild(el('rect',{x:0,y,width:px(INSET_L),height:h,fill:'var(--sokl)'}));
+  g.appendChild(el('rect',{x:px(L-INSET_R),y,width:px(INSET_R),height:h,fill:'var(--sokl)'}));
+}
+function sockets(g, list, y, mirror){
+  list.forEach(s=>{
+    const x = px(mirror ? mirX(s.x) : s.x);
+    g.appendChild(el('circle',{cx:x,cy:y,r:4.2,fill:'#fff',stroke:'#0083C6','stroke-width':1.4}));
+    const t=el('text',{x:x,y:y-8,'text-anchor':'middle','font-size':8.2,fill:'#0083C6','font-weight':'700'});
+    t.textContent=s.k; g.appendChild(t);
+  });
+}
+function sideLabel(g,y,txt,sub){
+  const t=el('text',{x:-10,y,'text-anchor':'end','font-size':10,fill:'#1c2430','font-weight':'600'});
+  t.textContent=txt; g.appendChild(t);
+  if(sub){const s=el('text',{x:-10,y:y+12,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
+    s.textContent=sub; g.appendChild(s);}
+}
+
+// ---------- VARIANTA 1: dvě kresby nad sebou --------------------------------
+(function(){
+  const svg=document.getElementById('v1'); defs(svg);
+  const W=px(L)+150, H=430; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W);
+  const g=el('g',{transform:'translate(110,34)'}); svg.appendChild(g);
+  const bh=44;
+  // kresba 1 — přístroje (obě strany)
+  const cap=el('text',{x:0,y:-16,'font-size':11,fill:'#0083C6','font-weight':'700'});
+  cap.textContent='Herdblok — přístroje na desce'; g.appendChild(cap);
+  dim(g,0,L,-4,`celková délka ${L} mm`);
+  ends(g,6,bh*2+6);
+  band(g,dataA.pristroje,6,bh);
+  sideLabel(g,6+bh/2,'STRANA A','přístroje');
+  band(g,dataB.pristroje.map(mir),6+bh+6,bh);
+  sideLabel(g,6+bh+6+bh/2,'STRANA B','přístroje');
+  sockets(g,dataA.zasuvky,6+bh+3,false);
+  // řetězec kót pro stranu A
+  let y=6+bh*2+22;
+  dataA.pristroje.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,y,`${it.w}`); });
+  const lbl=el('text',{x:-10,y:y+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
+  lbl.textContent='kóty A'; g.appendChild(lbl);
+
+  // kresba 2 — podestavby
+  const y2=y+52;
+  const cap2=el('text',{x:0,y:y2-16,'font-size':11,fill:'#0083C6','font-weight':'700'});
+  cap2.textContent='Podestavby — skříňky pod deskou'; g.appendChild(cap2);
+  ends(g,y2,bh*2+6);
+  band(g,dataA.podestavby,y2,bh);
+  sideLabel(g,y2+bh/2,'STRANA A','podestavby');
+  band(g,dataB.podestavby.map(mir),y2+bh+6,bh);
+  sideLabel(g,y2+bh+6+bh/2,'STRANA B','podestavby');
+  let y3=y2+bh*2+22;
+  dataA.podestavby.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,y3,`${it.w}`); });
+  const lbl2=el('text',{x:-10,y:y3+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
+  lbl2.textContent='kóty A'; g.appendChild(lbl2);
+})();
+
+// ---------- VARIANTA 2: jedna kresba, podestavby jako podklad ---------------
+(function(){
+  const svg=document.getElementById('v2'); defs(svg);
+  const W=px(L)+150, H=360; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W);
+  const g=el('g',{transform:'translate(110,40)'}); svg.appendChild(g);
+  const dh=px(TOT)/2.1;           // výška poloviny bloku v kresbě
+  dim(g,0,L,-8,`celková délka ${L} mm`);
+  ends(g,0,dh*2);
+  // podestavby jako světlý podklad přes celou hloubku strany
+  [[dataA.podestavby,0,false],[dataB.podestavby.map(mir),dh,true]].forEach(([arr,y0])=>{
+    arr.forEach(it=>{
+      g.appendChild(el('rect',{x:px(it.x),y:y0+4,width:px(it.w),height:dh-8,
+        fill: it.t==='chybi'?'url(#hatchO)':(it.t==='volno'?'url(#hatchG)':'var(--skrin)'),
+        stroke:'#9fb6c9','stroke-width':.9,'stroke-dasharray':'4 3'}));
+    });
+  });
+  // přístroje jako plné boxy nahoře v každém pásu
+  band(g,dataA.pristroje,10,34);
+  band(g,dataB.pristroje.map(mir),dh+dh-44,34);
+  sideLabel(g,16,'STRANA A','čelo nahoře');
+  sideLabel(g,dh*2-30,'STRANA B','čelo dole');
+  sockets(g,dataA.zasuvky,10+34+11,false);
+  sockets(g,dataB.zasuvky,dh*2-44-11,true);
+  // popisky podestaveb dole v pásu
+  [[dataA.podestavby,dh-14,false],[dataB.podestavby.map(mir),dh*2-8,true]].forEach(([arr,ty])=>{
+    arr.forEach(it=>{ if(it.w*MM>60 && it.k){
+      const t=el('text',{x:px(it.x+it.w/2),y:ty,'text-anchor':'middle','font-size':8.6,fill:'#41586b'});
+      t.textContent=`${it.k} · ${it.n}`; g.appendChild(t);} });
+  });
+  let y=dh*2+22;
+  dataA.podestavby.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,y,`${it.w}`); });
+  const l=el('text',{x:-10,y:y+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
+  l.textContent='kóty podestaveb A'; g.appendChild(l);
+})();
+
+// ---------- VARIANTA 3: jedna kresba, dělené pásy ---------------------------
+(function(){
+  const svg=document.getElementById('v3'); defs(svg);
+  const W=px(L)+150, H=350; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W);
+  const g=el('g',{transform:'translate(110,40)'}); svg.appendChild(g);
+  const bh=38, gap=3;
+  dim(g,0,L,-8,`celková délka ${L} mm`);
+  const total=bh*4+gap*3;
+  ends(g,0,total);
+  let y=0;
+  band(g,dataA.pristroje,y,bh);        sideLabel(g,y+bh/2,'STRANA A','přístroje'); y+=bh+gap;
+  band(g,dataA.podestavby,y,bh);       sideLabel(g,y+bh/2,'','podestavby');       y+=bh+gap;
+  band(g,dataB.podestavby.map(mir),y,bh); sideLabel(g,y+bh/2,'STRANA B','podestavby'); y+=bh+gap;
+  band(g,dataB.pristroje.map(mir),y,bh);  sideLabel(g,y+bh/2,'','přístroje');
+  sockets(g,dataA.zasuvky,bh+1,false);
+  let yd=total+22;
+  dataA.pristroje.forEach(it=>{ if(it.w*MM>34) dim(g,it.x,it.x+it.w,yd,`${it.w}`); });
+  const l=el('text',{x:-10,y:yd+3,'text-anchor':'end','font-size':9,fill:'#5d6b7a'});
+  l.textContent='kóty A'; g.appendChild(l);
+  const n=el('text',{x:0,y:yd+26,'font-size':9.5,fill:'#5d6b7a'});
+  n.textContent='Pásy jsou schéma pořadí, ne měřítková hloubka — hloubky jsou v kótách vlevo.';
+  g.appendChild(n);
+})();
+
+// ---------- výpisy ----------------------------------------------------------
+(function(){
+  const box=document.getElementById('lists');
+  const tbl=(nadpis,cols,rows)=>{
+    const h=`<h3 style="font-size:14px;margin:14px 0 4px">${nadpis}</h3>`;
+    const th=cols.map(c=>`<th>${c}</th>`).join('');
+    const tr=rows.map(r=>`<tr><td class="k">${r[0]}</td>`+r.slice(1).map(c=>`<td>${c}</td>`).join('')+`</tr>`).join('');
+    return h+`<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+  };
+  const dev=(s)=>s.pristroje.filter(i=>i.k).map(i=>[i.k,i.n,
+      i.t==='plocha'?'—':'katalog',`${i.w} mm`, i.t==='plocha'?'neutrální plocha':'přístroj']);
+  const pod=(s)=>s.podestavby.filter(i=>i.k).map(i=>[i.k,i.n,`${i.w} mm`,'H1','—']);
+  const soc=(s)=>s.zasuvky.map(i=>[i.k,i.n,`x = ${i.x} mm`]);
+  box.innerHTML =
+    `<h3 style="font-size:15px;margin:18px 0 2px;color:#1c2430">Strana A</h3>`+
+    tbl('A1 — Přístroje',['Poz.','Název','Katalog','Šířka','Druh'],dev(dataA))+
+    tbl('A2 — Podestavby',['Poz.','Název','Šířka','Úprava','Pozn.'],pod(dataA))+
+    tbl('A3 — Zásuvky a prvky panelu',['Poz.','Název','Poloha'],soc(dataA))+
+    `<h3 style="font-size:15px;margin:22px 0 2px;color:#1c2430">Strana B</h3>`+
+    tbl('B1 — Přístroje',['Poz.','Název','Katalog','Šířka','Druh'],dev(dataB))+
+    tbl('B2 — Podestavby',['Poz.','Název','Šířka','Úprava','Pozn.'],pod(dataB))+
+    tbl('B3 — Zásuvky a prvky panelu',['Poz.','Název','Poloha'],soc(dataB))+
+    `<h3 style="font-size:15px;margin:22px 0 2px;color:#1c2430">Společné díly bloku</h3>`+
+    tbl('Zakončení a sokl',['Poz.','Název','Rozměr / pozn.'],spolecne.map(s=>[s.k,s.n,s.d]));
+})();
+</script>
+</div>
+</body>
+</html>

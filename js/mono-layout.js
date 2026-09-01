@@ -8,7 +8,11 @@
 // §ÚKOL MONO OSTROV — computeMonoLayout/computeMonoChecks berou druhý
 // parametr `side` ('A'|'B'): strany A a B mají NEZÁVISLÝ obsah
 // (state.mono.herdblokA/B, podestavbyA/B, panelItemsA/B — jako segmentsA/
-// segmentsB u SEGMENTu), ale SDÍLENÝ leftEndType/rightEndType/limec.
+// segmentsB u SEGMENTu), ale SDÍLENÝ leftEndType/rightEndType/limec — jedno
+// úložiště pro obě strany. OPRAVA VADA 1 (ZADANI-OPRAVY-B-A-SOKL.md §1.1):
+// který z nich řídí LEVÝ a který PRAVÝ kraj PÁSU se pro stranu B PROHAZUJE
+// (čtecí pravidlo, úložiště samo se nepřejmenovává ani nerozdvojuje) — viz
+// computeMonoLayout níž.
 // OPRAVA O2: `side` je POVINNÝ parametr, žádný tichý default (viz
 // ZADANI-MONO-OSTROV.md §3) — chybějící argument spadne hlasitě (Error),
 // neplatná hodnota (např. 'C') dál tolerantně na 'A' (viz readSide níž).
@@ -101,14 +105,22 @@ function readSide(side) {
  * Spočítá rozvržení celého pásu MONO ze state.mono PRO JEDNU STRANU
  * (`side`: 'A' nebo 'B') — herdblok od x = 0, podestavby od
  * sideInsetMM(leftEndType), panelItems ořezané do stejného použitelného
- * rozsahu (viz zadání §1 a §2). `leftEndType`/`rightEndType` jsou SDÍLENÉ
- * mezi stranami (viz main.js state.mono), takže `usableFromMM`/
- * `usableToMM` vycházejí stejně pro obě strany — liší se jen obsah
- * herdblok/podestavby/panelItems, který se čte z `herdblok${side}` /
- * `podestavby${side}` / `panelItems${side}`. Odolné vůči chybějícímu
- * state.mono/state.dimensions, prázdným polím i nesmyslným šířkám — nikdy
- * nespadne ani nevrátí NaN. Neznámá `side` (§ÚKOL MONO OSTROV zadání) spadne
- * na 'A', ne na pád — viz readSide().
+ * rozsahu (viz zadání §1 a §2). `leftEndType`/`rightEndType` jsou pořád JEDNO
+ * SDÍLENÉ úložiště ve state.mono (viz main.js) — ale OPRAVA VADA 1
+ * (ZADANI-OPRAVY-B-A-SOKL.md §1.1) pro stranu B PROHAZUJE, který z nich řídí
+ * LEVÝ a který PRAVÝ kraj PÁSU: souřadnice strany B se měří od JEJÍHO
+ * VLASTNÍHO levého kraje (tak, jak blok vidí člověk stojící u strany B), ne
+ * od sdíleného leftEndType natvrdo jako dřív. Proto `usableFromMM`/
+ * `usableToMM` u obou stran vycházejí STEJNĚ jen tehdy, když má blok na obou
+ * koncích stejný typ zakončení — jinak (50 vs 70 mm) se liší. Prohozené
+ * hodnoty se vrací i navenek jako `leftEndType`/`rightEndType` (viz
+ * @returns), aby si je volající (koncovky v mono-ui.js, computeMonoChecks
+ * níž) nemusel odvozovat podruhé a pravidlo žilo na jednom místě. Obsah
+ * herdblok/podestavby/panelItems je u obou stran NEZÁVISLÝ odjakživa — čte
+ * se z `herdblok${side}` / `podestavby${side}` / `panelItems${side}`.
+ * Odolné vůči chybějícímu state.mono/state.dimensions, prázdným polím i
+ * nesmyslným šířkám — nikdy nespadne ani nevrátí NaN. Neznámá `side` (§ÚKOL
+ * MONO OSTROV zadání) spadne na 'A', ne na pád — viz readSide().
  *
  * @param {object} state
  * @param {'A'|'B'} side — OPRAVA O2: POVINNÝ parametr, žádný tichý default
@@ -117,7 +129,10 @@ function readSide(side) {
  *   mono-ui.js) stranu posílají explicitně — viz readSide() níž, chybějící
  *   argument teď spadne hlasitě (Error), neplatná hodnota (např. 'C') dál
  *   tolerantně na 'A'.
- * @returns {object} přesně tvar popsaný v ZADANI-MONO-UI.md §2
+ * @returns {object} přesně tvar popsaný v ZADANI-MONO-UI.md §2, rozšířený o
+ *   `leftEndType`/`rightEndType` (OPRAVA VADA 1, ZADANI-OPRAVY-B-A-SOKL.md
+ *   §1.1) — typ konce platný pro LEVÝ/PRAVÝ kraj PÁSU TÉHLE strany, u strany
+ *   B už prohozený.
  */
 export function computeMonoLayout(state, side) {
   const monoState = (state && state.mono) || {};
@@ -125,8 +140,20 @@ export function computeMonoLayout(state, side) {
   const s = readSide(side);
 
   const lengthMM = toPositiveMM(dims.lengthMM);
-  const leftEndType = readEndType(monoState.leftEndType);
-  const rightEndType = readEndType(monoState.rightEndType);
+
+  // OPRAVA VADA 1 (ZADANI-OPRAVY-B-A-SOKL.md §1.1) — pro stranu B se
+  // PROHODÍ, který uložený typ konce řídí levý a který pravý kraj pásu:
+  // strip x=0 strany B leží na FYZICKY OPAČNÉM konci bloku než strip x=0
+  // strany A (zrcadlení obsahu, viz mono-block.js), takže i zatažení od kraje
+  // (sideInsetMM) musí patřit tomu fyzickému konci, u kterého strana B
+  // skutečně x=0 má. Bez tohohle prohození by skříňky strany B seděly u
+  // konce se zatažením toho DRUHÉHO konce (50 vs 70 mm) — nová vada
+  // zavlečená touhle opravou. Úložiště (monoState.leftEndType/rightEndType)
+  // zůstává SDÍLENÉ a nepřejmenované — tohle je jen čtecí pravidlo pro B.
+  const storedLeftEndType = readEndType(monoState.leftEndType);
+  const storedRightEndType = readEndType(monoState.rightEndType);
+  const leftEndType = s === 'B' ? storedRightEndType : storedLeftEndType;
+  const rightEndType = s === 'B' ? storedLeftEndType : storedRightEndType;
   const leftInsetMM = sideInsetMM(leftEndType);
   const rightInsetMM = sideInsetMM(rightEndType);
 
@@ -161,6 +188,13 @@ export function computeMonoLayout(state, side) {
     usableFromMM,
     usableToMM,
 
+    // Typ konce platný pro LEVÝ/PRAVÝ kraj PÁSU TÉHLE strany (u strany B už
+    // prohozený, viz výš) — mono-ui.js podle nich kreslí/přepíná koncovky a
+    // mapuje klik zpátky na uložené pole, computeMonoChecks níž je bere pro
+    // herdblokUsek (§1.1/§1.3 ZADANI-OPRAVY-B-A-SOKL.md).
+    leftEndType,
+    rightEndType,
+
     herdblok: herdblokLayout.laid,
     herdblokFreeMM,
 
@@ -181,6 +215,12 @@ export function computeMonoLayout(state, side) {
  * (stejně jako ho staví mono-block.js) — checkSupport řeší podepření
  * fyzického těla herdbloku, ne jednotlivé přístroje uvnitř.
  *
+ * OPRAVA VADA 1 (ZADANI-OPRAVY-B-A-SOKL.md §1.1) — herdblokUsek.leftEndType/
+ * rightEndType se berou ZE STEJNÉHO PROHOZENÉHO PRAVIDLA jako layout
+ * (layout.leftEndType/rightEndType — nejjednodušeji z layoutu, který si je
+ * už stejně počítá), ne znovu přímo z monoState — aby převis vlevo/vpravo
+ * hlásil pro stranu B tu stranu, kterou uživatel v PÁSU skutečně vidí.
+ *
  * @param {object} state
  * @param {'A'|'B'} side — OPRAVA O2: POVINNÝ parametr, stejné pravidlo jako
  *   u computeMonoLayout výše (žádný tichý default) — chybějící argument
@@ -188,10 +228,6 @@ export function computeMonoLayout(state, side) {
  * @returns {{ overhangLeftMM:number, overhangRightMM:number, maxBridgeMM:number, ok:boolean }}
  */
 export function computeMonoChecks(state, side) {
-  const monoState = (state && state.mono) || {};
-  const leftEndType = readEndType(monoState.leftEndType);
-  const rightEndType = readEndType(monoState.rightEndType);
-
   const layout = computeMonoLayout(state, side);
 
   const podestavby = layout.podestavby
@@ -201,8 +237,8 @@ export function computeMonoChecks(state, side) {
   const herdblokUsek = {
     xMM: 0,
     widthMM: layout.lengthMM,
-    leftEndType,
-    rightEndType,
+    leftEndType: layout.leftEndType,
+    rightEndType: layout.rightEndType,
   };
 
   const result = checkSupport(podestavby, herdblokUsek);

@@ -113,8 +113,11 @@ export const PLINTH_HEIGHT_DEFAULT_MM = 150;
 // pracovní výška = BODY_STACK_MM + výška soklu (OBA produkty, ZADANI-SOKL.md
 // bod 3) — dopočítává main.js, geometrie BODY_STACK_MM nepoužívá napřímo.
 export const BODY_STACK_MM = 750;
-// uskočení nerezového rámu/zástěny od líce bloku, ZE VŠECH STRAN
-// (buildBlockPlinth v block.js).
+// Uskočení nerezového rámu/zástěny ZE VŠECH STRAN (buildBlockPlinth v
+// block.js i mono-geometry.js). OPRAVA 1. 9. 2026 (VADA 2, zadavatel: „sokl
+// má být jen pod skříňkami"): měří se od LÍCŮ SKŘÍNĚK daného souvislého
+// úseku, NE od líce bloku jako dřív — sokl už neběží po obvodu bloku, ale
+// jen pod skříňkami, takže obrys bloku pro něj přestal být vztažnou hranou.
 export const PLINTH_INSET_MM = 50;
 
 // povrchové provedení (§11.2 SPEC v4) — INSTANCE pole `finish`; jde o kódy

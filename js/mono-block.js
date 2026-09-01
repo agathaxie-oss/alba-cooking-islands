@@ -144,11 +144,12 @@ function mirrorX(xMM, lengthMM, widthMM = 0) {
  * do LOKÁLNÍHO prostoru deviceGroup panelFrontZ převádí odečtením
  * frontOffsetMM. Stejný vzorec platí i pro stranu B: devicesBGroup sice celá
  * nese rotation.y=Math.PI a position (mm(lengthMM), 0, mm(totalDepthMM)),
- * ale deviceGroup uvnitř ní dostává STEJNOU raw (nezrcadlenou) konvenci jako
- * strana A (viz komentář u panelItemsB/podestavbyB výš) — rotace pak sama
- * převede klesající lokální Z (směrem k ovladačům, viz renderControls) na
- * rostoucí Z v absolutním prostoru, tedy za depthAMM, na VNĚJŠÍ líc panelu
- * B, přesně jak žádá PREDANI.md úkol 17.
+ * ale deviceGroup uvnitř ní dostává STEJNOU konvenci Z jako strana A — na
+ * OSE Z se nikdy nic nezrcadlí (mirrorX, OPRAVA VADA 1, se týká výhradně X,
+ * viz komentář u centerXM v devicesGroup.forEach/devicesBGroup.forEach výš)
+ * — rotace pak sama převede klesající lokální Z (směrem k ovladačům, viz
+ * renderControls) na rostoucí Z v absolutním prostoru, tedy za depthAMM, na
+ * VNĚJŠÍ líc panelu B, přesně jak žádá PREDANI.md úkol 17.
  *
  * @param {number} workHeightMM pracovní výška bloku (stejná hodnota, jakou
  *   dostává buildMonoBlock a mm(workHeightMM) jako topY do applyTopFeature)
@@ -267,15 +268,21 @@ export function buildMonoScene(state) {
       hasShelf: item.hasShelf,
     }));
 
-  // Podestavby strany B (jen `island`) — ÚKOL 6: BEZ mirrorX. Strana B se
-  // staví v LOKÁLNÍCH souřadnicích a celá podskupina se ve mono-geometry.js
-  // otočí rotation.y=Math.PI — druhé zrcadlení (mirrorX i teď) by se s tou
-  // rotací vyrušilo špatným směrem (viz JSDoc buildMonoBlock v
-  // mono-geometry.js pro odvození). ŽÁDNÉ záporné měřítko se nepoužívá.
+  // Podestavby strany B (jen `island`) — OPRAVA VADA 1 (ZADANI-OPRAVY-B-A-
+  // SOKL.md §1.2): mirrorX se TEĎ aplikuje stejně jako u podestavbyA výš.
+  // Dřív se strana B stavěla RAW (bez zrcadlení) s odůvodněním, že otočení
+  // celé podskupiny o rotation.y=Math.PI (mono-geometry.js) druhé zrcadlení
+  // samo vyruší — to bylo geometricky pravda, ale KAMERA (views.perspectiveB/
+  // backB/topB, viz computeViews()) se s blokem otáčí taky, takže se
+  // "vyrušení" na obrazovce projevilo jako obrácené pořadí oproti pásu
+  // (zadavatel: "strana B se staví zleva ve schématu, ale zprava ve
+  // vizualizaci"). Zrcadlením souřadnic se teď dosáhne toho, že blok vidí
+  // uživatel u strany B stejně zleva doprava, jako v pásu — přesně jak žádá
+  // oprava. ŽÁDNÉ záporné měřítko se nepoužívá (mirrorX jen přepočítává x).
   const podestavbyB = isIsland ? layoutB.podestavby
     .filter(({ item }) => item.kind !== 'gap')
     .map(({ item, xMM, widthMM }) => ({
-      xMM,
+      xMM: mirrorX(xMM, lengthMM, widthMM),
       widthMM,
       finish: readFinish(item.finish),
       kind: item.kind,
@@ -295,11 +302,13 @@ export function buildMonoScene(state) {
     heightMM: item.heightMM,
   }));
 
-  // Prvky panelu strany B (jen `island`) — BEZ mirrorX, stejný důvod jako
-  // u podestavbyB výš.
+  // Prvky panelu strany B (jen `island`) — OPRAVA VADA 1: mirrorX teď
+  // stejně jako u podestavbyB výš (viz odůvodnění tam). xMM je poloha STŘEDU
+  // prvku, ne levá hrana (stejně jako u panelItemsA), proto BODOVÉ mirrorX
+  // bez widthMM.
   const panelItemsB = isIsland ? layoutB.panelItems.map(({ item, xMM }) => ({
     kind: item.kind,
-    xMM,
+    xMM: mirrorX(xMM, lengthMM),
     heightMM: item.heightMM,
   })) : [];
 
@@ -332,6 +341,14 @@ export function buildMonoScene(state) {
   // SDÍLENÉ a NEPROHOZENÉ (na rozdíl od herdblokA výš) — rotation.y=Math.PI
   // fyzicky otočí celý tvar, takže žádná záměna typů není potřeba (ověřeno
   // odvozením v mono-geometry.js#buildMonoBlock JSDoc i měřením v přejímce).
+  //
+  // POZOR (OPRAVA VADA 1, ZADANI-OPRAVY-B-A-SOKL.md — „tři věci, které se
+  // nejsnáz pokazí", bod 1): tohle NENÍ totéž jako mirrorX u podestavbyB/
+  // panelItemsB/přístrojů níž. leftEndType/rightEndType tady určují FYZICKÝ
+  // TVAR konců korpusu (svislá deska vs. zkosení) — ten se opravou VADA 1
+  // nikam neposunul a zadavatel si na tvar konců nestěžoval. mirrorX řeší
+  // jen POLOHU obsahu (skříňky/panel/přístroje) uvnitř bloku — obojí spolu
+  // nesouvisí, nepleťte si to dohromady.
   const depthBMMNum = isIsland ? (Number(depthBMM) || 0) : 0;
   const herdblokB = isIsland ? [{
     xMM: 0,
@@ -432,11 +449,14 @@ export function buildMonoScene(state) {
   });
   group.add(devicesGroup);
 
-  // Přístroje strany B (jen `island`) — STEJNÝ princip jako zbytek strany B
-  // v mono-geometry.js#buildMonoBlock: RAW (nezrcadlené) lokální souřadnice
-  // uvnitř skupiny otočené o 180° kolem Y a umístěné stejně jako sideBGroup
-  // tam (position.x=lengthMM, position.z=totalDepthMM — ŽÁDNÉ záporné
-  // měřítko). totalDepthMM se tu počítá stejně jako uvnitř buildMonoBlock.
+  // Přístroje strany B (jen `island`) — OPRAVA VADA 1: umístění uvnitř
+  // skupiny otočené o 180° kolem Y a umístěné stejně jako sideBGroup v
+  // mono-geometry.js#buildMonoBlock (position.x=lengthMM,
+  // position.z=totalDepthMM — ŽÁDNÉ záporné měřítko) je beze změny, ale
+  // xMM se teď ZRCADLÍ stejným způsobem jako u strany A výš (viz
+  // devicesGroup.forEach nad tímhle blokem) — stejný důvod jako u
+  // podestavbyB/panelItemsB (rotace otáčí i kameru, viz odůvodnění tam).
+  // totalDepthMM se tu počítá stejně jako uvnitř buildMonoBlock.
   const totalDepthMM = depthAMM + depthBMMNum;
   const devicesBGroup = new THREE.Group();
   devicesBGroup.name = 'pristroje-strana-b';
@@ -449,9 +469,13 @@ export function buildMonoScene(state) {
       if (!def) return;
       const widthM = mm(widthMM);
       const depthM = mm(def.depthMM);
-      // RAW xMM (bez mirrorX) — rotace zajistí správnou stranu, stejně jako
-      // u podestavbyB/panelItemsB výš.
-      const centerXM = mm(xMM + widthMM / 2);
+      // Zrcadlení osy X — stejný vzorec jako u strany A (viz komentář u
+      // mirroredLeftMM/centerXM v devicesGroup.forEach výš): xMM je LEVÁ
+      // hrana přístroje v pásu, mirrorX ji převede na odpovídající levou
+      // hranu v prohozené geometrii, +widthMM/2 dá střed, který build*Top
+      // očekává.
+      const mirroredLeftMM = mirrorX(xMM, lengthMM, widthMM);
+      const centerXM = mm(mirroredLeftMM + widthMM / 2);
       const frontOffsetMM = item.frontOffsetMM ?? 100;
       const deviceGroup = new THREE.Group();
       deviceGroup.name = `pristroj-${item.type}`;

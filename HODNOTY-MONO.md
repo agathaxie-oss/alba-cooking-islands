@@ -592,3 +592,39 @@ od její HORNÍ hrany, tedy ze stejné základny jako náběhy H2. Při přejím
 zapsáno sem, aby se to nemuselo dohledávat znovu.
 
 ---
+
+## 9. Sokl a strana B ostrova — hodnoty z 1. 9. 2026
+
+Dvě opravy nahlášené zadavatelem, provedené podle
+`ZADANI-OPRAVY-B-A-SOKL.md`. Podrobnosti v `PREDANI.md` úkoly 18 a 19.
+
+### 9.1 Sokl je jen pod skříňkami
+
+**Přepisuje pravidlo z oddílu 8 i z `ZADANI-SOKL.md`, že se sokl uskakuje
+50 mm „od líce bloku".**
+
+- Sokl (`construction` i `legs_plinth`) se staví **jen pod souvislými úseky
+  skříněk**, ne po obvodu bloku. Sousedící skříňky (tolerance 0,5 mm) =
+  jeden úsek s jedním soklem; **mezera úsek rozdělí**; mimo skříňky nic.
+- **Uskočení 50 mm se měří od LÍCŮ SKŘÍNĚK** toho úseku, ze všech stran.
+  Obrys bloku pro sokl přestal být vztažnou hranou.
+- Důsledek v číslech: čelo soklu u MONO je nově v **z = 80** (líc skříňky
+  30 + 50), dřív 50. U SEGMENTu se hranice v ose X posunula o 20 mm
+  (`SIDE_PANEL_MM`) blíž ke středu.
+- U ostrova má **každá řada vlastní sokl** — nespojují se.
+- Výška, materiál, tloušťka plechu a jména těles se nemění.
+
+### 9.2 Strana B se měří od svého vlastního levého kraje
+
+- Obsah strany B (skříňky, prvky panelu, přístroje) se ve 3D **zrcadlí**
+  stejně jako strana A. Bez toho se pořadí na obrazovce neshodovalo s pásem,
+  protože s blokem se otáčí i kamera.
+- Strip x = 0 strany B proto leží na **fyzicky opačném konci bloku** než
+  strip x = 0 strany A. Z toho plyne, že **strana B má prohozené koncové
+  typy**: její levý kraj řídí `rightEndType` a naopak.
+- V rozhraní: **u strany B levá koncovka přepíná pravé zakončení bloku.**
+  Uložená pole se nepřejmenovávají, je to jen čtecí pravidlo.
+- **Fyzický tvar konců korpusu se tím nemění** — ten je vlastností bloku,
+  ne strany.
+
+---

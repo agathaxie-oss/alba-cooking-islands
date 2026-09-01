@@ -45,10 +45,15 @@ export const SIDE_PANEL_MM = 20; // boční krycí plech na obou koncích bloku
 // --- sokl NA ÚROVNI BLOKU (ZADANI-SOKL.md, 31. 8. 2026) ---------------------
 // Nožičky (`legs`/`legs_plinth`) staví buildPlinth() PER SEGMENT (modules.js).
 // Nerezový rám (`construction`) a soklová zástěna (`legs_plinth`) jsou ale
-// vlastností CELÉHO BLOKU — kreslí se JEDNOU tady, po půdorysném obvodu
-// bloku (délka × celková hloubka), uskočené PLINTH_INSET_MM ze všech stran.
-// V zadání není dané číslo tloušťky plechu — 20 mm konzistentně s ostatními
-// plechovými díly bloku (SIDE_PANEL_MM výš, WALL_MM v modules.js).
+// vlastností CELÉHO BLOKU — NE ale po celém půdorysném obvodu bloku (to byla
+// VADA, nahlášená 1. 9. 2026: sokl běžel i tam, kde žádný segment není —
+// prázdná strana, nedoplněný zbytek řady). Oprava: sokl v ose X sahá jen tam,
+// kam sahá SKUTEČNÁ řada segmentů (viz buildBlockPlinth i buildBlock níž) —
+// hloubkové (Z) chování se NEMĚNÍ, sokl dál jede přes celou totalDepthMM,
+// protože segmenty už dnes zabírají celou hloubku své strany (na rozdíl od
+// MONO podestaveb). Uskočené PLINTH_INSET_MM ze všech stran. V zadání není
+// dané číslo tloušťky plechu — 20 mm konzistentně s ostatními plechovými
+// díly bloku (SIDE_PANEL_MM výš, WALL_MM v modules.js).
 const PLINTH_WALL_THICKNESS_MM = 20;
 // výchozí sokl, když volající (main.js, fáze 2) parametr nedodá — zachovává
 // dosavadní chování (konstrukční, 150 mm) beze změny.
@@ -123,6 +128,10 @@ export function computeSideDepth(fittingSegments, requestedSideDepthMM, marginMM
  * záměrně prázdná pod průběžnou deskou (žádná výplň) — viz SPEC „mezera".
  * `plinth` (`{type, heightMM}`) se protahuje do každého segmentu/výplně beze
  * změny — je to vlastnost CELÉHO BLOKU (ZADANI-SOKL.md), ne téhle řady.
+ *
+ * Vrací i `usedMM` (souhrnná šířka SKUTEČNÝCH segmentů, bez filleru) — sokl
+ * na úrovni bloku (oprava „sokl jen pod skříňkami") z ní odvozuje, kam
+ * v ose X řada segmentů skutečně sahá (viz volání v buildBlock níž).
  */
 function buildSideSegments(fittingSegments, usableWidthMM, rowDepthMM, heightMM, plinth) {
   const heightM = mm(heightMM);
@@ -152,33 +161,41 @@ function buildSideSegments(fittingSegments, usableWidthMM, rowDepthMM, heightMM,
     group.add(filler);
   }
 
-  return { group, selectable };
+  return { group, selectable, usedMM };
 }
 
 /**
- * Sokl NA ÚROVNI CELÉHO BLOKU (ZADANI-SOKL.md) — nerezový RÁM
- * (`construction`) nebo ZÁSTĚNA kryjící nožičky (`legs_plinth`), po celém
- * půdorysném obvodu bloku (lengthMM × depthMM), uskočený PLINTH_INSET_MM od
- * líce bloku ZE VŠECH STRAN. Pro `building`/`legs` nekreslí nic — nožičky
- * `legs`/`legs_plinth` staví createSegmentMesh/createFillerMesh PER SEGMENT
- * (buildPlinth v modules.js), ne tahle funkce.
+ * Sokl NA ÚROVNI CELÉHO BLOKU (ZADANI-SOKL.md + oprava „sokl jen pod
+ * skříňkami", 1. 9. 2026) — nerezový RÁM (`construction`) nebo ZÁSTĚNA
+ * kryjící nožičky (`legs_plinth`). V ose X sahá jen od `xMinMM` do `xMaxMM`
+ * (dodá volající, buildBlock níž — odvozeno z toho, kam SKUTEČNĚ sahá řada
+ * segmentů, ne z lengthMM celého bloku), uskočený PLINTH_INSET_MM od TOHOTO
+ * rozsahu ZE VŠECH STRAN (i v Z). Pro `building`/`legs` nekreslí nic —
+ * nožičky `legs`/`legs_plinth` staví createSegmentMesh/createFillerMesh PER
+ * SEGMENT (buildPlinth v modules.js), ne tahle funkce.
+ *
+ * Hloubkové (Z) chování je STEJNÉ jako před opravou — `depthMM` je pořád
+ * CELÁ hloubka bloku od z=0 (segmenty už dnes zabírají celou hloubku své
+ * strany, viz buildSideSegments výš, takže tu není co ořezávat) — oprava se
+ * týká JEN osy X.
  *
  * `hasBack` řídí zadní stěnu (u varianty `single` strana u zdi): `construction`
  * ji má VŽDY, i u `single` ("VŠECHNY strany vždy") — `legs_plinth` ji u
  * `single` vynechává, u `island` má všechny čtyři (viz volání v buildBlock).
  *
- * Souřadnice: stejný prostor jako zbytek buildBlock() — x centrováno kolem 0
- * (šířka lengthMM), z od 0 (čelo/přední líc) do depthMM.
+ * Souřadnice: stejný prostor jako zbytek buildBlock() — x centrováno kolem 0,
+ * z od 0 (čelo/přední líc) do depthMM.
  */
-export function buildBlockPlinth(group, lengthMM, depthMM, heightMM, plinthType, hasBack) {
+export function buildBlockPlinth(group, xMinMM, xMaxMM, depthMM, heightMM, plinthType, hasBack) {
   if (plinthType !== 'construction' && plinthType !== 'legs_plinth') return;
+  if (xMaxMM - xMinMM <= 0) return; // žádná řada segmentů — nic k podepření
 
   const mat = createPlinthMaterial();
   const heightM = mm(heightMM);
   const t = mm(PLINTH_WALL_THICKNESS_MM);
   const insetM = mm(PLINTH_INSET_MM);
-  const xMin = -mm(lengthMM) / 2 + insetM;
-  const xMax = mm(lengthMM) / 2 - insetM;
+  const xMin = mm(xMinMM) + insetM;
+  const xMax = mm(xMaxMM) - insetM;
   const zMin = insetM;
   const zMax = mm(depthMM) - insetM;
   const innerLengthM = Math.max(xMax - xMin, 0.001);
@@ -283,8 +300,9 @@ export function buildBlock(segmentsA, segmentsB, armList, dims, plinth = DEFAULT
   selectable = selectable.concat(sideA.selectable);
 
   // --- strana B (jen ostrov) — VLASTNÍ segmenty, ne zrcadlo strany A -------
+  let sideB = null;
   if (isIsland) {
-    const sideB = buildSideSegments(fittingB, usableWidthMM, plinthDepthBMM, heightMM, plinth);
+    sideB = buildSideSegments(fittingB, usableWidthMM, plinthDepthBMM, heightMM, plinth);
     sideB.group.name = 'strana-b';
     sideB.group.rotation.y = Math.PI; // zády ke straně A, čelem ven
     sideB.group.position.z = mm(totalDepthMM);
@@ -292,13 +310,30 @@ export function buildBlock(segmentsA, segmentsB, armList, dims, plinth = DEFAULT
     selectable = selectable.concat(sideB.selectable);
   }
 
-  // --- sokl NA ÚROVNI BLOKU (rám/zástěna) — obvod půdorysu lengthMM ×
-  // totalDepthMM, viz buildBlockPlinth() výš. `construction` má VŠECHNY
-  // strany VŽDY (i u `single`); `legs_plinth` u `single` vynechává zadní
-  // stranu (u zdi), u `island` má taky všechny čtyři. `building`/`legs`
-  // tady nekreslí nic (nožičky viz createSegmentMesh/createFillerMesh výš).
+  // --- sokl NA ÚROVNI BLOKU (rám/zástěna) — OPRAVA „sokl jen pod skříňkami"
+  // (1. 9. 2026): v ose X sahá jen tam, kam sahá SKUTEČNÁ řada segmentů
+  // (usedMM z buildSideSegments výš, BEZ filleru) — ne přes celou lengthMM
+  // jako dřív. buildSideSegments klade segmenty k PRAVÉMU okraji řady
+  // (strana A), po otočení 180° tedy k LEVÉMU okraji (strana B) — viz jeho
+  // komentář výš — takže world-x rozsah řady A je [U/2 − usedMM, U/2] a
+  // řady B (world-x = −local-x po rotaci) je [−U/2, usedMM − U/2], kde
+  // U = usableWidthMM. Hloubka (Z) se NEMĚNÍ — buildBlockPlinth pořád
+  // dostává totalDepthMM (viz jeho JSDoc, segmenty už dnes zabírají celou
+  // hloubku své strany, takže tu není co ořezávat). U ostrova s NEROVNOMĚRNĚ
+  // zaplněnýma řadama (jedna plná, druhá s mezerou) proto vyjde sokl ze
+  // SJEDNOCENÍ obou řad (běží tam, kde má segment ALESPOŇ jedna z nich) —
+  // vědomé zjednodušení dané "minimálním zásahem" a nezměněnou hloubkou
+  // (jeden společný Z-rozsah neumožňuje mít pro každou řadu jinou X-mezeru).
   const plinthHasBack = plinth.type === 'construction' ? true : isIsland;
-  buildBlockPlinth(group, lengthMM, totalDepthMM, plinth.heightMM, plinth.type, plinthHasBack);
+  const halfUsableMM = usableWidthMM / 2;
+  const runA = sideA.usedMM > 0 ? { minMM: halfUsableMM - sideA.usedMM, maxMM: halfUsableMM } : null;
+  const runB = sideB && sideB.usedMM > 0 ? { minMM: -halfUsableMM, maxMM: sideB.usedMM - halfUsableMM } : null;
+  const plinthRuns = [runA, runB].filter(Boolean);
+  if (plinthRuns.length > 0) {
+    const xMinMM = Math.min(...plinthRuns.map((r) => r.minMM));
+    const xMaxMM = Math.max(...plinthRuns.map((r) => r.maxMM));
+    buildBlockPlinth(group, xMinMM, xMaxMM, totalDepthMM, plinth.heightMM, plinth.type, plinthHasBack);
+  }
 
   // --- průběžná pracovní deska (přesah OVERHANG_MM po celém obvodu) --------
   const deskLengthM = mm(lengthMM + 2 * OVERHANG_MM);

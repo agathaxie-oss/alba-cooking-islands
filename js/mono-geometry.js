@@ -1317,59 +1317,97 @@ export function buildSideCover({
 // ============================================================================
 // Nožičky se staví PER SKŘÍŇKA (buildPodestavba výš). Nerezový rám
 // (`construction`) a soklová zástěna kryjící nožičky (`legs_plinth`) jsou
-// ale VLASTNOSTÍ CELÉHO BLOKU (ZADANI-SOKL.md, 31. 8. 2026) — kreslí se
-// JEDNOU, po půdorysném obvodu bloku, ne po jednotlivých podestavbách. U
-// ostrova tím automaticky kryjí i mezeru mezi zády obou řad podestaveb.
+// ale VLASTNOSTÍ CELÉHO BLOKU (ZADANI-SOKL.md, 31. 8. 2026) — NE ale po
+// celém půdorysném obvodu bloku (to byla VADA, nahlášená 1. 9. 2026: sokl
+// běžel i tam, kde žádná skříňka není). Oprava: sokl se staví JEN pod
+// SOUVISLÝMI ÚSEKY skříněk jedné řady — sousedící skříňky (tolerance
+// SIDE_ADJACENCY_TOL_MM, stejná konstanta jako u bočních krytů výš) tvoří
+// jeden úsek se společným soklem, mezera úsek rozdělí. U ostrova se tím
+// sokl NEKRESLÍ pod mezerou mezi zády obou řad (na rozdíl od dřívějšího
+// stavu) — každá řada má svůj vlastní sokl, viz volání v buildMonoBlock.
 const PLINTH_WALL_THICKNESS_MM = 20; // v zadání není dané číslo tloušťky
 // plechu — 20 mm konzistentně s ostatními plechovými díly (WALL_MM výš).
 
 /**
  * @param {object} p
- * @param {number} p.lengthMM  délka bloku (půdorysná šířka, osa X)
- * @param {number} p.depthMM  hloubka bloku (osa Z) — u ostrova KOMBINOVANÁ
- *   (totalDepthMM, obě strany dohromady)
+ * @param {Array<{xMM:number, widthMM:number, depthMM?:number}>} p.cabinets
+ *   skříňky JEDNÉ ŘADY (podestavby), pro které se sokl staví — funkce si z
+ *   nich sama odvodí souvislé úseky (viz komentář sekce výš). Souřadnice
+ *   stejné jako u podestavby/buildPodestavba: `xMM` je levý kraj skříňky po
+ *   délce bloku, z-rozsah skříňky je DESK_OVERHANG_FRONT_MM až
+ *   DESK_OVERHANG_FRONT_MM + depthMM (líc podestavby, viz hlavička souboru).
+ *   Chybějící `depthMM` u skříňky spadne na PODESTAVBA_DEPTH_MM.
  * @param {number} p.heightMM  výška soklové zóny (plinth.heightMM)
  * @param {string} p.plinthType  jedna ze 4 hodnot PLINTH_TYPES (modules.js)
  * @param {boolean} [p.hasBack=true]  false u varianty `single` PRO
  *   `legs_plinth` (zadní strana u zdi se nekryje) — `construction` má VŽDY
  *   všechny 4 strany bez ohledu na variantu (viz volání v buildMonoBlock).
- * @returns {THREE.Group|null}  null pro `building`/`legs` — volající null
- *   zahodí (nic se nekreslí).
+ *   Aplikuje se STEJNĚ na KAŽDÝ úsek zvlášť (jedna řada může mít víc úseků).
+ * @returns {THREE.Group|null}  JEDNA skupina se všemi úseky dané řady, nebo
+ *   null pro `building`/`legs`, nebo když `cabinets` je prázdné (řada bez
+ *   jediné skříňky — nic se nekreslí, viz zadání).
  */
-export function buildBlockPlinth({ lengthMM, depthMM, heightMM, plinthType, hasBack = true }) {
+export function buildBlockPlinth({ cabinets, heightMM, plinthType, hasBack = true }) {
   if (plinthType !== 'construction' && plinthType !== 'legs_plinth') return null;
+  if (!cabinets || cabinets.length === 0) return null; // řada bez skříňky — nic k podepření
 
   const mat = createPlinthMaterial();
   const heightM = mm(heightMM);
   const t = PLINTH_WALL_THICKNESS_MM;
-  const xMin = PLINTH_INSET_MM;
-  const xMax = lengthMM - PLINTH_INSET_MM;
-  const zMin = PLINTH_INSET_MM;
-  const zMax = depthMM - PLINTH_INSET_MM;
-  const innerLengthMM = Math.max(xMax - xMin, 1);
-  const innerDepthMM = Math.max(zMax - zMin, 1);
+
+  // --- souvislé úseky: sousedící skříňky (tolerance SIDE_ADJACENCY_TOL_MM,
+  // ne přesná rovnost floatů) se spojí do jednoho úseku, mezera (gap, resp.
+  // libovolná díra mezi xMM/xMM+widthMM sousedů) úsek rozdělí. Hloubka úseku
+  // je MAX z depthMM skříněk, které do něj patří (jinak PODESTAVBA_DEPTH_MM)
+  // — sokl tak podepře i tu nejhlubší skříňku úseku.
+  const sorted = [...cabinets].sort((a, b) => a.xMM - b.xMM);
+  const runs = [];
+  sorted.forEach((c) => {
+    const cDepthMM = c.depthMM || PODESTAVBA_DEPTH_MM;
+    const last = runs[runs.length - 1];
+    if (last && Math.abs(c.xMM - last.endXMM) <= SIDE_ADJACENCY_TOL_MM) {
+      last.endXMM = Math.max(last.endXMM, c.xMM + c.widthMM);
+      last.depthMM = Math.max(last.depthMM, cDepthMM);
+    } else {
+      runs.push({ startXMM: c.xMM, endXMM: c.xMM + c.widthMM, depthMM: cDepthMM });
+    }
+  });
 
   const group = new THREE.Group();
   group.name = plinthType === 'construction' ? 'sokl-ram' : 'sokl-zastena';
 
-  const front = box(mm(innerLengthMM), heightM, mm(t), mat);
-  front.position.set(mm(xMin + innerLengthMM / 2), heightM / 2, mm(zMin + t / 2));
-  front.name = 'sokl-predni';
-  group.add(front);
+  runs.forEach((run) => {
+    // uskočení PLINTH_INSET_MM ze všech stran, měřené od LÍCŮ SKŘÍNĚK
+    // tohoto úseku (ne od obrysu bloku) — v ose Z jsou líce skříňky
+    // DESK_OVERHANG_FRONT_MM (přední) a DESK_OVERHANG_FRONT_MM + depthMM
+    // (zadní), viz JSDoc výš.
+    const xMin = run.startXMM + PLINTH_INSET_MM;
+    const xMax = run.endXMM - PLINTH_INSET_MM;
+    const zMin = DESK_OVERHANG_FRONT_MM + PLINTH_INSET_MM;
+    const zMax = DESK_OVERHANG_FRONT_MM + run.depthMM - PLINTH_INSET_MM;
+    const innerLengthMM = Math.max(xMax - xMin, 1);
+    const innerDepthMM = Math.max(zMax - zMin, 1);
 
-  if (hasBack) {
-    const back = box(mm(innerLengthMM), heightM, mm(t), mat);
-    back.position.set(mm(xMin + innerLengthMM / 2), heightM / 2, mm(zMax - t / 2));
-    back.name = 'sokl-zadni';
-    group.add(back);
-  }
+    const front = box(mm(innerLengthMM), heightM, mm(t), mat);
+    front.position.set(mm(xMin + innerLengthMM / 2), heightM / 2, mm(zMin + t / 2));
+    front.name = 'sokl-predni';
+    group.add(front);
 
-  // boční stěny přes CELOU hloubku (zMin..zMax), aby v rozích nevznikla mezera
-  [xMin, xMax - t].forEach((xWall, i) => {
-    const side = box(mm(t), heightM, mm(innerDepthMM), mat);
-    side.position.set(mm(xWall + t / 2), heightM / 2, mm(zMin + innerDepthMM / 2));
-    side.name = i === 0 ? 'sokl-levy' : 'sokl-pravy';
-    group.add(side);
+    if (hasBack) {
+      const back = box(mm(innerLengthMM), heightM, mm(t), mat);
+      back.position.set(mm(xMin + innerLengthMM / 2), heightM / 2, mm(zMax - t / 2));
+      back.name = 'sokl-zadni';
+      group.add(back);
+    }
+
+    // boční stěny přes CELOU hloubku úseku (zMin..zMax), aby v rozích
+    // nevznikla mezera
+    [xMin, xMax - t].forEach((xWall, i) => {
+      const side = box(mm(t), heightM, mm(innerDepthMM), mat);
+      side.position.set(mm(xWall + t / 2), heightM / 2, mm(zMin + innerDepthMM / 2));
+      side.name = i === 0 ? 'sokl-levy' : 'sokl-pravy';
+      group.add(side);
+    });
   });
 
   return group;
@@ -1662,6 +1700,11 @@ export function buildMonoBlock({
     PLINTH_HEIGHT_MIN_MM,
     PLINTH_HEIGHT_MAX_MM
   );
+  // `construction` má zadní stěnu VŽDY (i u `single`); `legs_plinth` ji u
+  // `single` vynechává (strana u zdi), u `island` má taky všechny čtyři.
+  // Spočteno tady (dřív až u volání buildBlockPlinth níž), protože se teď
+  // používá i pro sokl strany B uvnitř `if (isIsland)` blíž ke straně A.
+  const plinthHasBack = plinthType === 'construction' ? true : isIsland;
 
   const workHeight = clamp(workHeightMM, WORK_HEIGHT_MIN_MM, WORK_HEIGHT_MAX_MM);
   // Tělo podestavby je od ZADANI-SOKL.md PEVNÉ — HARDCODED přes BODY_STACK_MM,
@@ -1810,6 +1853,18 @@ export function buildMonoBlock({
     });
     sideBGroup.add(sideCoversBGroup);
 
+    // --- SOKL STRANY B — vlastní, ze svého pole podestaveb (podestavbyB),
+    // postavený UVNITŘ TÉHLE (otočené) podskupiny — NE v hlavní skupině —
+    // aby se zrcadlil/otočil SPOLU se stranou B (stejný důvod jako u
+    // podestavbyBGroup/herdblokBGroup výš). Řady A a B mají nezávislé
+    // skříňky, takže se sokly nespojují — souvislost mezi poslední skříňkou
+    // A a první skříňkou B (přes spáru obou řad) se tu neřeší, každá řada má
+    // svůj sokl samostatně.
+    const blockPlinthB = buildBlockPlinth({
+      cabinets: podestavbyB, heightMM: plinthHeightMM, plinthType, hasBack: plinthHasBack,
+    });
+    if (blockPlinthB) sideBGroup.add(blockPlinthB);
+
     group.add(sideBGroup);
 
     // --- KOMBINOVANÉ DÍLY: deska, oba nosy, límec left/right, boční kryty
@@ -1915,20 +1970,21 @@ export function buildMonoBlock({
   }
 
   // ============================================================================
-  // SOKL NA ÚROVNI BLOKU — rám (construction) / zástěna (legs_plinth)
+  // SOKL STRANY A — rám (construction) / zástěna (legs_plinth)
   // ============================================================================
   // Nožičky se staví PER SKŘÍŇKA výš (buildPodestavba). Rám i zástěna jsou
-  // vlastností CELÉHO BLOKU — kreslí se JEDNOU, po půdorysném obvodu bloku
-  // (lengthMM × totalDepthMM), uskočené PLINTH_INSET_MM ze všech stran. U
-  // ostrova tím automaticky kryjí i mezeru mezi zády obou řad podestaveb
-  // (ZADANI-SOKL.md). `construction` má VŠECHNY strany VŽDY (i u `single`);
-  // `legs_plinth` u `single` vynechává zadní stranu (u zdi), u `island` má
-  // taky všechny čtyři.
-  const plinthHasBack = plinthType === 'construction' ? true : isIsland;
-  const blockPlinth = buildBlockPlinth({
-    lengthMM, depthMM: totalDepthMM, heightMM: plinthHeightMM, plinthType, hasBack: plinthHasBack,
+  // vlastností CELÉHO BLOKU (ZADANI-SOKL.md), ale OPRAVA „sokl jen pod
+  // skříňkami" (1. 9. 2026) je nekreslí po celém půdorysném obvodu — jen
+  // pod souvislými úseky skříněk strany A (viz buildBlockPlinth výš). Sokl
+  // strany B (jen `island`) se staví ZVLÁŠŤ, UVNITŘ otočené podskupiny
+  // strany B (viz výš) — ne tady, aby se zrcadlil spolu s ní. `construction`
+  // má VŠECHNY strany VŽDY (i u `single`); `legs_plinth` u `single`
+  // vynechává zadní stranu (u zdi), u `island` má taky všechny čtyři —
+  // `plinthHasBack` je spočtené výš, sdílené s soklem strany B.
+  const blockPlinthA = buildBlockPlinth({
+    cabinets: podA, heightMM: plinthHeightMM, plinthType, hasBack: plinthHasBack,
   });
-  if (blockPlinth) group.add(blockPlinth);
+  if (blockPlinthA) group.add(blockPlinthA);
 
   const support = [
     ...herA.map((u) => ({ usek: u, side: 'A', ...checkSupport(podA, u) })),

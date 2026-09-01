@@ -141,7 +141,14 @@ function pct(mm, totalMM) {
 
 /** Tolerantní čtení typu zakončení — stejná konvence jako
  *  mono-layout.js/main.js (neplatná/chybějící hodnota = svislá deska).
- *  Nejde importovat odsud (mono-layout.js tohle nevrací), musí se zopakovat. */
+ *  computeMonoLayout() od OPRAVY VADA 1 (ZADANI-OPRAVY-B-A-SOKL.md §1.1) sice
+ *  UŽ vrací hotové, tolerantně přečtené `leftEndType`/`rightEndType` pro
+ *  AKTUÁLNÍ stranu (layout.leftEndType/rightEndType — viz buildEndcap níž),
+ *  ale buildLimecPanel čte SDÍLENÉ monoState.leftEndType/rightEndType přímo
+ *  (limec se strany nepřepíná, §1.4 zadání — vždy stejné, neprohozené pro
+ *  obě strany) — pro tenhle případ se tolerantní čtení pořád musí opakovat
+ *  tady, protože si funkci stejně nejde importovat (tvrdé pravidlo importu
+ *  v hlavičce modulu). */
 function readEndType(value) {
   return value === END_TYPE_CHAMFER ? END_TYPE_CHAMFER : END_TYPE_VERTICAL;
 }
@@ -425,13 +432,28 @@ export function createMonoStrip({
   // ---------------------------------------------------------------------------
   // Koncovky Herdbloku (volba 1B) — cesty opsané doslova ze zadání §3.
   // ---------------------------------------------------------------------------
-  function buildEndcap(side, monoState) {
+  /**
+   * `side` je POLOHA koncovky NA OBRAZOVCE ('left'|'right' v pásu) — NENÍ to
+   * název uloženého pole main.js state.mono. Pro stranu A obojí splývá, ale
+   * pro stranu B je to PROHOZENÉ (OPRAVA VADA 1, ZADANI-OPRAVY-B-A-SOKL.md
+   * §1.1/§1.3): souřadnice strany B se měří od jejího vlastního levého
+   * kraje, takže levá koncovka strany B ukazuje profil `rightEndType` a
+   * naopak. Profil se proto čte z `layout.leftEndType`/`layout.rightEndType`
+   * (nová pole computeMonoLayout, §1.1) — ta jsou pro AKTUÁLNÍ stranu už
+   * prohozená, tady se nic dalšího nepřehazuje. Klik ale musí zapsat
+   * SPRÁVNÉ uložené pole — main.js#onMonoEndTypeChange čte svůj `side`
+   * argument jako 'left'/'right' NÁZEV POLE (leftEndType/rightEndType), ne
+   * jako polohu na obrazovce — proto se dopočítá `storedField`: u strany A
+   * totožné s `side`, u strany B prohozené.
+   */
+  function buildEndcap(side, layout, currentSide) {
     const isLeft = side === 'left';
-    const isChamfer = readEndType(isLeft ? monoState.leftEndType : monoState.rightEndType) === END_TYPE_CHAMFER;
+    const isChamfer = readEndType(isLeft ? layout.leftEndType : layout.rightEndType) === END_TYPE_CHAMFER;
+    const storedField = currentSide === 'B' ? (isLeft ? 'right' : 'left') : side;
 
     const onActivate = () => {
       const next = isChamfer ? END_TYPE_VERTICAL : END_TYPE_CHAMFER;
-      callbacks.onMonoEndTypeChange?.(side, next);
+      callbacks.onMonoEndTypeChange?.(storedField, next);
     };
     const cap = makeButtonLike('span', `mono-endcap mono-endcap-${side}`, onActivate);
     cap.title = tt(isLeft ? 'mono.endTypeLeft' : 'mono.endTypeRight');
@@ -461,8 +483,14 @@ export function createMonoStrip({
   // Dráha Herdblok — používá ji jak vlastní záložka (aktivní, s koncovkami),
   // tak Panel/Ramena jako ztlumený kontext (bez koncovek, needitovatelná).
   // ---------------------------------------------------------------------------
+  // `monoState` se od OPRAVY VADA 1 uvnitř nečte přímo — koncovky (níž) teď
+  // berou typ z `layout` (§1.1), ne z monoState natvrdo. Parametr zůstává
+  // kvůli shodné signatuře s voláním z buildContextHerdblokRow (ta ho pořád
+  // dostává od volajících výš) — zbytečná změna signatury napříč víc funkcemi
+  // by tuhle jinak lokální opravu zbytečně roztáhla do souborů/funkcí mimo
+  // rozsah VADY 1.
   function buildHerdblokScale(monoState, layout, lengthMM, opts) {
-    const { selectable, dim, showEndcaps } = opts;
+    const { selectable, dim, showEndcaps, currentSide } = opts;
     const scale = makeEl('div', 'mono-scale');
 
     layout.herdblok.forEach(({ item, xMM, widthMM, overflow }) => {
@@ -501,8 +529,8 @@ export function createMonoStrip({
     }
 
     if (showEndcaps) {
-      scale.appendChild(buildEndcap('left', monoState));
-      scale.appendChild(buildEndcap('right', monoState));
+      scale.appendChild(buildEndcap('left', layout, currentSide));
+      scale.appendChild(buildEndcap('right', layout, currentSide));
     }
 
     return scale;
@@ -1078,6 +1106,7 @@ export function createMonoStrip({
         selectable: activeTab === 'herdblok',
         dim: activeTab !== 'herdblok',
         showEndcaps: true,
+        currentSide,
       })),
       trackRow(tt('mono.tab.podestavby'), buildPodestavbyScale(layout, lengthMM, {
         selectable: activeTab === 'podestavby',

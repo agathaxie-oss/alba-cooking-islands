@@ -69,6 +69,19 @@ hlášení o chybějícím exportu (např. `SyntaxError: The requested module
 který ten export prokazatelně má — v takovém případě je první podezřelý
 neúplný proplach keše, ne kód.
 
+### Keš, DRUHÁ podoba: `?v=` nebustí VNOŘENÉ importy (1. 9. 2026)
+
+`await import('./js/mono-block.js?v='+Date.now())` načte nově **jen ten
+jeden modul**. Jeho vlastní `import './mono-geometry.js'` (bez parametru) se
+vezme z **registru modulů stránky**, kde už ta stará verze leží z dřívějšího
+importu — takže měříš NOVÝ adaptér nad STAROU geometrií. Ani
+`fetch(..., {cache:'reload'})` to nespraví: ten čistí HTTP keš, ne registr
+modulů.
+
+Stálo to jedno falešné hlášení „oprava se neprojevila" při přejímce soklu.
+**Před měřením přes přímý import vždycky napřed `location.reload()`** (po
+proplachu výše), teprve pak importuj. Reload registr modulů vyprázdní.
+
 ### Server
 
 `.claude/launch.json` má dvě konfigurace: `alba-server` spustí
@@ -219,6 +232,67 @@ aby dokument neodporoval sám sobě.
 # ČÁST C — ÚKOLY
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
+
+## 18. Strana B ostrova se stavěla zrcadleně — VADA
+
+**HOTOVO 1. 9. 2026.** Zadavatel: „Strana B Herdbloku se staví zleva ve
+schématu spodní lišty, ale zprava ve vizualizaci. Chci to stavět zleva i ve
+vizualizaci."
+
+**Příčina (změřená, nehledej ji znovu):** adaptér na stranu B záměrně
+neaplikoval `mirrorX` a spoléhal na otočení podskupiny o 180°. Jenže
+s blokem se otáčí i KAMERA (`views.perspectiveB`/`backB`/`topB`), takže se
+„vyrušení" projevilo na obrazovce jako obrácené pořadí. Naměřeno
+promítnutím: při pohledu na stranu B je kladné world X **vpravo** (NDC
++0,557), zatímco při pohledu na stranu A **vlevo** (NDC −0,395).
+
+Opraveno podle `ZADANI-OPRAVY-B-A-SOKL.md`: **souřadnice strany B se měří od
+jejího vlastního levého kraje.** Na `podestavbyB`, `panelItemsB` i přístroje
+strany B se nově `mirrorX` aplikuje stejně jako u strany A.
+
+**Důsledek, který je potřeba znát:** strip x = 0 strany B leží na FYZICKY
+OPAČNÉM konci bloku než strip x = 0 strany A. Proto `computeMonoLayout` pro
+stranu B **prohazuje, který uložený typ konce řídí levý a pravý kraj pásu**
+(bez toho by skříňky strany B seděly u konce se zatažením toho druhého konce,
+50 vs 70 mm). V rozhraní to znamená, že **u strany B levá koncovka přepíná
+`rightEndType`** a naopak — odpovídá to tomu, že uživatel vidí blok z opačné
+strany. Úložiště zůstává SDÍLENÉ a nepřejmenované, formát souboru se nemění.
+
+**Fyzický tvar konců korpusu se NEZMĚNIL** — úsek herdbloku strany B si drží
+své nezaměněné `leftEndType`/`rightEndType`. Je to nejsnazší místo, kde tenhle
+úkol pokazit; v kódu je u něj výstražný komentář.
+
+Ověřeno měřením: přístroje strany B zadané v pásu na 0–1200 vyšly na world X
+−1561..−439 a promítají se od levého okraje (NDC −0,375). Koncovky: co je na
+straně A vpravo, je na straně B vlevo, a klik na pravou koncovku strany B
+skutečně změní `leftEndType`.
+
+## 19. Sokl se stavěl po obvodu bloku — VADA
+
+**HOTOVO 1. 9. 2026.** Zadavatel: „Sokl má být jen pod skříňkami."
+
+`buildBlockPlinth()` stavěl rám/zástěnu po obvodu CELÉHO půdorysu, takže sokl
+běžel i pod volným prostorem a nedoplněným zbytkem řady. Nově se staví jen
+pod **souvislými úseky skříněk**: sousedící skříňky (tolerance 0,5 mm) mají
+jeden společný sokl, `gap` úsek rozdělí, mimo skříňky se nekreslí nic. Platí
+pro MONO (obě řady ostrova zvlášť; sokl strany B je uvnitř otočené podskupiny,
+takže se zrcadlí s ní) i pro SEGMENT (tam se mění jen rozsah v ose X).
+
+**ZMĚNA HODNOTY:** uskočení 50 mm se nově měří **od líců SKŘÍNĚK**, ne od
+líce bloku — obrys bloku přestal být pro sokl vztažnou hranou. Čelo soklu
+u MONO tím kleslo z z = 50 na **z = 80** (líc skříňky 30 + 50). U SEGMENTu se
+hranice posunula o 20 mm (`SIDE_PANEL_MM`) blíž ke středu. Je to viditelné
+i tam, kde žádná skříňka nechybí. Zapsáno i v `HODNOTY-MONO.md` §9.
+
+Ověřeno měřením: řada skříňka 600 / mezera 600 / skříňka 600 dala DVA úseky
+(8 těles), pod mezerou nic, uskočení přesně 50 od líců skříněk; ostrov má
+každou řadu zvlášť; SEGMENT s krátkou řadou končí soklem tam, kde končí
+segmenty.
+
+**Známé omezení (vědomé, ne vada k opravě):** u SEGMENTU zůstává sokl JEDNA
+skupina přes celou hloubku bloku (hloubkové chování se neměnilo). Když má
+ostrovní SEGMENT jednu řadu úplně prázdnou a druhou obsazenou, sokl se
+částečně natáhne i pod prázdnou řadu. U MONO tenhle případ nenastává.
 
 ## 1. Převrácená osa X ve 3D — NEJZÁVAŽNĚJŠÍ
 

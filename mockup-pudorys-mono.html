@@ -78,7 +78,7 @@ const S = 0.30;
 const L = 3200, DA = 850, DB = 850, TOT = DA + DB;
 const IN_L = 50, IN_R = 70, CH = 50;
 const END_L = 'plate', END_R = 'chamfer';
-const PAD_T = 126, PAD_B = 186, PAD_L = 96, PAD_R = 74;
+const PAD_T = 172, PAD_B = 215, PAD_L = 96, PAD_R = 74;
 const px = v => v * S, X = mm => px(mm), Y = z => px(TOT - z);
 const NS = 'http://www.w3.org/2000/svg';
 const el = (n, a = {}) => { const e = document.createElementNS(NS, n);
@@ -110,8 +110,8 @@ const A_DEV = [
 const A_CAB = [
   {k:'A2.1', n:'Skříňka s dvířky · 600', x:50, w:600, sym:'door', ico:'door',
    p:['600 × 670 mm','křídlová dvířka','provedení H1','nerez AISI 304']},
-  {k:'A2.2', n:'Zásuvkový blok GN 1/1 · 400', x:650, w:400, sym:'drawers', drawers:3, ico:'drawers',
-   p:['400 × 670 mm','3 zásuvky na GN 1/1','plnovýsuvy','provedení H1','nerez AISI 304']},
+  {k:'A2.2', n:'Zásuvkový blok GN 1/1 · 400', x:650, w:400, sym:'drawers', drawers:2, ico:'drawers',
+   p:['400 × 670 mm','2 zásuvky na GN 1/1','plnovýsuvy','provedení H1','nerez AISI 304']},
   {k:null, n:'volný prostor', x:1050, w:600, sym:'gap'},
   {k:'A2.3', n:'Skříňka se zásuvy GN 2/1 · 600', x:1650, w:600, sym:'runners', runners:6, ico:'runners',
    p:['600 × 670 mm','6 párů vsuvů na GN 2/1','rozteč 70 mm','otevřená','provedení H1']},
@@ -283,7 +283,12 @@ function leader(labelX, labelY, tipX, tipY, key, name, up){
   R.appendChild(el('path', {d:`M ${labelX} ${kneeY} L ${labelX} ${(kneeY+tipY)/2} L ${tipX} ${tipY}`,
     fill:'none', stroke:INK, 'stroke-width':.9, 'marker-end':'url(#ar)'}));
   tag(labelX, labelY, key);
-  if (name) txt(R, labelX, labelY + (up ? -15 : 16), name, {fs:9, fill:THIN});
+  // Název MUSÍ ležet MIMO rámeček pozice. Rámeček (viz tag) sahá od
+  // labelY − fs − 4 do labelY + 4 — u odkazu mířícího nahoru se dřív název
+  // kreslil na labelY − 15, tedy DOVNITŘ rámečku, a text se překrýval
+  // s označením pozice. Odsazení se proto počítá z výšky rámečku, ne natvrdo.
+  const TAG_FS = 13, above = labelY - TAG_FS - 4 - 6, below = labelY + 4 + 13;
+  if (name) txt(R, labelX, up ? above : below, name, {fs:9, fill:THIN});
 }
 A_CAB.forEach(it => drawCab('A', it));
 B_CAB.map(mirror).forEach(it => drawCab('B', it));
@@ -299,10 +304,10 @@ ARMS.forEach(a => { const x = X(a.x), y = Y(DA);
   R.appendChild(el('circle', {cx:x, cy:y, r:2.4, fill:INK}));
 }));
 A_DEV.forEach(it => { const [z1] = zr('A', it.fo, it.d);
-  leader(X(it.x + it.w/2), Y(0) + 142, X(it.x + it.w/2), Y(z1) + 2, it.k, it.n.split(' · ')[0], false); });
+  leader(X(it.x + it.w/2), Y(0) + 176, X(it.x + it.w/2), Y(z1) + 2, it.k, it.n.split(' · ')[0], false); });
 B_DEV.map(mirror).forEach(it => { const [, z2] = zr('B', it.fo, it.d);
-  leader(X(it.x + it.w/2), -80, X(it.x + it.w/2), Y(z2) - 2, it.k, it.n.split(' · ')[0], true); });
-ARMS.forEach((a, i) => leader(X(a.x) + (i ? 70 : -70), -32, X(a.x), Y(DA) - 20, a.k, '', true));
+  leader(X(it.x + it.w/2), -125, X(it.x + it.w/2), Y(z2) - 2, it.k, it.n.split(' · ')[0], true); });
+ARMS.forEach((a, i) => leader(X(a.x) + (i ? 70 : -70), -72, X(a.x), Y(DA) - 20, a.k, '', true));
 tag(X(IN_L/2), Y(TOT) - 16, 'S1', {fs:11.5});
 tag(X(L - IN_R/2) + 6, Y(TOT) - 16, 'S2', {fs:11.5});
 
@@ -319,13 +324,25 @@ function vdim(z1, z2, x, label){
   const t = txt(R, x-5, (a+b)/2, label, {fs:9, fill:'#41505f'});
   t.setAttribute('transform', `rotate(-90 ${x-5} ${(a+b)/2})`);
 }
+/* --- kóty STRANY A: pod blokem, pod povysunutými zásuvkami -------------- */
+const chain = (items, y, popis) => {
+  items.forEach(it => { if (X(it.w) > 34) dim(it.x, it.x + it.w, y, `${it.w}`, true); });
+  txt(R, -8, y + 3, popis, {fs:8.8, fill:THIN, anchor:'end'});
+};
 let yd = Y(0) + 66;
-A_CAB.forEach(it => { if (X(it.w) > 34) dim(it.x, it.x + it.w, yd, `${it.w}`, true); });
-txt(R, -8, yd + 3, 'podestavby A', {fs:8.8, fill:THIN, anchor:'end'});
-yd += 20;
+chain(A_CAB, yd, 'podestavby A');
+yd += 22; chain(A_DEV, yd, 'přístroje A');
+yd += 22;
 dim(0, IN_L, yd, `${IN_L}`, true); dim(L - IN_R, L, yd, `${IN_R}`, true);
 dim(IN_L, L - IN_R, yd, `použitelných ${L - IN_L - IN_R}`, true);
 yd += 22; dim(0, L, yd, `celková délka ${L}`);
+
+/* --- kóty STRANY B: nad blokem, v ZRCADLENÝCH polohách ------------------
+   Dřív chyběly úplně — kótoval se jen řetězec strany A pod blokem, takže
+   strana B neměla u sebe žádný rozměr. Polohy se berou z mirror(), tedy
+   z týchž souřadnic, ve kterých je strana B nakreslená.                   */
+chain(B_CAB.map(mirror), -22, 'podestavby B');
+chain(B_DEV.map(mirror), -44, 'přístroje B');
 vdim(0, DA, -28, `hloubka A ${DA}`); vdim(DA, TOT, -28, `hloubka B ${DB}`);
 vdim(0, TOT, -56, `celkem ${TOT}`);
 R.appendChild(el('line', {x1:X(L-CH), y1:Y(0)+12, x2:X(L), y2:Y(0)+12, stroke:THIN, 'stroke-width':.75}));
@@ -334,9 +351,8 @@ txt(R, X(L - CH/2), Y(0) + 26, `zkosení ${CH}×${CH}`, {fs:8.6, fill:'#41505f'}
 /* ===================== tabulky ===================== */
 const ICO = {
   door:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="25" y1="8" x2="25" y2="38" stroke="#5d6b7a" stroke-width="2"/>',
-  drawers:'<rect x="6" y="6" width="38" height="34" fill="none" stroke="#5d6b7a"/>'
-    + '<line x1="6" y1="17.3" x2="44" y2="17.3" stroke="#5d6b7a"/>'
-    + '<line x1="6" y1="28.6" x2="44" y2="28.6" stroke="#5d6b7a"/>',
+  drawers:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/>'
+    + '<line x1="6" y1="23" x2="44" y2="23" stroke="#5d6b7a"/>',
   runners:'<rect x="6" y="6" width="38" height="34" fill="none" stroke="#5d6b7a"/>' +
     [0,1,2,3,4,5].map(i=>`<line x1="10" y1="${10+i*5}" x2="18" y2="${10+i*5}" stroke="#5d6b7a"/><line x1="32" y1="${10+i*5}" x2="40" y2="${10+i*5}" stroke="#5d6b7a"/>`).join(''),
   shelf:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="6" y1="23" x2="44" y2="23" stroke="#5d6b7a" stroke-dasharray="3 2"/>',

@@ -300,14 +300,18 @@ fotku nemají, dostávají schematickou ikonu.
 obdélník s názvem souboru). Pro půdorys se použít NEDAJÍ; symboly přístrojů
 v kresbě se musí kreslit vlastní.
 
-**ROZPOR K VYJASNĚNÍ — počet zásuvek.** Mockup kreslí zásuvkový blok se
-TŘEMI zásuvkami, protože si to zadavatel vyžádal podle svého projektu.
-**Datový model to ale neumí:** úkol 15 stanovil „zásuvkový blok má PRÁVĚ
-2 zásuvky, počet je konstanta, ne parametr" a `sanitizeMonoCabinet`
-(`js/main.js`) žádné pole pro počet nemá. SEGMENT přitom 2 i 3 umí
-(`DRAWER_COUNT_OPTIONS`, `getSegmentDrawerCount`). Než se půdorys začne
-implementovat, musí zadavatel říct, jestli má MONO povolit i 3 zásuvky —
-pak se rozšíří `MonoCabinet` (nové pole), pás i geometrie.
+**Počet zásuvek — VYJASNĚNO 1. 9. 2026: zůstávají PRÁVĚ 2.** Mockup
+dočasně kreslil tři (na ukázku podle projektu zadavatele), ten ale potvrdil,
+že dvě stačí. **Úkol 15 tedy platí beze změny**, `MonoCabinet` se nerozšiřuje
+a formát projektu se nemění.
+
+**Kóty musí být na OBOU stranách.** V mockupu nejdřív chyběly u strany B
+(kótoval se jen řetězec pod blokem) — strana B má vlastní řetězce nad blokem,
+v týchž zrcadlených polohách, ve kterých je nakreslená.
+
+**Název prvku nesmí padnout do rámečku pozice.** U odkazů mířících nahoru
+se text tiskl dovnitř značky. Odsazení názvu se musí počítat z výšky rámečku,
+ne zadat natvrdo.
 
 **Další pokyny ke kresbě** (1. 9. 2026):
 - Do půdorysu se **kreslí zkosené rohy** bloku (50 × 50 mm pod 45°, u ostrova

@@ -25,14 +25,32 @@
 // dílů nikdy neodporovaly.
 
 import { t, getLang } from './i18n.js';
-import { computeLayout } from './floorplan.js';
+import { computeLayout, computeMonoDocModel } from './floorplan.js';
 import {
   getSegmentLabel, getInstrumentDef, DRAWERS_TYPE, getSegmentDrawerCount, SINK_VAT_HEIGHT_MM,
-  getSegmentBodyStyle, hasPanelFlag, hasShelfFlag, getSegmentFinish,
+  getSegmentBodyStyle, hasPanelFlag, hasShelfFlag, getSegmentFinish, BODY_STACK_MM,
 } from './modules.js';
 import {
   ARM_SPOUT_HEIGHT, ARM_REACH, ARM_ANGLE_MAX, ARM_BACK_OFFSET_DEFAULT, ARM_CENTER_OFFSET_DEFAULT,
 } from './arms.js';
+// ÚKOL 21 (ZADANI-PUDORYS-MONO.md, Agent D, §4) — pevné konstrukční konstanty
+// pro věty tabulky „Popis varného bloku". computeMonoDocModel je JEDINÝ zdroj
+// POLOH a ČÍSLOVÁNÍ (to se odsud nikdy nedopočítává), ale schválené znění vět
+// (mono.doc.*Value klíče níž) potřebuje pár napevno daných rozměrů stavby
+// herdbloku, které model jako pole nevrací (výška herdbloku, čelo/přesah
+// desky, panel…) — stejný princip, jakým report.js už výš u SEGMENTU čerpá
+// ARM_SPOUT_HEIGHT/ARM_REACH/ARM_ANGLE_MAX přímo z arms.js.
+import {
+  END_TYPES as MONO_END_TYPES, sideInsetMM as monoSideInsetMM,
+  HERDBLOK_HEIGHT_MM as MONO_HERDBLOK_HEIGHT_MM,
+  DESK_FACE_HEIGHT_MM as MONO_DESK_FACE_HEIGHT_MM,
+  DESK_OVERHANG_FRONT_MM as MONO_DESK_OVERHANG_FRONT_MM,
+  PANEL_HEIGHT_MM as MONO_PANEL_HEIGHT_MM,
+  PANEL_SETBACK_MM as MONO_PANEL_SETBACK_MM,
+  LISTA_HEIGHT_MM as MONO_LISTA_HEIGHT_MM,
+  END_STRAIGHT_MM as MONO_END_STRAIGHT_MM,
+  END_CHAMFER_MM as MONO_END_CHAMFER_MM,
+} from './mono-geometry.js';
 
 // --- Technická specifikace materiálu — hodnoty jsou překladové KLÍČE (věty se
 // musí lokalizovat), ne texty samotné. Prázdný klíč = údaj nedodán, vykreslí
@@ -431,6 +449,214 @@ function buildFittingsSection(ctx) {
   return section;
 }
 
+// ============================================================================
+// ALBA MONO — §4 dokument (ZADANI-PUDORYS-MONO.md, Agent D)
+// ============================================================================
+// Rozsah VÝHRADNĚ produkt MONO — SEGMENT (vše výš) zůstává NEDOTČENÉ, tenhle
+// blok se přidává VEDLE. Jediný zdroj poloh a číslování je
+// computeMonoDocModel(state) z floorplan.js — nic z toho se tu nedopočítává,
+// jen se čte a skládá do karet/tabulky podle §4.
+
+// --- schematické ikony (přenesené 1:1 z mockup-pudorys-mono.html, objekt ICO)
+// — pro položky bez fotky z katalogu (podestavby, zásuvky, společné prvky,
+// přístroje bez cardImage a neutrální plochy). Stejné tvary, jaké mockup
+// odsouhlasil zadavatel. */
+const MONO_ITEM_ICONS = {
+  door: '<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/>'
+    + '<line x1="25" y1="8" x2="25" y2="38" stroke="#5d6b7a" stroke-width="2"/>',
+  drawers: '<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/>'
+    + '<line x1="6" y1="23" x2="44" y2="23" stroke="#5d6b7a"/>',
+  runners: '<rect x="6" y="6" width="38" height="34" fill="none" stroke="#5d6b7a"/>'
+    + [0, 1, 2, 3, 4, 5].map((i) => `<line x1="10" y1="${10 + i * 5}" x2="18" y2="${10 + i * 5}" stroke="#5d6b7a"/>`
+      + `<line x1="32" y1="${10 + i * 5}" x2="40" y2="${10 + i * 5}" stroke="#5d6b7a"/>`).join(''),
+  shelf: '<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/>'
+    + '<line x1="6" y1="23" x2="44" y2="23" stroke="#5d6b7a" stroke-dasharray="3 2"/>',
+  socket: '<rect x="12" y="14" width="26" height="18" fill="none" stroke="#5d6b7a"/>'
+    + '<circle cx="25" cy="23" r="4" fill="#5d6b7a"/>',
+  plain: '<rect x="6" y="12" width="38" height="22" fill="none" stroke="#5d6b7a"/>'
+    + '<line x1="6" y1="12" x2="44" y2="12" stroke="#5d6b7a" stroke-width="2.5"/>',
+  end: '<rect x="18" y="4" width="14" height="38" fill="#e8ecf0" stroke="#5d6b7a"/>',
+  endch: '<polygon points="18,4 32,4 32,10 32,36 32,42 18,42" fill="#e8ecf0" stroke="#5d6b7a"/>'
+    + '<line x1="32" y1="10" x2="26" y2="4" stroke="#5d6b7a"/>',
+  plinth: '<rect x="6" y="18" width="38" height="12" fill="#e8ecf0" stroke="#5d6b7a"/>',
+  arm: '<path d="M17 40 L17 18 A8 8 0 0 1 33 18 L33 40" fill="none" stroke="#5d6b7a" stroke-width="2"/>',
+};
+
+function buildMonoIcon(icoKey) {
+  const wrap = el('div', { className: 'report-item-icon' });
+  wrap.innerHTML = `<svg width="96" height="88" viewBox="0 0 50 46">${MONO_ITEM_ICONS[icoKey] || ''}</svg>`;
+  return wrap;
+}
+
+// --- karta položky (§4: „záhlaví = code + name; tělo = fotka vedle popisu")
+// — společný stavební kámen pro všechny čtyři druhy položek (přístroj,
+// podestavba, zásuvka, společný prvek). ŽÁDNÉ sloupce rozměry/příkon/poloha —
+// všechno je už hotové v item.params (viz computeMonoDocModel).
+function buildMonoItemCard(item, media) {
+  const card = el('div', { className: 'report-item' });
+  const head = el('div', { className: 'report-item-head' });
+  head.appendChild(el('span', { className: 'report-item-pos', text: item.code }));
+  head.appendChild(el('span', { className: 'report-item-name', text: item.name }));
+  card.appendChild(head);
+  const body = el('div', { className: 'report-item-body' }, [
+    media,
+    el('div', { className: 'report-item-desc', text: (item.params || []).join(' · ') }),
+  ]);
+  card.appendChild(body);
+  return card;
+}
+
+// --- karty podle druhu položky — jen výběr fotka/ikona, popis je vždy
+// item.params.join(' · ') (viz buildMonoItemCard). --------------------------
+function buildMonoDeviceCard(device) {
+  const media = el('div', { className: 'report-item-photo' });
+  const cardImage = !device.isSurface && device.def && device.def.cardImage;
+  if (cardImage) {
+    const img = document.createElement('img');
+    img.src = cardImage;
+    img.alt = device.name;
+    media.appendChild(img);
+  } else {
+    // neutrální plocha i přístroj bez fotky v katalogu → schematická ikona
+    media.appendChild(buildMonoIcon('plain'));
+  }
+  return buildMonoItemCard(device, media);
+}
+
+function buildMonoCabinetCard(cab) {
+  const icoKey = cab.kind === 'drawers'
+    ? 'drawers'
+    : cab.kind === 'gnRack'
+      ? 'runners'
+      : (cab.bodyStyle === 'open' ? 'shelf' : 'door');
+  const media = el('div', { className: 'report-item-photo' }, [buildMonoIcon(icoKey)]);
+  return buildMonoItemCard(cab, media);
+}
+
+function buildMonoSocketCard(sock) {
+  const media = el('div', { className: 'report-item-photo' }, [buildMonoIcon('socket')]);
+  return buildMonoItemCard(sock, media);
+}
+
+function buildMonoCommonCard(item, model) {
+  let icoKey;
+  if (item.kind === 'endPanel') {
+    // S1 je vždy levý konec, S2 pravý (pořadí dané computeMonoDocModel) —
+    // typ zakončení se čte z FYZICKÝCH konců bloku na modelu, ne ze strany.
+    const endType = item.code === 'S1' ? model.leftEndType : model.rightEndType;
+    icoKey = endType === MONO_END_TYPES.VERTICAL_PLATE_CHAMFER ? 'endch' : 'end';
+  } else if (item.kind === 'plinth') {
+    icoKey = 'plinth';
+  } else if (item.kind === 'arm') {
+    icoKey = 'arm';
+  } else {
+    icoKey = 'plain'; // pojistka pro neočekávaný kind, do modelu zatím nepřidán
+  }
+  const media = el('div', { className: 'report-item-photo' }, [buildMonoIcon(icoKey)]);
+  return buildMonoItemCard(item, media);
+}
+
+// --- §4 bod 3: Popis varného bloku (tabulka klíč/hodnota) -------------------
+// Znění vět opsané ze schváleného mockupu přes i18n klíče mono.doc.*Value
+// (§3 zadání) — čísla se dosazují parametry t(), nikdy natvrdo v textu.
+function monoEndValueText(endType, code) {
+  const insetMM = monoSideInsetMM(endType);
+  return endType === MONO_END_TYPES.VERTICAL_PLATE_CHAMFER
+    ? t('mono.doc.endValue.waterfallChamfered', {
+      mm: insetMM, flat: MONO_END_STRAIGHT_MM, chamfer: MONO_END_CHAMFER_MM, code,
+    })
+    : t('mono.doc.endValue.waterfall', { mm: insetMM, code });
+}
+
+function buildMonoBlockSection(model) {
+  const section = el('section', { className: 'report-section' });
+  section.appendChild(el('h2', { text: t('mono.doc.blockTitle') }));
+  const variantKey = model.isIsland ? 'island' : 'single';
+  const rows = [
+    [t('mono.doc.series'), t(`mono.doc.seriesValue.${variantKey}`)],
+    [t('mono.doc.dims'), t('mono.doc.dimsValue', {
+      l: model.lengthMM, d: model.totalDepthMM, h: model.workHeightMM,
+    })],
+    [t('mono.doc.sideDepths'), model.isIsland
+      ? t('mono.doc.sideDepthsValue.island', { a: model.depthAMM, b: model.depthBMM, total: model.totalDepthMM })
+      : t('mono.doc.sideDepthsValue.single', { d: model.depthAMM })],
+    [t('mono.doc.workHeight'), t(`mono.doc.workHeightValue.${model.plinth.type}`, {
+      h: model.workHeightMM, body: BODY_STACK_MM, plinth: model.plinth.heightMM,
+    })],
+    [t('mono.doc.herdblokHeight'), t('mono.doc.herdblokHeightValue', { h: MONO_HERDBLOK_HEIGHT_MM })],
+    [t('mono.doc.design'), t(`mono.doc.designValue.${variantKey}`)],
+    [t('mono.doc.materials'), t('mono.doc.materialsValue')],
+    [t('mono.doc.finish'), t('mono.doc.finishValue')],
+    [t('mono.doc.endLeft'), monoEndValueText(model.leftEndType, 'S1')],
+    [t('mono.doc.endRight'), monoEndValueText(model.rightEndType, 'S2')],
+    [t('mono.doc.worktop'), t(`mono.doc.worktopValue.${variantKey}`, {
+      front: MONO_DESK_FACE_HEIGHT_MM, overhang: MONO_DESK_OVERHANG_FRONT_MM,
+    })],
+    [t('mono.doc.panel'), t(`mono.doc.panelValue.${variantKey}`, {
+      h: MONO_PANEL_HEIGHT_MM, setback: MONO_PANEL_SETBACK_MM, strip: MONO_LISTA_HEIGHT_MM,
+    })],
+    [t('mono.doc.electrical'), t(`mono.doc.electricalValue.${variantKey}`)],
+  ];
+  section.appendChild(kvTable(rows));
+  return section;
+}
+
+// --- §4 bod 4: Soupis společných prvků (S1, S2, S3, S4…) --------------------
+function buildMonoCommonSection(model) {
+  const section = el('section', { className: 'report-section' });
+  section.appendChild(el('h2', { text: t('mono.doc.commonTitle') }));
+  model.common.forEach((item) => section.appendChild(buildMonoCommonCard(item, model)));
+  return section;
+}
+
+// --- §4 bod 5: Půdorys — beze změny principu, jen jiný zdroj lengthMM (model
+// místo computeLayout, který je SEGMENT-specific) pro rozhodnutí o zalomení
+// stránky; samotné SVG dodává ctx.floorplanSvg (Agent G, buildMonoFloorplanSVG
+// v main.js/floorplan.js). ---------------------------------------------------
+function buildMonoFloorplanSection(ctx, model) {
+  const section = el('section', { className: 'report-section report-section-floorplan' });
+  if (model.lengthMM > FLOORPLAN_PAGE_BREAK_LENGTH_MM) {
+    section.classList.add('report-page-break');
+  }
+  section.appendChild(el('h2', { text: t('report.sectionFloorplan') }));
+  const wrap = document.createElement('div');
+  wrap.className = 'report-floorplan-wrap';
+  wrap.innerHTML = ctx.floorplanSvg || '';
+  section.appendChild(wrap);
+  return section;
+}
+
+// --- §4 bod 6: Soupis prvků podle stran (A1/A2/A3, B1/B2/B3) ----------------
+// Prázdná kategorie (např. žádné zásuvky v panelu) se nevypisuje s prázdným
+// podnadpisem — v zadání není výslovně řešeno, ohlášeno v přejímce.
+function buildMonoSideParts(sideModel, sideLabel) {
+  const frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { text: sideLabel }));
+  if (sideModel.devices.length) {
+    frag.appendChild(el('h4', { text: t('mono.doc.devices') }));
+    sideModel.devices.forEach((d) => frag.appendChild(buildMonoDeviceCard(d)));
+  }
+  if (sideModel.cabinets.length) {
+    frag.appendChild(el('h4', { text: t('mono.doc.cabinets') }));
+    sideModel.cabinets.forEach((c) => frag.appendChild(buildMonoCabinetCard(c)));
+  }
+  if (sideModel.sockets.length) {
+    frag.appendChild(el('h4', { text: t('mono.doc.sockets') }));
+    sideModel.sockets.forEach((s) => frag.appendChild(buildMonoSocketCard(s)));
+  }
+  return frag;
+}
+
+function buildMonoPartsSection(model) {
+  const section = el('section', { className: 'report-section report-section-parts' });
+  section.appendChild(el('h2', { text: t('mono.doc.partsTitle') }));
+  section.appendChild(buildMonoSideParts(model.sides.A, t('view.sideA')));
+  if (model.isIsland) {
+    section.appendChild(buildMonoSideParts(model.sides.B, t('view.sideB')));
+  }
+  return section;
+}
+
 // --- 8. Patička ------------------------------------------------------------------
 function buildFooter() {
   const footer = el('footer', { className: 'report-footer' });
@@ -448,17 +674,35 @@ function buildFooter() {
 
 /** Sestaví celý tiskový dokument (nabídkový list varného bloku) a vrátí ho
  *  jako hotový (odpojený) HTMLElement — volající (floorplan.js/setupFloorplan,
- *  přes main.js) ho vloží do #floorplan-svg-container. */
+ *  přes main.js) ho vloží do #floorplan-svg-container.
+ *
+ *  ÚKOL 21 (ZADANI-PUDORYS-MONO.md §4) — výhybka na MONO. Pořadí oddílů u
+ *  MONO: hlavička → náhledy 3D → Popis varného bloku → Soupis společných
+ *  prvků → Půdorys → Soupis prvků podle stran → patička. Oddíl ramen a
+ *  baterií (§7, SEGMENT) se u MONO VYNECHÁVÁ — ramena jsou už mezi
+ *  společnými prvky jako S4… (viz computeMonoDocModel). Větev SEGMENTU níž
+ *  je beze změny. */
 export function buildReport(ctx) {
+  const { state } = ctx;
   const root = el('div', { className: 'report-document' });
   root.appendChild(buildHeader());
   root.appendChild(buildPreviewsSection(ctx));
-  root.appendChild(buildBlockSection(ctx));
-  root.appendChild(buildMaterialSection());
-  root.appendChild(buildFloorplanSection(ctx));
-  root.appendChild(buildPartsSection(ctx));
-  const fittings = buildFittingsSection(ctx);
-  if (fittings) root.appendChild(fittings);
+
+  if (state && state.productType === 'mono') {
+    const model = computeMonoDocModel(state);
+    root.appendChild(buildMonoBlockSection(model));
+    root.appendChild(buildMonoCommonSection(model));
+    root.appendChild(buildMonoFloorplanSection(ctx, model));
+    root.appendChild(buildMonoPartsSection(model));
+  } else {
+    root.appendChild(buildBlockSection(ctx));
+    root.appendChild(buildMaterialSection());
+    root.appendChild(buildFloorplanSection(ctx));
+    root.appendChild(buildPartsSection(ctx));
+    const fittings = buildFittingsSection(ctx);
+    if (fittings) root.appendChild(fittings);
+  }
+
   root.appendChild(buildFooter());
   return root;
 }

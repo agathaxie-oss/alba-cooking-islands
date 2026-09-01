@@ -36,6 +36,11 @@ import {
   getSegmentDrawerCount,
   SINK_VAT_WIDTH_DEFAULT,
   SINK_VAT_DEPTH_DEFAULT,
+  PLINTH_TYPES,
+  DEFAULT_PLINTH,
+  DEFAULT_FINISH,
+  PLINTH_HEIGHT_DEFAULT_MM,
+  BODY_STACK_MM,
 } from './modules.js';
 import {
   ARM_BACK_OFFSET_MIN,
@@ -43,8 +48,27 @@ import {
   ARM_BACK_OFFSET_DEFAULT,
   ARM_CENTER_OFFSET_MIN,
   ARM_CENTER_OFFSET_MAX,
+  ARM_SPOUT_HEIGHT,
+  ARM_REACH,
 } from './arms.js';
-import { t } from './i18n.js';
+import { t, getLang } from './i18n.js';
+import { getEntryDisplayName } from './catalog.js';
+// §ÚKOL PŮDORYS MONO (ZADANI-PUDORYS-MONO.md, Agent G) — computeMonoLayout je
+// JEDINÝ zdroj pozic pásu MONO (viz mono-layout.js); computeMonoDocModel níže
+// z něj polohy jen PŘEBÍRÁ a převádí do souřadnic kresby (zrcadlení strany B),
+// nikdy je nepočítá znovu.
+import { computeMonoLayout } from './mono-layout.js';
+import {
+  END_TYPES as MONO_END_TYPES,
+  sideInsetMM as monoSideInsetMM,
+  PODESTAVBA_DEPTH_MM,
+  DESK_OVERHANG_FRONT_MM,
+  END_CHAMFER_MM,
+  DRAWER_COUNT as MONO_DRAWER_COUNT,
+  GN_RUNNER_COUNT_PER_SIDE,
+  GN_RUNNER_PITCH_MM,
+  PLINTH_INSET_MM,
+} from './mono-geometry.js';
 
 function clamp(v, min, max) {
   return Math.min(Math.max(v, min), max);
@@ -319,8 +343,647 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin) {
   }
 }
 
+// ============================================================================
+// ALBA MONO — §1 datový model (ZADANI-PUDORYS-MONO.md, Agent G) + §2 kresba
+// ============================================================================
+// Rozsah VÝHRADNĚ produkt MONO — vše výš (SEGMENT: computeLayout,
+// buildFloorplanSVG níž) zůstává NEDOTČENÉ. computeMonoDocModel(state) je
+// JEDINÝ zdroj pozic a číslování pro půdorys MONO i pro budoucí tiskový
+// dokument (js/report.js, etapa 2) — report.js si nic nedopočítává, jen
+// z modelu čte.
+
+/** Tolerantní čtení typu zakončení — stejné jednořádkové pravidlo jako
+ *  main.js/mono-block.js/mono-layout.js (každý modul má vlastní kopii,
+ *  mono-geometry.js zůstává bez vazby na state a tyhle moduly na sobě
+ *  navzájem záměrně nezávisí — viz hlavičky těch souborů). */
+function readMonoEndType(value) {
+  return value === MONO_END_TYPES.VERTICAL_PLATE_CHAMFER
+    ? MONO_END_TYPES.VERTICAL_PLATE_CHAMFER
+    : MONO_END_TYPES.VERTICAL_PLATE;
+}
+
+// --- zrcadlení strany B do souřadnic KRESBY ----------------------------------
+// computeMonoLayout(state,'B') měří xMM od VLASTNÍHO levého kraje strany B
+// (mono-layout.js pro B prohazuje čtecí pravidlo leftEndType/rightEndType),
+// ne od levého kraje bloku v kresbě. Bez zrcadlení by strana B v půdorysu
+// vyšla zprava doleva obráceně (viz zadání, úkol 18). Plocha (má widthMM) se
+// zrcadlí přes lengthMM − xMM − widthMM, bodový prvek (zásuvka v panelu) jen
+// přes lengthMM − xMM. Fyzické konce bloku (leftEndType/rightEndType) se
+// NIKDY nezrcadlí — patří bloku, ne straně.
+function mirrorMonoAreaX(xMM, widthMM, lengthMM) {
+  return lengthMM - xMM - widthMM;
+}
+function mirrorMonoPointX(xMM, lengthMM) {
+  return lengthMM - xMM;
+}
+
+// --- §1 „popis položky se skládá automaticky" — VÝHRADNĚ přes t() ----------
+// Doplnění zadání (koordinátor, po prvním konceptu): params NESMÍ obsahovat
+// natvrdo psané české řetězce — každá položka pole vzniká voláním
+// t('mono.param.<neco>', {…}), klíče přidává souběžně druhý agent do
+// i18n.js. Skládá se JEN z toho, co položka skutečně nese (žádné nové pole
+// katalogu, žádné vymyšlené hodnoty — chybějící údaj se do params nedává).
+
+/** §1 — desetinné číslo v params PODLE AKTUÁLNÍHO JAZYKA (koordinátor,
+ *  oprava po přejímce): katalog nese powerKW/gasKW jako číslo s TEČKOU
+ *  (13.6), ale cs/sk/de/pl píšou desetinnou ČÁRKOU — syrové vložení čísla
+ *  do řetězce by dalo "13.6 kW" i v češtině. Celé číslo zůstává BEZ
+ *  desetinné části (22, ne 22,0) — Number.isInteger rozhoduje ještě PŘED
+ *  záměnou tečky za čárku. Zaokrouhlení na 1 desetinné místo kopíruje
+ *  catalog.js#normalizeOptionalNumber (powerKW/gasKW nikdy nemají víc). Volá
+ *  se u VŠECH čísel v params, která by teoreticky mohla vyjít desetinná
+ *  (příkon, plyn, rozměry) — i tam, kde je dnes vždy celé, aby nespadlo,
+ *  kdyby jednou desetinné přišlo. */
+function formatMonoNumber(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  const rounded = Math.round(n * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return getLang() === 'en' ? text : text.replace('.', ',');
+}
+
+function buildMonoDeviceParams(isSurface, widthMM, depthMM, def) {
+  const params = [t('mono.param.size', { w: formatMonoNumber(widthMM), d: formatMonoNumber(depthMM) })];
+  if (isSurface) {
+    params.push(t('mono.param.surfaceNote'));
+    return params;
+  }
+  if (!def) return params;
+  let hasConnection = false;
+  if (def.gasKW) { params.push(t('mono.param.gas', { kw: formatMonoNumber(def.gasKW) })); hasConnection = true; }
+  if (def.powerKW) { params.push(t('mono.param.power', { kw: formatMonoNumber(def.powerKW) })); hasConnection = true; }
+  if (def.voltage) { params.push(t('mono.param.voltage', { v: def.voltage })); hasConnection = true; }
+  if (Array.isArray(def.zones) && def.zones.length) {
+    params.push(t('mono.param.zones', { n: def.zones.length }));
+    hasConnection = true;
+  }
+  if (!hasConnection) params.push(t('mono.param.noConnection'));
+  return params;
+}
+
+function buildMonoCabinetParams(item, widthMM, drawerCount, runnerPairs) {
+  const params = [t('mono.param.size', { w: formatMonoNumber(widthMM), d: formatMonoNumber(PODESTAVBA_DEPTH_MM) })];
+  if (item.kind === 'drawers') {
+    // MONO zásuvky jsou VŽDY na GN 1/1 (mono-geometry.js) a vždy 2 kusy (§5
+    // zadání — MonoCabinet se nerozšiřuje).
+    params.push(t('mono.param.drawers', { n: drawerCount, gn: '1/1' }));
+  } else if (item.kind === 'gnRack') {
+    params.push(t(`bodyStyle.${item.bodyStyle || 'open'}`));
+    params.push(t('mono.param.runners', { n: runnerPairs, gn: '2/1', pitch: formatMonoNumber(GN_RUNNER_PITCH_MM) }));
+  } else {
+    params.push(t(`bodyStyle.${item.bodyStyle || 'closed'}`));
+    if (item.bodyStyle === 'open' && item.hasShelf) params.push(t('mono.param.shelf'));
+  }
+  params.push(t('mono.param.finish', { code: item.finish || DEFAULT_FINISH }));
+  params.push(t('mono.param.material'));
+  return params;
+}
+
+function buildMonoSocketParams(xMM) {
+  return [t('mono.param.posFromLeft', { mm: formatMonoNumber(xMM) })];
+}
+
+function buildMonoEndPanelParams(endType, insetMM, totalDepthMM) {
+  const params = [
+    t('mono.param.endPanelSize', { w: formatMonoNumber(insetMM), d: formatMonoNumber(totalDepthMM) }),
+    t('mono.param.material'),
+  ];
+  params.push(endType === MONO_END_TYPES.VERTICAL_PLATE_CHAMFER
+    ? t('mono.param.endChamfer', { c: formatMonoNumber(END_CHAMFER_MM) })
+    : t('mono.param.endWaterfall'));
+  return params;
+}
+
+function buildMonoPlinthParams(plinth) {
+  return [
+    t('mono.param.plinthHeight', { mm: formatMonoNumber(plinth.heightMM) }),
+    t(`plinth.${plinth.type}`),
+    t('mono.param.plinthInset', { mm: formatMonoNumber(PLINTH_INSET_MM) }),
+    t('mono.param.plinthFrame'),
+    t('mono.param.plinthUnderCabinets'),
+  ];
+}
+
+function buildMonoArmParams(arm, isIsland, xMM) {
+  const params = [
+    t('mono.param.armHeight', { mm: formatMonoNumber(Math.round(ARM_SPOUT_HEIGHT * 1000)) }),
+    t('mono.param.armReach', { mm: formatMonoNumber(Math.round(ARM_REACH * 1000)) }),
+    t('mono.param.armSwivel'),
+  ];
+  if (isIsland) {
+    // mono.param.armOnSeam už NESE „… mm od levého konce" jako součást věty
+    // ("na spáře mezi řadami, {mm} mm od levého konce") — je to NÁHRADA za
+    // posFromLeft (bere polohu xMM, ne offsetMM od spáry), ne doplněk vedle
+    // něj.
+    params.push(t('mono.param.armOnSeam', { mm: formatMonoNumber(xMM) }));
+  } else {
+    // U `single` popisují posFromLeft (poloha X) a armOnBack (odsazení od
+    // ZADNÍ hrany, Z) dva NEZÁVISLÉ údaje — armOnBack sám o sobě polohu po
+    // délce neříká ("{mm} mm od zadní hrany"), proto jde VEDLE posFromLeft,
+    // ne místo něj (na rozdíl od armOnSeam u ostrova výš). Hodnota je STEJNÝ
+    // vzorec jako computeArmZ() výš — z pole state.arms[i].offsetMM,
+    // výchozí ARM_BACK_OFFSET_DEFAULT, ořezané do ARM_BACK_OFFSET_MIN..MAX
+    // (klíč doplnil druhý agent do i18n.js na pokyn koordinátora).
+    const backOffsetMM = clamp(
+      arm.offsetMM != null ? Number(arm.offsetMM) : ARM_BACK_OFFSET_DEFAULT,
+      ARM_BACK_OFFSET_MIN,
+      ARM_BACK_OFFSET_MAX
+    );
+    params.push(t('mono.param.posFromLeft', { mm: formatMonoNumber(xMM) }));
+    params.push(t('mono.param.armOnBack', { mm: formatMonoNumber(backOffsetMM) }));
+  }
+  return params;
+}
+
+/**
+ * §1 ZADANI-PUDORYS-MONO.md — JEDINÝ zdroj pozic a číslování pro půdorys
+ * MONO i pro tiskový dokument (js/report.js, etapa 2, čte tenhle model beze
+ * změny). Polohy se NEPOČÍTAJÍ znovu — berou se z computeMonoLayout(state,
+ * side) (mono-layout.js), tahle funkce je jen PŘEVÁDÍ do souřadnic kresby
+ * (mirrorMonoAreaX/mirrorMonoPointX výš) a přidává číslování.
+ *
+ * KLÍČOVÉ: xMM v modelu je VŽDY v souřadnicích KRESBY (levý konec bloku = 0,
+ * roste doprava) — strana A beze změny, strana B ZRCADLENÁ. leftEndType/
+ * rightEndType jsou naproti tomu FYZICKÉ konce bloku, NEZAMĚNĚNÉ (na rozdíl
+ * od toho, co pro stranu B vrací computeMonoLayout — to je čtecí pravidlo
+ * pásu, ne vlastnost bloku).
+ *
+ * Číslování (rozhodnutí zadavatele 1. 9. 2026): A1.x/A2.x/A3.x a B1.x/B2.x/
+ * B3.x, x od 1 v pořadí položek v PÁSU (ne v zrcadlené kresbě); kind:'gap'
+ * se přeskakuje — nedostává číslo ani se nekreslí. Společné prvky: S1 (levý
+ * zakončovací plech), S2 (pravý), S3 (sokl — VŽDY v soupisu, i pro
+ * plinth.type==='building', kdy se nic nekreslí), S4… (napouštěcí ramena,
+ * v pořadí state.arms).
+ *
+ * ODCHYLKY OD PSANÉHO TVARU V ZADÁNÍ (nahlášeno v přejímce, neopravováno
+ * "podle svého" — jen doplněno tak, aby report.js (etapa 2) měl z modelu
+ * VŠECHNO a nic si nedopočítával, přesně jak zadání žádá):
+ *  1) Schéma v §1 ukazuje `params` jen u CommonItem, ale věta hned pod ním
+ *     ("popis položky se skládá automaticky") i §4 (karty A1/A2/A3 mají mít
+ *     JEN kód+název+foto+popis, žádné sloupce rozměry/příkon) čekají
+ *     `params` na VŠECH položkách — doplněno i na Device/Cabinet/Socket.
+ *  2) CommonItem dostává navíc `xMM` u kind:'arm' (rameno potřebuje
+ *     číselnou polohu pro kresbu i pro dokument, schéma ji ale neuvádí) — u
+ *     S1/S2/S3 se `xMM` nepřidává, jejich poloha/tvar je dána geometrií
+ *     konce/soklu, ne jedním číslem.
+ */
+export function computeMonoDocModel(state) {
+  const dims = (state && state.dimensions) || {};
+  const monoState = (state && state.mono) || {};
+  const isIsland = state && state.variant === 'island';
+
+  const lengthMM = Math.max(round(Number(dims.lengthMM) || 0), 1);
+  const depthAMM = Math.max(round(Number(dims.depthAMM) || 0), 1);
+  const depthBMM = isIsland ? Math.max(round(Number(dims.depthBMM) || 0), 1) : 0;
+  const totalDepthMM = isIsland ? depthAMM + depthBMM : depthAMM;
+
+  const plinthRaw = (state && state.plinth) || {};
+  const plinth = {
+    type: PLINTH_TYPES.includes(plinthRaw.type) ? plinthRaw.type : DEFAULT_PLINTH,
+    heightMM: Number.isFinite(Number(plinthRaw.heightMM)) ? Math.round(Number(plinthRaw.heightMM)) : PLINTH_HEIGHT_DEFAULT_MM,
+  };
+  const workHeightMM = Number.isFinite(Number(dims.heightMM)) && Number(dims.heightMM) > 0
+    ? Math.round(Number(dims.heightMM))
+    : BODY_STACK_MM + plinth.heightMM;
+
+  // FYZICKÉ konce bloku — NEZAMĚNĚNÉ (na rozdíl od computeMonoLayout, který
+  // je pro stranu B čte prohozené, viz mono-layout.js).
+  const leftEndType = readMonoEndType(monoState.leftEndType);
+  const rightEndType = readMonoEndType(monoState.rightEndType);
+
+  function buildSide(side) {
+    const layout = computeMonoLayout(state, side);
+    const mirror = side === 'B';
+
+    let devIdx = 0;
+    const devices = layout.herdblok.map(({ item, xMM, widthMM }) => {
+      devIdx += 1;
+      const isSurface = item.type === 'surface';
+      const def = isSurface ? null : getInstrumentDef(item.type);
+      const depthMM = def && Number(def.depthMM) > 0 ? Number(def.depthMM) : PODESTAVBA_DEPTH_MM;
+      const drawXMM = mirror ? mirrorMonoAreaX(xMM, widthMM, lengthMM) : xMM;
+      return {
+        code: `${side}1.${devIdx}`,
+        type: item.type,
+        name: isSurface ? t('mono.item.surface') : (def ? getEntryDisplayName(def) : item.type),
+        xMM: drawXMM,
+        widthMM,
+        depthMM,
+        frontOffsetMM: Number(item.frontOffsetMM) || 0,
+        isSurface,
+        def,
+        params: buildMonoDeviceParams(isSurface, widthMM, depthMM, def),
+      };
+    });
+
+    let cabIdx = 0;
+    const cabinets = [];
+    layout.podestavby.forEach(({ item, xMM, widthMM }) => {
+      if (!item || item.kind === 'gap') return; // §1 — gap se nečísluje ani nekreslí
+      cabIdx += 1;
+      const drawerCount = item.kind === 'drawers' ? MONO_DRAWER_COUNT : null;
+      const runnerPairs = item.kind === 'gnRack' ? GN_RUNNER_COUNT_PER_SIDE : null;
+      const name = item.kind === 'drawers'
+        ? t(widthMM === 600 ? 'mono.item.drawers21' : 'mono.item.drawers11')
+        : item.kind === 'gnRack'
+          ? t(widthMM === 600 ? 'mono.item.gnRack21' : 'mono.item.gnRack11')
+          : t('mono.item.cabinet');
+      const drawXMM = mirror ? mirrorMonoAreaX(xMM, widthMM, lengthMM) : xMM;
+      cabinets.push({
+        code: `${side}2.${cabIdx}`,
+        kind: item.kind,
+        name,
+        xMM: drawXMM,
+        widthMM,
+        depthMM: PODESTAVBA_DEPTH_MM,
+        bodyStyle: item.bodyStyle || null,
+        hasShelf: !!item.hasShelf,
+        finish: item.finish || DEFAULT_FINISH,
+        drawerCount,
+        runnerPairs,
+        params: buildMonoCabinetParams(item, widthMM, drawerCount, runnerPairs),
+      });
+    });
+
+    let sockIdx = 0;
+    const sockets = layout.panelItems.map(({ item, xMM }) => {
+      sockIdx += 1;
+      const drawXMM = mirror ? mirrorMonoPointX(xMM, lengthMM) : xMM;
+      return {
+        code: `${side}3.${sockIdx}`,
+        kind: item.kind,
+        name: t(item.kind === 'socketCEE' ? 'mono.panel.socketCEE' : 'mono.panel.socket230'),
+        xMM: drawXMM,
+        params: buildMonoSocketParams(drawXMM),
+      };
+    });
+
+    return { devices, cabinets, sockets };
+  }
+
+  const sides = {
+    A: buildSide('A'),
+    B: isIsland ? buildSide('B') : { devices: [], cabinets: [], sockets: [] },
+  };
+
+  // --- společné prvky S1, S2, S3, S4… -----------------------------------------
+  const leftInsetMM = monoSideInsetMM(leftEndType);
+  const rightInsetMM = monoSideInsetMM(rightEndType);
+  const common = [
+    {
+      code: 'S1', kind: 'endPanel', name: t('mono.doc.endPanel'),
+      params: buildMonoEndPanelParams(leftEndType, leftInsetMM, totalDepthMM),
+    },
+    {
+      code: 'S2', kind: 'endPanel', name: t('mono.doc.endPanel'),
+      params: buildMonoEndPanelParams(rightEndType, rightInsetMM, totalDepthMM),
+    },
+    {
+      code: 'S3', kind: 'plinth', name: t('mono.doc.plinthItem'),
+      params: buildMonoPlinthParams(plinth),
+    },
+  ];
+  const arms = Array.isArray(state && state.arms) ? state.arms : [];
+  arms.forEach((arm, idx) => {
+    const armXMM = clamp(Number(arm.positionXMM) || 0, 0, lengthMM);
+    common.push({
+      code: `S${4 + idx}`,
+      kind: 'arm',
+      name: t('mono.doc.arm'),
+      xMM: armXMM,
+      params: buildMonoArmParams(arm, isIsland, armXMM),
+    });
+  });
+
+  return {
+    lengthMM, depthAMM, depthBMM, totalDepthMM,
+    isIsland,
+    workHeightMM, plinth,
+    leftEndType, rightEndType,
+    sides,
+    common,
+  };
+}
+
+// --- obrys bloku / koncová zóna (S1/S2) se zkosením -------------------------
+// Čisté funkce (jen mm vstupy) sdílené mezi kresbou níž a případně
+// dokumentem. `isIsland` řídí, jestli se kromě PŘEDNÍHO rohu zkosí i ZADNÍ
+// (§2 bod 6: single = jen přední roh, island = oba rohy toho konce) — stejné
+// pravidlo jako cornerPoints()/chamferAllCorners v mono-geometry.js.
+function monoOutlinePolygon(lengthMM, totalDepthMM, leftChamfer, rightChamfer, isIsland) {
+  const CH = END_CHAMFER_MM;
+  const leftBack = leftChamfer && isIsland;
+  const rightBack = rightChamfer && isIsland;
+  const pts = [];
+  pts.push(leftChamfer ? [CH, 0] : [0, 0]);
+  pts.push(rightChamfer ? [lengthMM - CH, 0] : [lengthMM, 0]);
+  if (rightChamfer) pts.push([lengthMM, CH]);
+  pts.push(rightBack ? [lengthMM, totalDepthMM - CH] : [lengthMM, totalDepthMM]);
+  if (rightBack) pts.push([lengthMM - CH, totalDepthMM]);
+  pts.push(leftBack ? [CH, totalDepthMM] : [0, totalDepthMM]);
+  if (leftBack) pts.push([0, totalDepthMM - CH]);
+  if (leftChamfer) pts.push([0, CH]);
+  return pts;
+}
+
+/** Vnější hranice koncové zóny (S1/S2) na dané straně — sleduje stejné
+ *  zkosení jako monoOutlinePolygon ("zakončovací plech zkosení sleduje", §2
+ *  bod 6), jen omezená na pás od kraje bloku po insetMM. */
+function monoEndZonePolygon(side, insetMM, lengthMM, totalDepthMM, isChamfer, isIsland) {
+  const CH = END_CHAMFER_MM;
+  const chamferBack = isChamfer && isIsland;
+  const outer = side === 'left'
+    ? [
+      ...(isChamfer ? [[CH, 0], [0, CH]] : [[0, 0]]),
+      ...(chamferBack ? [[0, totalDepthMM - CH], [CH, totalDepthMM]] : [[0, totalDepthMM]]),
+    ]
+    : [
+      ...(isChamfer ? [[lengthMM - CH, 0], [lengthMM, CH]] : [[lengthMM, 0]]),
+      ...(chamferBack ? [[lengthMM, totalDepthMM - CH], [lengthMM - CH, totalDepthMM]] : [[lengthMM, totalDepthMM]]),
+    ];
+  const innerX = side === 'left' ? insetMM : lengthMM - insetMM;
+  return [...outer, [innerX, totalDepthMM], [innerX, 0]];
+}
+
+/**
+ * §2 ZADANI-PUDORYS-MONO.md — půdorys ALBA MONO jako SVG řetězec (stejný
+ * návratový tvar jako buildFloorplanSVG pro SEGMENT níž). Kresba je
+ * PŘENESENÁ z odsouhlaseného mockup-pudorys-mono.html (viz zadání) —
+ * vlastní měřítko (S) a okraje (PAD_*) jsou z mockupu, ne z adaptivního
+ * systému `U`, který používá SEGMENT (mimo rozsah tohohle úkolu — "kresba
+ * je už schválená, nevymýšlej ji znovu").
+ *
+ * Symboly přístrojů (hořáky/sklokeramika/fritéza/indukce/…) kreslí sdílená
+ * drawDeviceTopView() výš (§10.1 SPEC v4) — pokrývá přesně výčet ze zadání
+ * (hořáky/sklokeramické zóny/vany fritézy/indukční zóna/jinak prázdný
+ * obdélník), takže se NEDUPLIKUJE samostatná verze jen pro MONO (odchylka
+ * od doslovného portu mockupu, viz shrnutí v přejímce).
+ */
+export function buildMonoFloorplanSVG(state) {
+  const model = computeMonoDocModel(state);
+  const {
+    lengthMM: L, totalDepthMM: TOT, depthAMM: DA, depthBMM: DB, isIsland,
+    leftEndType, rightEndType, sides,
+  } = model;
+
+  const leftChamfer = leftEndType === MONO_END_TYPES.VERTICAL_PLATE_CHAMFER;
+  const rightChamfer = rightEndType === MONO_END_TYPES.VERTICAL_PLATE_CHAMFER;
+  const insetL = monoSideInsetMM(leftEndType);
+  const insetR = monoSideInsetMM(rightEndType);
+  const CH = END_CHAMFER_MM;
+
+  // --- měřítko a okraje (z mockupu, beze změny) --------------------------
+  const S = 0.30;
+  const PAD_T = 190, PAD_B = 215, PAD_L = 96, PAD_R = 74;
+  const px = (v) => v * S;
+  const X = (mmV) => px(mmV);
+  const Y = (zMM) => px(TOT - zMM); // z=0 (čelo strany A) je DOLE — §2 bod 8
+  const INK = '#111820', THIN = '#6b7783', ALBA = '#0083C6';
+  const ARROW_ID = 'mono-arrow';
+
+  const W = X(L) + PAD_L + PAD_R;
+  const H = Y(0) + PAD_T + PAD_B;
+
+  const body = [];
+  const g = (str) => body.push(str);
+
+  g(`<defs><marker id="${ARROW_ID}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${INK}"/></marker></defs>`);
+
+  // --- rámeček pozice (kód A1.1 apod.), §2 bod 5 --------------------------
+  function tag(cx, cy, key, fs = 13) {
+    const w = key.length * fs * 0.66 + 12, h = fs + 8;
+    g(`<rect x="${(cx - w / 2).toFixed(1)}" y="${(cy - h + 4).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2.5" fill="#fff" stroke="${ALBA}" stroke-width="1.5"/>`);
+    g(`<text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" font-size="${fs}" font-weight="800" fill="${ALBA}" text-anchor="middle">${esc(key)}</text>`);
+  }
+
+  // --- odkazová šipka + rámeček pozice + název MIMO rámeček, §2 bod 5/10 --
+  function leader(labelX, labelY, tipX, tipY, key, name, up) {
+    const kneeY = up ? labelY + 10 : labelY - 10;
+    g(`<path d="M ${labelX.toFixed(1)} ${kneeY.toFixed(1)} L ${labelX.toFixed(1)} ${((kneeY + tipY) / 2).toFixed(1)} L ${tipX.toFixed(1)} ${tipY.toFixed(1)}" fill="none" stroke="${INK}" stroke-width="0.9" marker-end="url(#${ARROW_ID})"/>`);
+    tag(labelX, labelY, key);
+    // Název MUSÍ ležet MIMO rámeček pozice (§2 bod 10) — odsazení se počítá
+    // z výšky rámečku (tag() výš: fs+8+4), ne natvrdo.
+    const TAG_FS = 13;
+    const above = labelY - TAG_FS - 4 - 6;
+    const below = labelY + 4 + 13;
+    if (name) g(`<text x="${labelX.toFixed(1)}" y="${(up ? above : below).toFixed(1)}" font-size="9" fill="${THIN}" text-anchor="middle">${esc(name)}</text>`);
+  }
+
+  // --- vodorovná/svislá kóta (z mockupu dim()/vdim()) ----------------------
+  function dim(x1, x2, y, label, small) {
+    const a = X(x1), b = X(x2);
+    g(`<line x1="${a.toFixed(1)}" y1="${y.toFixed(1)}" x2="${b.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${THIN}" stroke-width="0.75"/>`);
+    [a, b].forEach((x) => g(`<line x1="${x.toFixed(1)}" y1="${(y - 3.5).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(y + 3.5).toFixed(1)}" stroke="${THIN}" stroke-width="0.75"/>`));
+    g(`<text x="${((a + b) / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" font-size="${small ? 8.8 : 9.8}" fill="#41505f" text-anchor="middle">${esc(label)}</text>`);
+  }
+  function vdim(z1, z2, x, label) {
+    const a = Y(z1), b = Y(z2);
+    g(`<line x1="${x.toFixed(1)}" y1="${a.toFixed(1)}" x2="${x.toFixed(1)}" y2="${b.toFixed(1)}" stroke="${THIN}" stroke-width="0.75"/>`);
+    [a, b].forEach((y) => g(`<line x1="${(x - 3.5).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + 3.5).toFixed(1)}" y2="${y.toFixed(1)}" stroke="${THIN}" stroke-width="0.75"/>`));
+    g(`<text x="${(x - 5).toFixed(1)}" y="${((a + b) / 2).toFixed(1)}" font-size="9" fill="#41505f" text-anchor="middle" transform="rotate(-90 ${(x - 5).toFixed(1)} ${((a + b) / 2).toFixed(1)})">${esc(label)}</text>`);
+  }
+
+  // --- z-rozsah položky v souřadnicích kresby (0 = čelo A, TOT = čelo B) --
+  // Zobecněná zr() z mockupu: pro stranu A jde o [fromMM, fromMM+sizeMM] od
+  // JEJÍHO vlastního čela (z=0), pro B zrcadleně od TOT.
+  function zr(side, fromMM, sizeMM) {
+    return side === 'A' ? [fromMM, fromMM + sizeMM] : [TOT - fromMM - sizeMM, TOT - fromMM];
+  }
+
+  // ==========================================================================
+  // OBRYS BLOKU + ZASTÍNĚNÉ KONCOVÉ ZÓNY (S1/S2) — §2 bod 6
+  // ==========================================================================
+  const outlinePts = monoOutlinePolygon(L, TOT, leftChamfer, rightChamfer, isIsland);
+  g(`<polygon points="${outlinePts.map(([x, z]) => `${X(x).toFixed(1)},${Y(z).toFixed(1)}`).join(' ')}" fill="none" stroke="${INK}" stroke-width="1.7"/>`);
+  const leftZonePts = monoEndZonePolygon('left', insetL, L, TOT, leftChamfer, isIsland);
+  g(`<polygon points="${leftZonePts.map(([x, z]) => `${X(x).toFixed(1)},${Y(z).toFixed(1)}`).join(' ')}" fill="#e8ecf0" stroke="${INK}" stroke-width="1.1"/>`);
+  const rightZonePts = monoEndZonePolygon('right', insetR, L, TOT, rightChamfer, isIsland);
+  g(`<polygon points="${rightZonePts.map(([x, z]) => `${X(x).toFixed(1)},${Y(z).toFixed(1)}`).join(' ')}" fill="#e8ecf0" stroke="${INK}" stroke-width="1.1"/>`);
+
+  // ==========================================================================
+  // PODESTAVBY (§2 body 2/3/4) — čárkovaný obrys, zásuvky/vsuvy/dvířka/
+  // police, zásuvky MIMO obrys (bod 3), pozice u ZADNÍ hrany (bod 4)
+  // ==========================================================================
+  function drawCabinet(side, item) {
+    const [z1, z2] = zr(side, DESK_OVERHANG_FRONT_MM, PODESTAVBA_DEPTH_MM);
+    const x = X(item.xMM), w = X(item.widthMM), y = Y(z2), h = Y(z1) - Y(z2);
+    g(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="${INK}" stroke-width="1" stroke-dasharray="7 4"/>`);
+
+    if (item.kind === 'drawers') {
+      // §2 bod 3 — zásuvky VÝHRADNĚ PŘED lícem desky, tedy MIMO obrys bloku;
+      // vztažná hrana je obrys BLOKU (z=0/TOT), ne líc skříňky. Jedno čelo =
+      // jeden pruh, počet pruhů = počet zásuvek (u MONO vždy 2, viz §5).
+      const n = item.drawerCount || MONO_DRAWER_COUNT;
+      const STEP = 55;
+      const edge = side === 'A' ? 0 : TOT;
+      const sgn = side === 'A' ? -1 : 1;
+      for (let i = 0; i < n; i++) {
+        const za = edge + sgn * (i * STEP), zb = edge + sgn * ((i + 1) * STEP);
+        const ry1 = Math.min(Y(za), Y(zb)), ry2 = Math.max(Y(za), Y(zb));
+        g(`<rect x="${(x + 8).toFixed(1)}" y="${ry1.toFixed(1)}" width="${(w - 16).toFixed(1)}" height="${(ry2 - ry1).toFixed(1)}" fill="#fff" stroke="${INK}" stroke-width="1"/>`);
+      }
+    }
+    if (item.kind === 'gnRack') {
+      const n = item.runnerPairs || GN_RUNNER_COUNT_PER_SIDE;
+      const zA = z1 + 60, zB = z2 - 60;
+      for (let i = 0; i < n; i++) {
+        const z = zA + (zB - zA) * (i / (n - 1));
+        const yy = Y(z);
+        g(`<line x1="${(x + 4).toFixed(1)}" y1="${yy.toFixed(1)}" x2="${(x + 24).toFixed(1)}" y2="${yy.toFixed(1)}" stroke="${THIN}" stroke-width="1"/>`);
+        g(`<line x1="${(x + w - 24).toFixed(1)}" y1="${yy.toFixed(1)}" x2="${(x + w - 4).toFixed(1)}" y2="${yy.toFixed(1)}" stroke="${THIN}" stroke-width="1"/>`);
+      }
+    }
+    if (item.kind === 'cabinet' && item.bodyStyle === 'open' && item.hasShelf) {
+      const zm = (z1 + z2) / 2;
+      g(`<line x1="${(x + 8).toFixed(1)}" y1="${Y(zm).toFixed(1)}" x2="${(x + w - 8).toFixed(1)}" y2="${Y(zm).toFixed(1)}" stroke="${THIN}" stroke-width="1" stroke-dasharray="5 3"/>`);
+    }
+    if (item.kind === 'cabinet' && item.bodyStyle === 'doors') {
+      const zf = side === 'A' ? z1 : z2;
+      g(`<line x1="${(x + w * 0.3).toFixed(1)}" y1="${Y(zf).toFixed(1)}" x2="${(x + w * 0.7).toFixed(1)}" y2="${Y(zf).toFixed(1)}" stroke="${INK}" stroke-width="2.4"/>`);
+    }
+
+    // §2 bod 4 — pozice číslovaná u ZADNÍ hrany (vpředu jsou dvířka/zásuvky)
+    tag(x + w / 2, Y(side === 'A' ? z2 - 70 : z1 + 70) + 4, item.code);
+  }
+  sides.A.cabinets.forEach((item) => drawCabinet('A', item));
+  sides.B.cabinets.forEach((item) => drawCabinet('B', item));
+
+  // ==========================================================================
+  // PŘÍSTROJE (§2 bod 1) — plná čára, BEZ výplně; neutrální plocha (isSurface)
+  // se NEKRESLÍ vůbec, jen dostane odkaz (viz leadery níž). Symbol podle
+  // def.topFeature.type kreslí drawDeviceTopView() (výš v souboru).
+  // ==========================================================================
+  function drawDevice(side, item) {
+    if (item.isSurface) return;
+    const [z1, z2] = zr(side, item.frontOffsetMM, item.depthMM);
+    const x = X(item.xMM), w = X(item.widthMM), y = Y(z2), h = Y(z1) - Y(z2);
+    g(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="none" stroke="${INK}" stroke-width="1.3"/>`);
+    if (item.def) {
+      // Adaptér pro sdílenou drawDeviceTopView() (§10.1 výš) — čeká
+      // xCenter/zTop/plinthDepthMM/seg. MONO nemá "seg" (jen katalogové id v
+      // item.type); prázdný objekt drží funkci bezpečnou i pro typ 'sink'
+      // (Number(undefined) → fallback SINK_VAT_*_DEFAULT), i když MONO dnes
+      // sink v herdbloku typicky nenabízí.
+      const adapter = { def: item.def, xCenter: item.xMM + item.widthMM / 2, widthMM: item.widthMM, zTop: z1, plinthDepthMM: item.depthMM, seg: {} };
+      drawDeviceTopView(body, adapter, X, Y, 1.1);
+    }
+  }
+  sides.A.devices.forEach((item) => drawDevice('A', item));
+  sides.B.devices.forEach((item) => drawDevice('B', item));
+
+  // ==========================================================================
+  // ZÁSUVKY A PRVKY PANELU (A3.x/B3.x) — bodový prvek, menší značka + kratší
+  // odkazová šipka (§2 bod 5)
+  // ==========================================================================
+  function drawSocket(side, item) {
+    const zEdge = side === 'A' ? 25 : TOT - 25; // umístění značky u líce panelu — jen kresba, ne rozměr
+    const x = X(item.xMM), y = Y(zEdge);
+    g(`<rect x="${(x - 7).toFixed(1)}" y="${(y - 5).toFixed(1)}" width="14" height="10" fill="#fff" stroke="${INK}" stroke-width="1"/>`);
+    g(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="${INK}"/>`);
+    const ly = side === 'A' ? Y(0) + 30 : -16;
+    const knee = side === 'A' ? ly - 9 : ly + 9;
+    g(`<line x1="${x.toFixed(1)}" y1="${knee.toFixed(1)}" x2="${x.toFixed(1)}" y2="${(y + (side === 'A' ? 7 : -7)).toFixed(1)}" stroke="${INK}" stroke-width="0.9" marker-end="url(#${ARROW_ID})"/>`);
+    tag(x, ly, item.code, 10.5);
+  }
+  sides.A.sockets.forEach((item) => drawSocket('A', item));
+  sides.B.sockets.forEach((item) => drawSocket('B', item));
+
+  // --- pozice S1/S2 (zakončovací plechy) ---------------------------------
+  tag(X(insetL / 2), Y(TOT) - 16, 'S1', 11.5);
+  tag(X(L - insetR / 2) + 6, Y(TOT) - 16, 'S2', 11.5);
+
+  // ==========================================================================
+  // NAPOUŠTĚCÍ RAMENA (S4…) — §2 bod 5, ikonka baterie + odkazová šipka
+  // ==========================================================================
+  const rawArms = Array.isArray(state && state.arms) ? state.arms : [];
+  const armCommon = model.common.filter((c) => c.kind === 'arm');
+  rawArms.forEach((rawArm, idx) => {
+    const armItem = armCommon[idx];
+    if (!armItem) return;
+    const zMM = computeArmZ(rawArm, isIsland ? 'island' : 'single', DA, DB);
+    const cx = X(armItem.xMM), cy = Y(zMM);
+    g(`<path d="M ${(cx - 13).toFixed(1)} ${(cy + 16).toFixed(1)} L ${(cx - 13).toFixed(1)} ${(cy - 6).toFixed(1)} A 13 13 0 0 1 ${(cx + 13).toFixed(1)} ${(cy - 6).toFixed(1)} L ${(cx + 13).toFixed(1)} ${(cy + 16).toFixed(1)}" fill="none" stroke="${INK}" stroke-width="1.6"/>`);
+    g(`<circle cx="${cx.toFixed(1)}" cy="${(cy + 16).toFixed(1)}" r="3.4" fill="${INK}"/>`);
+    const labelX = cx + (idx % 2 === 0 ? -70 : 70);
+    leader(labelX, -94, cx, Y(zMM) - 20, armItem.code, '', true);
+  });
+
+  // ==========================================================================
+  // ODKAZY NA PŘÍSTROJE (§2 bod 5) — label pod blokem pro A, nad blokem pro B
+  // ==========================================================================
+  sides.A.devices.forEach((item) => {
+    const [z1] = zr('A', item.frontOffsetMM, item.depthMM);
+    const cx = X(item.xMM + item.widthMM / 2);
+    leader(cx, Y(0) + 176, cx, Y(z1) + 2, item.code, item.name, false);
+  });
+  sides.B.devices.forEach((item) => {
+    const [, z2] = zr('B', item.frontOffsetMM, item.depthMM);
+    const cx = X(item.xMM + item.widthMM / 2);
+    leader(cx, -142, cx, Y(z2) - 2, item.code, item.name, true);
+  });
+
+  // ==========================================================================
+  // KÓTY (§2 bod 9) — pod blokem řetězce strany A, nad blokem strany B (u
+  // ostrova), koncové zóny, celková délka, svislé hloubky A/B/celkem, u
+  // zkoseného konce kóta zkosení. Popisky délek/hloubek přes STÁVAJÍCÍ klíče
+  // floorplan.* (sdílené se SEGMENTem); popisky řetězců, použitelné délky a
+  // zkosení přes nové mono.doc.chainCabinets/chainDevices/usableLength/
+  // chamferDim (doplnil druhý agent do i18n.js na pokyn koordinátora po
+  // přejímce — dřív tu chyběly, teď se používají).
+  // ==========================================================================
+  function chain(items, y, label) {
+    items.forEach((it) => {
+      if (X(it.widthMM) > 34) dim(it.xMM, it.xMM + it.widthMM, y, `${round(it.widthMM)}`, true);
+    });
+    g(`<text x="-8" y="${(y + 3).toFixed(1)}" font-size="8.8" fill="${THIN}" text-anchor="end">${esc(label)}</text>`);
+  }
+  let yd = Y(0) + 66;
+  chain(sides.A.cabinets, yd, t('mono.doc.chainCabinets', { side: 'A' }));
+  yd += 22; chain(sides.A.devices, yd, t('mono.doc.chainDevices', { side: 'A' }));
+  yd += 22;
+  dim(0, insetL, yd, `${insetL}`, true);
+  dim(L - insetR, L, yd, `${insetR}`, true);
+  dim(insetL, L - insetR, yd, t('mono.doc.usableLength', { mm: L - insetL - insetR }), true);
+  yd += 22; dim(0, L, yd, t('floorplan.totalLength', { mm: L }), false);
+
+  if (isIsland) {
+    chain(sides.B.cabinets, -44, t('mono.doc.chainCabinets', { side: 'B' }));
+    chain(sides.B.devices, -66, t('mono.doc.chainDevices', { side: 'B' }));
+    vdim(0, DA, -28, t('floorplan.depthA', { mm: DA }));
+    vdim(DA, TOT, -28, t('floorplan.depthB', { mm: DB }));
+    vdim(0, TOT, -56, t('floorplan.totalDepth', { mm: TOT }));
+  } else {
+    vdim(0, DA, -28, t('floorplan.blockDepth', { mm: DA }));
+  }
+
+  // --- kóta zkosení (§2 bod 6, jen u zkoseného konce) -----------------------
+  if (rightChamfer) {
+    g(`<line x1="${X(L - CH).toFixed(1)}" y1="${(Y(0) + 12).toFixed(1)}" x2="${X(L).toFixed(1)}" y2="${(Y(0) + 12).toFixed(1)}" stroke="${THIN}" stroke-width="0.75"/>`);
+    g(`<text x="${X(L - CH / 2).toFixed(1)}" y="${(Y(0) + 26).toFixed(1)}" font-size="8.6" fill="#41505f" text-anchor="middle">${esc(t('mono.doc.chamferDim', { c: CH }))}</text>`);
+  }
+  if (leftChamfer) {
+    g(`<line x1="0" y1="${(Y(0) + 12).toFixed(1)}" x2="${X(CH).toFixed(1)}" y2="${(Y(0) + 12).toFixed(1)}" stroke="${THIN}" stroke-width="0.75"/>`);
+    g(`<text x="${X(CH / 2).toFixed(1)}" y="${(Y(0) + 26).toFixed(1)}" font-size="8.6" fill="#41505f" text-anchor="middle">${esc(t('mono.doc.chamferDim', { c: CH }))}</text>`);
+  }
+
+  // ==========================================================================
+  // SESTAVENÍ VÝSLEDNÉHO SVG ŘETĚZCE
+  // ==========================================================================
+  const parts = [];
+  parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W.toFixed(1)} ${H.toFixed(1)}" font-family="Segoe UI, Arial, sans-serif" text-rendering="geometricPrecision">`);
+  parts.push(`<rect x="0" y="0" width="${W.toFixed(1)}" height="${H.toFixed(1)}" fill="#ffffff"/>`);
+  parts.push(`<g transform="translate(${PAD_L.toFixed(1)},${PAD_T.toFixed(1)})">`);
+  parts.push(...body);
+  parts.push('</g>');
+  parts.push('</svg>');
+  return parts.join('\n');
+}
+
 /** Sestaví kompletní SVG schéma (jako řetězec) z aktuálního stavu aplikace. */
 export function buildFloorplanSVG(state) {
+  // §ÚKOL PŮDORYS MONO — výhybka na začátku: SEGMENT (tělo funkce níž)
+  // zůstává NEDOTČENÉ, MONO má vlastní kresbu (viz zadání §2).
+  if (state.productType === 'mono') return buildMonoFloorplanSVG(state);
   const layout = computeLayout(state);
   const {
     lengthMM, heightMM, depthAMM, depthBMM, totalDepthMM, isIsland,

@@ -2572,6 +2572,82 @@ html.cat-overlay-open body {
   color: var(--text-muted);
 }
 
+/* --- karta položky soupisu (ÚKOL 21, ZADANI-PUDORYS-MONO.md §3) — MONO
+   soupis (společné prvky, přístroje/podestavby/zásuvky podle stran) NENÍ
+   tabulka se sloupci, ale seznam karet: záhlaví s pozicí a názvem, pod tím
+   fotka vedle popisu. Vzhled a rozměry převzaté z mockup-pudorys-mono.html
+   (třídy .polozka/.hl/.poz/.nz/.telo/.foto/.popis), tam odsouhlaseno
+   zadavatelem. SEGMENT tyto třídy nepoužívá, .report-table/.report-parts-table
+   výše zůstávají beze změny. */
+
+.report-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 0 0 10px;
+  overflow: hidden;
+  background: #fff;
+  break-inside: avoid;
+}
+
+.report-item-head {
+  background: var(--bg-panel-alt);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.report-item-pos {
+  color: var(--accent);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  min-width: 52px;
+}
+
+.report-item-name {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+.report-item-body {
+  display: flex;
+  gap: 16px;
+  padding: 13px 14px;
+  align-items: flex-start;
+}
+
+.report-item-photo img,
+.report-item-photo .report-item-icon {
+  width: 170px;
+  height: 128px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: block;
+  object-fit: cover;
+  background: var(--bg-panel-alt);
+}
+
+.report-item-photo .report-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.report-item-desc {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+/* úzké okno — fotka nad popis místo vedle sebe (shodné zalomení jako mockup) */
+@media (max-width: 640px) {
+  .report-item-body {
+    flex-direction: column;
+  }
+}
+
 /* --- úvodní obrazovka (#start-screen-overlay) — volba řady bloku ----------------
    Vychází ze společné .dialog-overlay/.dialog-box (viz výše), jen širší box
    pro dvě karty vedle sebe. Karty jsou záměrně rovnocenné — žádná není
@@ -2758,6 +2834,14 @@ html.cat-overlay-open body {
   }
 
   tr {
+    page-break-inside: avoid;
+  }
+
+  /* karta soupisu (ÚKOL 21 §3) — .report-item už má break-inside: avoid
+     v základním pravidle výše, tady navíc starší page-break-inside pro
+     tiskové enginy, které moderní vlastnost nerespektují (stejný vzor jako
+     u tr/img v tomto bloku). */
+  .report-item {
     page-break-inside: avoid;
   }
 }

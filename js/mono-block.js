@@ -239,8 +239,8 @@ export function buildMonoScene(state) {
   const layoutB = isIsland ? computeMonoLayout(state, 'B') : null;
   const lengthMM = layoutA.lengthMM;
 
-  // Podestavby strany A: geometrii zajímají jen SKUTEČNÉ skříňky
-  // (kind:'cabinet') — 'gap' je úmyslně vynechané místo (most), layout ho
+  // Podestavby strany A: geometrii zajímají všechny SKUTEČNÉ podestavby
+  // (kind !== 'gap') — 'gap' je úmyslně vynechané místo (most), layout ho
   // vrací kvůli UI (kreslí se šedě jako volný prostor), ale žádné těleso pro
   // něj nevzniká. xMM se ZRCADLÍ (viz mirrorX výš) — layout dává xMM jako
   // levou hranu v pásu, mirrorX ji převede na odpovídající levou hranu v
@@ -252,12 +252,19 @@ export function buildMonoScene(state) {
   // sousední skříňky v jedné řadě mohou mít každá jinou úpravu a tím pádem
   // i jiný tvar spodních koutů (viz buildPodestavba/FINISH_H2 v
   // mono-geometry.js). readFinish() ošetřuje chybějící/neznámou hodnotu.
+  // kind/bodyStyle/hasShelf (§2 ZADANI-PODESTAVBY-MONO.md) — předány
+  // GEOMETRII BEZE ZMĚNY přímo z item, stejně jako finish; buildPodestavba()
+  // (mono-geometry.js) si sama ošetří chybějící/neznámou hodnotu (viz jeho
+  // JSDoc — neznámý kind → 'cabinet', neznámý bodyStyle → 'closed'/'open').
   const podestavbyA = layoutA.podestavby
-    .filter(({ item }) => item.kind === 'cabinet')
+    .filter(({ item }) => item.kind !== 'gap')
     .map(({ item, xMM, widthMM }) => ({
       xMM: mirrorX(xMM, lengthMM, widthMM),
       widthMM,
       finish: readFinish(item.finish),
+      kind: item.kind,
+      bodyStyle: item.bodyStyle,
+      hasShelf: item.hasShelf,
     }));
 
   // Podestavby strany B (jen `island`) — ÚKOL 6: BEZ mirrorX. Strana B se
@@ -266,11 +273,14 @@ export function buildMonoScene(state) {
   // rotací vyrušilo špatným směrem (viz JSDoc buildMonoBlock v
   // mono-geometry.js pro odvození). ŽÁDNÉ záporné měřítko se nepoužívá.
   const podestavbyB = isIsland ? layoutB.podestavby
-    .filter(({ item }) => item.kind === 'cabinet')
+    .filter(({ item }) => item.kind !== 'gap')
     .map(({ item, xMM, widthMM }) => ({
       xMM,
       widthMM,
       finish: readFinish(item.finish),
+      kind: item.kind,
+      bodyStyle: item.bodyStyle,
+      hasShelf: item.hasShelf,
     })) : [];
 
   // Prvky panelu strany A: computeMonoLayout() je vrací už oříznuté do

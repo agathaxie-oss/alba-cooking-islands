@@ -561,3 +561,34 @@ se ukládají do souboru projektu a zůstávají beze změny; obchodní název
 ani na geometrii.
 
 ---
+
+## 8. Druhy podestaveb — hodnoty z 31. 8. 2026
+
+Rozhodnutí zadavatele z 9. 8. 2026, implementovaná podle smlouvy
+`ZADANI-PODESTAVBY-MONO.md` (úkoly 14–16 v `PREDANI.md`). Podrobný rozpis
+geometrie je ve smlouvě; tady jsou jen závazná ČÍSLA.
+
+| druh (`kind`) | šířka | provedení (`bodyStyle`) |
+| --- | --- | --- |
+| `cabinet` | volitelná | `closed` / `doors` / `open` (+ police) |
+| `gap` | volitelná | — (úmyslně vynechané místo, těleso nevzniká) |
+| `drawers` | **pevně 400 nebo 600** | — (vždy 2 zásuvky) |
+| `gnRack` | **pevně 400 nebo 600** | jen `open` / `doors` |
+
+- **400 mm = GN 1/1, 600 mm = GN 2/1.** Uživatel šířku u `drawers`
+  a `gnRack` NEVOLÍ, jen se mu zobrazuje.
+- **Zásuvkový blok má právě 2 zásuvky.** Počet je konstanta, ne parametr.
+- **Skříňka se zásuvy na GN má 6 párů vsuvů, rozteč 70 mm.** Střed
+  nejnižšího vsuvu je 40 mm nad horní hranou podlážky.
+- **Police je příznak KAŽDÉ SKŘÍŇKY zvlášť** (`hasShelf`), má význam jen
+  při `bodyStyle: 'open'`. Zapuštěná 25 mm od líce korpusu, výškově
+  vystředěná v dutině mezi podlážkou a horní lištou.
+- **Dvířka:** 2 křídla nad 600 mm šířky, jinak 1 (stejné pravidlo jako
+  SEGMENT).
+
+**Podlážka je 40 mm** (`FLOOR_MM`), ne 20 — výšky police i vsuvů se počítají
+od její HORNÍ hrany, tedy ze stejné základny jako náběhy H2. Při přejímce
+31. 8. 2026 jsem tuhle konstantu spletl a poslal agentovi chybnou opravu;
+zapsáno sem, aby se to nemuselo dohledávat znovu.
+
+---

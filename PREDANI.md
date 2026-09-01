@@ -6,8 +6,9 @@ jsou v `archiv/` a **nemá se do nich chodit** — co z nich bylo živé, je tad
 Referenční soubory, které platí dál: `HODNOTY-MONO.md` (čísla),
 `SPEC.md` + `SPEC-HERDBLOK.md` (specifikace), `ZADANI-MONO-UI.md` (smlouva
 rozhraní MONO, má známé chyby — viz úkol 8), `ZADANI-KATALOG.md` (samostatný
-neřešený úkol), `mockup-mono.html` (vizuální předloha), `README.md`,
-`DEPLOY.md`.
+neřešený úkol), `ZADANI-SOKL.md` (smlouva rozhraní k úkolu 13),
+`ZADANI-PODESTAVBY-MONO.md` (smlouva rozhraní k úkolům 14–16),
+`mockup-mono.html` (vizuální předloha), `README.md`, `DEPLOY.md`.
 
 Pořadí závaznosti při rozporu: `HODNOTY-MONO.md` → tenhle soubor →
 `ZADANI-MONO-UI.md` → `SPEC-HERDBLOK.md` → `SPEC.md` → kód.
@@ -188,35 +189,25 @@ vyrovnané závorky. Práce se přerušila kvůli kreditům.
 
 ## B3. Co se vědomě nedělá
 
-- **Přístroje se ve 3D nekreslí.** `mono-geometry.js` je nikdy v rozsahu
-  neměl. V pásu jsou, ovlivňují rozvržení, kontroly i uložený soubor, ale ve
-  scéně vidět nejsou. Není to vada, je to nedodělek.
+- **Přístroje se ve 3D kreslí BEZ VÝŘEZU v desce.** (Opraveno 31. 8. 2026 —
+  tenhle bod tu do té doby stál jako „přístroje se ve 3D nekreslí", což už
+  od 8. 8. 2026 neplatilo a odporovalo to ČÁSTI B4 i F.) Přístroj sedí na
+  rovině desky, deska zůstává celá; osazuje je `mono-block.js` přes
+  `applyTopFeature()` + `renderControls()` na OBOU stranách ostrova.
+  Výřez je odložený — až se bude dělat, deska se staví z obrysu přes
+  `THREE.Shape`, který díry umí.
 - **Nástavby nad blokem** (roštová nástavba, police na salamandr) — odloženo.
 - **Přestavba katalogu** — samostatný úkol, viz `ZADANI-KATALOG.md`.
 - **Logo ALBA ve 3D** se nevykresluje. Diagnóza hotová, oprava odložena na
   pokyn zadavatele.
 
-## B4. Rozdělaná práce — NEOVĚŘENO
+## B4. Pracovní strom
 
-V pracovním stromu jsou **nezakomitované změny ve dvou souborech**:
-`js/modules.js` (přidáno jediné slovo `export` u dispatcheru
-`applyTopFeature`) a `js/mono-block.js` (osazení přístrojů na desku, ~65
-řádků).
-
-Jde o **vykreslování přístrojů ve 3D**. Zadavatel je chtěl vidět; rozhodl,
-že se v tomhle kole dělá **BEZ výřezu v desce** — přístroj sedí na rovině
-desky, deska zůstane celá. Výřez je odložený, deska se staví z obrysu přes
-`THREE.Shape`, který díry umí.
-
-**Oba soubory procházejí `node --check`, ale NIKDY neproběhlo měření.**
-Agent byl zastaven těsně před přejímkou. Nevěřit tomu, dokud se to nezměří.
-
-Co se musí ověřit, než se to přijme: (a) úzký přístroj, v pásu první zleva,
-musí vyjít na KLADNÉM world X; (b) položka `type: 'surface'` se nesmí
-vykreslit vůbec; (c) spodek přístroje musí ležet na rovině desky; (d)
-žádné záporné `z`; (e) **SEGMENT se nesmí rozbít** — `applyTopFeature`
-používá i on, a je to jediné místo, kde šlo poškodit něco, co dosud
-fungovalo.
+**Pracovní strom je čistý** (stav k 31. 8. 2026). Do 31. 8. tu stál popis
+nezakomitovaných změn v `js/modules.js` a `js/mono-block.js` (osazení
+přístrojů na desku) jako NEOVĚŘENÉ — to už dávno neplatí: práce je
+zakomitovaná (`77c86b7`), ověřená a popsaná v ČÁSTI B3 a F. Odstraněno,
+aby dokument neodporoval sám sobě.
 
 - Dvě poloprůhledné svislé plochy nad rovinou desky jsou **víka fritéz**,
   která staví funkce `buildFryerTop` v `js/modules.js`. Je to správně —
@@ -576,8 +567,16 @@ Zadavatel 9. 8. 2026 zodpověděl zbývající tři otázky:
 
 ## 14. Podestavby potřebují police a dvířka jako SEGMENT — POŽADAVEK
 
-Zadavatel: „u podestaveb chci mít možnost police a dvířek. Stejně jako
-u Segmentu."
+**HOTOVO 31. 8. 2026.** Implementováno podle `ZADANI-PODESTAVBY-MONO.md`
+(závazná smlouva, zůstává jako reference) společně s úkoly 15 a 16.
+`bodyStyle` je zprovozněný: `closed` staví čelní stěnu, `doors` křídlová
+dvířka s úchytkami (2 křídla nad 600 mm), `open` nechá korpus otevřený a
+při `hasShelf` přidá polici. **Pozor, výchozí skříňka (`closed`) teď má
+čelní stěnu** — dřívější „otevřený" vzhled byl důsledek toho, že
+`bodyStyle` neměl ve 3D žádný účinek; je to záměr, ne regrese.
+Ověřeno měřením (viz úkol 16 níž).
+
+Původní popis vady zůstává jako evidence:
 
 **Pozor, je to větší, než vypadá:** `MonoCabinet.bodyStyle` má podle
 `ZADANI-MONO-UI.md` §1 hodnoty `'closed' | 'doors' | 'open'`, jenže
@@ -601,6 +600,11 @@ a použít.
 
 ## 15. Zásuvkový blok — POŽADAVEK
 
+**HOTOVO 31. 8. 2026.** Nový druh podestavby `kind:'drawers'` se dvěma
+zásuvkovými čely a úchytkami, šířky pevné 400/600. V paletě jako dva
+řádky („Zásuvkový blok GN 1/1" a „GN 2/1"), šířka se v pruhu parametrů
+jen zobrazuje, needituje. Ověřeno měřením (viz úkol 16 níž).
+
 Zadavatel: „chci tu mít zásuvkový blok se 2 zásuvkami o šířce 400 (GN 1/1)
 a 600 (GN 2/1)."
 
@@ -613,6 +617,31 @@ SEGMENT má základ hotový: `buildDrawersBody(..., drawerCount)`
 je tedy parametr, ne pevné číslo — dá se převzít.
 
 ## 16. Skříňka se zásuvy na GN — POŽADAVEK
+
+**HOTOVO 31. 8. 2026.** Nový druh `kind:'gnRack'` — 12 těles `gn-vsuv`
+(6 párů) na vnitřních lících bočních stěn, provedení jen otevřené nebo
+s dvířky (`closed` se u něj nenabízí ani neuloží).
+
+**Společná přejímka úkolů 14–16** (měřeno po plném proplachu keše, přímým
+importem `mono-geometry.js` i celé scény přes `buildMonoScene`, sokl 150,
+tělo 460): počty těles sedí ve všech kombinacích — `closed` 1× `celni-stena`,
+`doors` 1 křídlo do 600 mm a 2 nad, `open`+police 1× `police` (bez police
+se těleso vůbec nevytvoří), `drawers` 2× čelo + 2× úchytka, `gnRack` 12×
+`gn-vsuv`. Rozteč vsuvů přesně **70,0 mm** (středy 230–580), police
+vystředěná v dutině (y 380–400). Vše před lícem korpusu a **žádné záporné
+z**: dvířka z 16–24, jejich úchytka 5–15, zásuvková čela 14–24, úchytky
+3–13. Neznámý `kind`/`bodyStyle` spadne na `cabinet`/`closed`. H2 náběhy
+dál řídí jen `finish`, nezávisle na druhu. Ostrov: strana B staví vsuvy
+zrcadleně (z 1025–1645 při hloubce 1700). Uložení + načtení projektu
+s novými druhy včetně sanitizace pokažených hodnot (gnRack `closed` → `open`,
+šířka 500 → 400, chybějící `hasShelf` → false). SEGMENT nedotčený —
+`modules.js`, `block.js`, `report.js` ani CSS nikdo neotevřel. Čistá konzole.
+
+**Pozn. k `FLOOR_MM`:** podlážka je **40 mm**, ne 20. Výšky police i vsuvů
+se počítají z `yBodyBottom + FLOOR_MM` (= horní hrana podlážky), tedy ze
+stejné základny jako H2 náběhy. Při přejímce jsem si to spletl a poslal
+agentovi opravu na základnu 20; agent ji správně odmítl s odkazem na
+konstantu. Kdo bude ta čísla příště přepočítávat, ať vychází z 40.
 
 Zadavatel: „chci tu mít skříňku se zásuvy na GN. 400 mm širokou na GN 1/1
 a 600 mm šířkou na GN 2/1. (otevřenou nebo s dvířky)."
@@ -820,10 +849,17 @@ příčina zatím není potvrzená — je to hlášení, ne diagnóza.
 **Zadavatel 9. 8. 2026 rozhodl o pořadí: nejdřív ověřit ostrov, teprve pak
 úkoly 13–17.**
 
-**Úkoly 13 a 17 jsou HOTOVÉ a ověřené (31. 8. 2026)** — viz ČÁST C.
-Zbývají NOVÉ POŽADAVKY na rozšíření nabídky podestaveb: **14** (police a
-dvířka — a s nimi zprovoznění `bodyStyle`, který dnes nemá ve 3D žádný
-účinek), **15** (zásuvkový blok) a **16** (skříňka se zásuvy na GN).
+**Úkoly 13, 14, 15, 16 a 17 jsou HOTOVÉ a ověřené (31. 8. 2026)** — viz
+ČÁST C. Rozšíření nabídky podestaveb (police a dvířka se zprovozněným
+`bodyStyle`, zásuvkový blok, skříňka se zásuvy na GN) je hotové podle
+smlouvy `ZADANI-PODESTAVBY-MONO.md`.
+
+**Ze seznamu úkolů tím nezbývá nic k řešení.** Otevřené položky v ČÁSTI C
+jsou už jen ty, které zadavatel vědomě odložil (úkol 12) nebo které čekají
+na jeho pokyn (viz „Menší věci zbývající" níž). Další práce potřebuje nové
+zadání — nejblíž jsou nedodělky z ČÁSTI B3: přístroje se ve 3D u MONO
+kreslí jen jako varná plocha na desce (bez výřezu), nástavby nad blokem
+se nedělají vůbec a logo ALBA se nevykresluje.
 
 **Pozor na latentní vady z merge katalogu:** funkce psané ve forku před
 ostrovem mohou sahat na stará pole bez přípony A/B — jedna taková

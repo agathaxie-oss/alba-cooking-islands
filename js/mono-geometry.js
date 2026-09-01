@@ -4,10 +4,12 @@
 // sdílené z materials.js (stejné jako u produktu SEGMENT), jinak modul nic
 // z aplikace nečte ani neimportuje.
 //
-// PROTOTYP — přístroje, ovládací prvky panelu, sokl/dvířka/police a
-// nástavby se neřeší (mimo rozsah úkolu). Cílem je geometrie herdbloku,
-// podestaveb, bočního krytu a límce k odsouhlasení. Viz "Co se teď NEDĚLÁ"
-// v zadání — na místech, kde chybí dodané číslo, je TODO a nic se nedomýšlí.
+// PROTOTYP — přístroje, ovládací prvky panelu, sokl a nástavby se neřeší
+// (mimo rozsah úkolu). Cílem je geometrie herdbloku, podestaveb (VČETNĚ
+// dvířek, police, zásuvkových čel a GN vsuvů — ZADANI-PODESTAVBY-MONO.md
+// §3, viz buildPodestavba níž), bočního krytu a límce k odsouhlasení. Viz
+// "Co se teď NEDĚLÁ" v zadání — na místech, kde chybí dodané číslo, je TODO
+// a nic se nedomýšlí.
 //
 // --- Souřadný systém -------------------------------------------------------
 //   x .. podél délky bloku. NENÍ centrováno — je to PŘÍMO souřadnice xMM
@@ -54,6 +56,7 @@ import {
   createPanelMaterial,
   createPlinthMaterial,
   createEdgeMaterial,
+  createKnobMaterial,
 } from './materials.js';
 
 const mm = (v) => v / 1000;
@@ -193,6 +196,46 @@ export const FINISH_H2 = 'H2';
 export const CORPUS_SHEET_MM = 1.5; // síla plechu korpusu — zatím evidence
 export const LEG_SIZE_MM = 40;   // konstanta, NE dopočet z šířky
 export const LEG_INSET_MM = 50;  // odsazení nožičky od rohu (boční i čelní/zadní líc)
+
+// --- tělo skříňky podle druhu/stylu — ZADANI-PODESTAVBY-MONO.md §3 ------------
+// Čísla jsou DODANÁ zadáním (§3a–§3e), ne odhad. Sdílené mezi cabinet+doors
+// a gnRack+doors (dvířka i úchytka mají u obou STEJNÝ vzhledový jazyk).
+export const DOOR_WIDTH_GAP_MM = 20;   // spára po šířce křídla (§3b)
+export const DOOR_HEIGHT_GAP_MM = 20;  // odsazení výšky křídla — SHODOU ČÍSEL
+// stejné jako TOP_RAIL_MM (obojí 20), ale je to jiný fyzický důvod (viz
+// buildCabinetDoors níž: křídlo je zarovnané na yBodyBottom stejně jako
+// celni-stena, aby zůstala horní lišta vidět, ne libovolně vystředěné).
+export const DOOR_THICKNESS_MM = 8;
+export const DOOR_FRONT_Z_MM = 16;     // líc křídla, předsazený před líc korpusu (30)
+export const DOOR_HANDLE_RADIUS_MM = 5;
+export const DOOR_HANDLE_LENGTH_MM = 130;
+export const DOOR_HANDLE_Z_MM = 10;    // osa úchytky (poloměr 5 dá z 5..15)
+export const DOOR_HANDLE_OFFSET_DOUBLE_RATIO = 0.36; // dvoukřídlé — blíž ke středové spáře
+export const DOOR_HANDLE_OFFSET_SINGLE_RATIO = 0.32; // jednokřídlé — u vzdálenější (pravé) hrany
+
+export const SHELF_THICKNESS_MM = 20;      // police (§3c)
+export const SHELF_WIDTH_INSET_MM = 10;    // šířka = widthMM − 2·WALL_MM − 10
+export const SHELF_FRONT_RECESS_MM = 25;   // zapuštění od líce korpusu (z od zFront+25)
+export const SHELF_BACK_GAP_MM = 10;       // odstup hloubky od zadní stěny
+
+export const DRAWER_COUNT = 2;             // zásuvková čela (§3d) — KONSTANTA, ne parametr
+export const DRAWER_WIDTH_INSET_MM = 20;   // šířka čela = widthMM − 20
+export const DRAWER_THICKNESS_MM = 10;
+export const DRAWER_FRONT_Z_MM = 14;       // líc čela, předsazený před líc korpusu (30)
+export const DRAWER_SLOT_GAP_MM = 6;       // spára slotu (čelo = výška slotu − 6)
+export const DRAWER_HANDLE_RADIUS_MM = 5;
+export const DRAWER_HANDLE_LENGTH_RATIO = 0.5; // délka úchytky = 0,5 šířky čela
+export const DRAWER_HANDLE_Z_MM = 8;           // osa úchytky (poloměr 5 dá z 3..13)
+export const DRAWER_HANDLE_Y_RATIO = 0.32;     // ~0,32 výšky čela nad středem slotu
+
+export const GN_RUNNER_COUNT_PER_SIDE = 6; // vsuvy na GN (§3e) — 6+6 = 12 těles
+export const GN_RUNNER_PITCH_MM = 70;      // rozteč (rozhodnutí zadavatele 9. 8. 2026)
+export const GN_RUNNER_SECTION_MM = 15;    // profil 15×15 mm
+export const GN_RUNNER_FIRST_OFFSET_MM = 40; // střed nejnižšího vsuvu nad horní hranou podlážky
+export const GN_RUNNER_FRONT_RECESS_MM = 25; // zapuštění od líce korpusu — SHODOU ČÍSEL
+// stejné jako SHELF_FRONT_RECESS_MM (obojí 25), ale nezávislá konstanta —
+// zadání je definuje ve dvou samostatných bodech (§3c/§3e).
+export const GN_RUNNER_BACK_GAP_MM = 5;    // odstup hloubky od zadní stěny
 
 // --- boční kryt a boční deska ---------------------------------------------------
 // Dvě tloušťky (viz zadání, bod 5): THICK jen na straně, kde podestavba leží
@@ -872,11 +915,172 @@ export function buildHerdblokUsek(usek) {
 }
 
 // ============================================================================
-// PODESTAVBA — skříňka sestavená z dílců: stěny, podlážka, lišta, nožičky, H2
+// PODESTAVBA — skříňka sestavená z dílců: stěny, podlážka, lišta, nožičky,
+// H2 náběhy a TĚLO podle druhu/stylu (§3 ZADANI-PODESTAVBY-MONO.md) — čelní
+// stěna (cabinet+closed), dvířka s úchytkami (cabinet/gnRack+doors), police
+// (cabinet+open+hasShelf), zásuvková čela (drawers) nebo GN vsuvy (gnRack).
+// Podestavba je na nožičkách v konstrukční výšce, aby šlo posoudit
+// most/převis vůči herdbloku.
 // ============================================================================
-// PROTOTYP: typy soklu, dvířka a police se v tomto prototypu NEŘEŠÍ — mimo
-// rozsah úkolu (viz "Co se teď NEDĚLÁ"). Podestavba je na nožičkách v
-// konstrukční výšce, aby šlo posoudit most/převis vůči herdbloku.
+
+// --- tělo skříňky podle druhu/stylu (§3a–§3e) — pomocné funkce, volá je
+// buildPodestavba níž. Kvádry přes stejný box() jako zbytek souboru;
+// úchytky přímo přes THREE.CylinderGeometry (bez EdgesGeometry — obrysové
+// hrany na válci nejsou potřeba, stejný vzhled jako u SEGMENTu). Vzhledový
+// jazyk dvířek/úchytek je STEJNÝ jako SEGMENT (buildDoorBody/buildDrawersBody
+// v modules.js jsou PŘEDLOHA ke čtení), ale nic se odtud neimportuje —
+// mono-geometry.js zůstává bez importu z modules.js (viz hlavička souboru).
+
+/**
+ * Čelní stěna zavřené skříňky (kind 'cabinet', bodyStyle 'closed', §3a) —
+ * jedno těleso mezi bočními stěnami, od yBodyBottom po SPODNÍ HRANU horní
+ * lišty (lišta zůstává viditelná, žádný překryv), z zFront..zFront+WALL_MM
+ * (za lícem korpusu, tloušťka WALL_MM).
+ */
+function buildCabinetFrontWall({ group, widthMM, bodyHeightMM, yBodyBottom, zFront, material }) {
+  const heightMM = bodyHeightMM - TOP_RAIL_MM;
+  const wall = box(mm(widthMM - 2 * WALL_MM), mm(heightMM), mm(WALL_MM), material);
+  wall.position.set(
+    mm(widthMM) / 2,
+    mm(yBodyBottom + heightMM / 2),
+    mm(zFront + WALL_MM / 2)
+  );
+  wall.name = 'celni-stena';
+  group.add(wall);
+}
+
+/**
+ * Křídlová dvířka s úchytkami (bodyStyle 'doors', §3b) — sdílená pro
+ * `kind:'cabinet'` i `kind:'gnRack'` (vsuvy gnRack se stavějí VŽDY, dvířka
+ * je jen zakryjí, §3e). Počet křídel: widthMM > 600 → 2, jinak 1 (stejné
+ * pravidlo jako SEGMENT). Výškově zarovnaná stejně jako celni-stena (od
+ * yBodyBottom, výška bodyHeightMM − DOOR_HEIGHT_GAP_MM) — nepřekrývá se
+ * s horní lištou, i když je (na rozdíl od celni-stena) předsazená před líc
+ * korpusu, takže by se stejně nepotkaly ve stejné rovině Z.
+ */
+function buildCabinetDoors({ group, widthMM, bodyHeightMM, yBodyBottom, stainless, knobMat }) {
+  const doorCount = widthMM > 600 ? 2 : 1;
+  const doorWidthMM = widthMM / doorCount;
+  const doorHeightMM = bodyHeightMM - DOOR_HEIGHT_GAP_MM;
+  const centerYMM = yBodyBottom + doorHeightMM / 2;
+
+  for (let i = 0; i < doorCount; i++) {
+    const xCenterMM = doorWidthMM * (i + 0.5);
+
+    const door = box(mm(doorWidthMM - DOOR_WIDTH_GAP_MM), mm(doorHeightMM), mm(DOOR_THICKNESS_MM), stainless);
+    door.position.set(mm(xCenterMM), mm(centerYMM), mm(DOOR_FRONT_Z_MM + DOOR_THICKNESS_MM / 2));
+    door.name = 'dvirka';
+    group.add(door);
+
+    // úchytka blíž ke středové spáře (dvoukřídlé) / u vzdálenější hrany
+    // (jednokřídlé) — stejná konvence jako SEGMENT (buildDoorBody).
+    const handleOffsetMM = doorCount === 2
+      ? doorWidthMM * (i === 0 ? DOOR_HANDLE_OFFSET_DOUBLE_RATIO : -DOOR_HANDLE_OFFSET_DOUBLE_RATIO)
+      : doorWidthMM * DOOR_HANDLE_OFFSET_SINGLE_RATIO;
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(mm(DOOR_HANDLE_RADIUS_MM), mm(DOOR_HANDLE_RADIUS_MM), mm(DOOR_HANDLE_LENGTH_MM), 12),
+      knobMat
+    );
+    // svislý válec — výchozí osa CylinderGeometry (Y) sedí beze změny,
+    // žádná rotace potřeba (na rozdíl od vodorovné úchytky zásuvky níž).
+    handle.position.set(mm(xCenterMM + handleOffsetMM), mm(centerYMM), mm(DOOR_HANDLE_Z_MM));
+    handle.castShadow = true;
+    handle.name = 'dvirka-uchytka';
+    group.add(handle);
+  }
+}
+
+/**
+ * Police (kind 'cabinet', bodyStyle 'open', hasShelf:true, §3c) — jedno
+ * těleso zapuštěné od líce korpusu, výškově vystředěné v dutině mezi
+ * podlážkou a horní lištou. Volající (buildPodestavba) tuhle funkci zavolá
+ * JEN při hasShelf:true — při false se těleso vůbec nepostaví (stejná
+ * konvence jako H2 náběhy, ne schovat).
+ */
+function buildCabinetShelf({ group, widthMM, depthMM, yBodyBottom, yBodyTop, zFront, material }) {
+  const widthShelfMM = widthMM - 2 * WALL_MM - SHELF_WIDTH_INSET_MM;
+  const depthShelfMM = depthMM - SHELF_FRONT_RECESS_MM - BACK_WALL_MM - SHELF_BACK_GAP_MM;
+  const zFrontShelfMM = zFront + SHELF_FRONT_RECESS_MM;
+
+  const cavityBottomMM = yBodyBottom + FLOOR_MM;       // horní hrana podlážky
+  const cavityTopMM = yBodyTop - TOP_RAIL_MM;          // spodní hrana horní lišty
+  const centerYMM = (cavityBottomMM + cavityTopMM) / 2;
+
+  const shelf = box(mm(widthShelfMM), mm(SHELF_THICKNESS_MM), mm(depthShelfMM), material);
+  shelf.position.set(mm(widthMM) / 2, mm(centerYMM), mm(zFrontShelfMM + depthShelfMM / 2));
+  shelf.name = 'police';
+  group.add(shelf);
+}
+
+/**
+ * Zásuvkový blok — PRÁVĚ 2 zásuvková čela s úchytkami (kind 'drawers', §3d;
+ * počet je KONSTANTA DRAWER_COUNT, žádný parametr). Prostor od yBodyBottom
+ * po spodní hranu horní lišty (stejný rozsah jako celni-stena/dvirka) se
+ * dělí na DRAWER_COUNT stejných slotů.
+ */
+function buildDrawerFronts({ group, widthMM, bodyHeightMM, yBodyBottom, stainless, knobMat }) {
+  const totalHeightMM = bodyHeightMM - TOP_RAIL_MM;
+  const slotHeightMM = totalHeightMM / DRAWER_COUNT;
+  const frontWidthMM = widthMM - DRAWER_WIDTH_INSET_MM;
+  const frontHeightMM = slotHeightMM - DRAWER_SLOT_GAP_MM;
+
+  for (let i = 0; i < DRAWER_COUNT; i++) {
+    const slotCenterYMM = yBodyBottom + slotHeightMM * (i + 0.5);
+
+    const front = box(mm(frontWidthMM), mm(frontHeightMM), mm(DRAWER_THICKNESS_MM), stainless);
+    front.position.set(mm(widthMM) / 2, mm(slotCenterYMM), mm(DRAWER_FRONT_Z_MM + DRAWER_THICKNESS_MM / 2));
+    front.name = 'zasuvka-celo';
+    group.add(front);
+
+    // vodorovná úchytka (osa podél X) u horního okraje čela — CylinderGeometry
+    // má výchozí osu Y, rotace o 90° kolem Z ji položí podél X (stejný trik
+    // jako SEGMENT buildDrawersBody).
+    const handleLengthMM = frontWidthMM * DRAWER_HANDLE_LENGTH_RATIO;
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(mm(DRAWER_HANDLE_RADIUS_MM), mm(DRAWER_HANDLE_RADIUS_MM), mm(handleLengthMM), 12),
+      knobMat
+    );
+    handle.rotation.z = Math.PI / 2;
+    handle.position.set(
+      mm(widthMM) / 2,
+      mm(slotCenterYMM + frontHeightMM * DRAWER_HANDLE_Y_RATIO),
+      mm(DRAWER_HANDLE_Z_MM)
+    );
+    handle.castShadow = true;
+    handle.name = 'zasuvka-uchytka';
+    group.add(handle);
+  }
+}
+
+/**
+ * Skříňka se zásuvy na GN — 6 párů vodorovných profilů 15×15 mm na VNITŘNÍ
+ * ploše obou bočních stěn (kind 'gnRack', §3e), rozteč GN_RUNNER_PITCH_MM
+ * (70 mm), STAVÍ SE VŽDY (i při bodyStyle:'doors' — dvířka je pak jen
+ * zakryjí, viz buildCabinetDoors). Celkem GN_RUNNER_COUNT_PER_SIDE*2 = 12
+ * těles `gn-vsuv`.
+ */
+function buildGnRunners({ group, widthMM, depthMM, yBodyBottom, zFront, material }) {
+  const zFromMM = zFront + GN_RUNNER_FRONT_RECESS_MM;
+  const zToMM = zFront + depthMM - BACK_WALL_MM - GN_RUNNER_BACK_GAP_MM;
+  const runnerDepthMM = zToMM - zFromMM;
+  const floorTopMM = yBodyBottom + FLOOR_MM;
+
+  // levá strana: x od WALL_MM do WALL_MM+15; pravá strana zrcadlově od
+  // widthMM-WALL_MM-15 do widthMM-WALL_MM — vnitřní plocha bočních stěn.
+  [WALL_MM, widthMM - WALL_MM - GN_RUNNER_SECTION_MM].forEach((xFromMM) => {
+    for (let i = 0; i < GN_RUNNER_COUNT_PER_SIDE; i++) {
+      const centerYMM = floorTopMM + GN_RUNNER_FIRST_OFFSET_MM + i * GN_RUNNER_PITCH_MM;
+      const runner = box(mm(GN_RUNNER_SECTION_MM), mm(GN_RUNNER_SECTION_MM), mm(runnerDepthMM), material);
+      runner.position.set(
+        mm(xFromMM + GN_RUNNER_SECTION_MM / 2),
+        mm(centerYMM),
+        mm(zFromMM + runnerDepthMM / 2)
+      );
+      runner.name = 'gn-vsuv';
+      group.add(runner);
+    }
+  });
+}
 
 /**
  * @param {object} p
@@ -898,10 +1102,25 @@ export function buildHerdblokUsek(usek) {
  *   staví je buildBlockPlinth(), ne tahle funkce).
  * @param {number} [p.plinthHeightMM]  výška soklové zóny (plinth.heightMM,
  *   50–150) — nahrazuje dřívější pevnou LEG_HEIGHT_MM (150).
+ * @param {string} [p.kind='cabinet']  MonoCabinet.kind (§1
+ *   ZADANI-PODESTAVBY-MONO.md) — 'cabinet' | 'drawers' | 'gnRack'. Chybějící
+ *   nebo neznámá hodnota se chová jako 'cabinet' (§2 zadání). Řídí TĚLO
+ *   skříňky (§3): 'cabinet' → celni-stena/dvirka/police podle bodyStyle;
+ *   'drawers' → PRÁVĚ 2 zasuvka-celo (bodyStyle se ignoruje — 'drawers' v
+ *   datovém modelu §1 vlastní bodyStyle ani nemá); 'gnRack' → 12 gn-vsuv
+ *   (6+6, rozteč 70 mm), navíc dvirka podle bodyStyle.
+ * @param {string} [p.bodyStyle='closed']  u 'cabinet': 'closed' | 'doors' |
+ *   'open' (chybějící/neznámá hodnota → 'closed'); u 'gnRack': jen 'open' |
+ *   'doors' (chybějící/neznámá hodnota → 'open', NE 'closed' — §2 zadání);
+ *   u 'drawers' se nepoužívá vůbec.
+ * @param {boolean} [p.hasShelf=false]  jen u 'cabinet'+'open': při true se
+ *   navíc postaví těleso 'police'; při false (nebo u jiného kind/bodyStyle)
+ *   se těleso police VŮBEC NEPOSTAVÍ (§3c, stejná konvence jako H2 náběhy).
  */
 export function buildPodestavba({
   widthMM, depthMM = PODESTAVBA_DEPTH_MM, bodyHeightMM, finish,
   plinthType = DEFAULT_PLINTH_TYPE, plinthHeightMM = PLINTH_HEIGHT_DEFAULT_MM,
+  kind = 'cabinet', bodyStyle = 'closed', hasShelf = false,
 }) {
   const group = new THREE.Group();
   group.name = 'podestavba';
@@ -998,6 +1217,38 @@ export function buildPodestavba({
     const h2Right = buildH2Fillet(widthMM - WALL_MM, yBodyBottom + FLOOR_MM, -1, floorFrontZ, floorBackZ, stainless);
     h2Right.name = 'h2-pravy';
     group.add(h2Right);
+  }
+
+  // --- TĚLO podle druhu/stylu (§3a–§3e ZADANI-PODESTAVBY-MONO.md) ----------
+  // Neznámý `kind` se chová jako 'cabinet' (§2 zadání) — 'drawers'/'gnRack'
+  // jsou jediné jiné platné hodnoty, cokoli jiného (vč. chybějící) spadá sem.
+  const knobMat = createKnobMaterial(); // úchytky dvířek i zásuvek
+  const effectiveKind = kind === 'drawers' || kind === 'gnRack' ? kind : 'cabinet';
+
+  if (effectiveKind === 'cabinet') {
+    // neznámý bodyStyle → 'closed' (§2 zadání)
+    const style = bodyStyle === 'doors' || bodyStyle === 'open' ? bodyStyle : 'closed';
+    if (style === 'closed') {
+      buildCabinetFrontWall({ group, widthMM, bodyHeightMM, yBodyBottom, zFront, material: stainless });
+    } else if (style === 'doors') {
+      // za dvířky se čelní stěna NESTAVÍ (§3b) — dvířka kryjí otvor sama
+      buildCabinetDoors({ group, widthMM, bodyHeightMM, yBodyBottom, stainless, knobMat });
+    } else if (hasShelf) {
+      // style === 'open': bez čelní stěny i dvířek; police JEN při hasShelf
+      // (§3c) — při false se těleso vůbec nepostaví, ne jen schová.
+      buildCabinetShelf({ group, widthMM, depthMM, yBodyBottom, yBodyTop, zFront, material: stainless });
+    }
+  } else if (effectiveKind === 'drawers') {
+    // bodyStyle se u drawers nepoužívá (§1 — datový model ho ani nemá)
+    buildDrawerFronts({ group, widthMM, bodyHeightMM, yBodyBottom, stainless, knobMat });
+  } else if (effectiveKind === 'gnRack') {
+    // vsuvy se stavějí VŽDY, i za zavřenými dvířky (§3e)
+    buildGnRunners({ group, widthMM, depthMM, yBodyBottom, zFront, material: stainless });
+    if (bodyStyle === 'doors') {
+      // u gnRack neznámý bodyStyle → 'open' (NE 'closed', §2 zadání) — jen
+      // 'doors' přidává dvířka, cokoli jiného (vč. chybějící) je bez nich.
+      buildCabinetDoors({ group, widthMM, bodyHeightMM, yBodyBottom, stainless, knobMat });
+    }
   }
 
   group.userData.widthMM = widthMM;
@@ -1346,9 +1597,11 @@ export function checkSupport(podestavby, herdblokUsek) {
  * @param {number} [params.depthAMM]  hloubka strany A — u `island` se z ní
  *   (spolu s depthBMM) počítá totalDepthMM pro kombinovanou desku/nosy/límec.
  * @param {number} [params.depthBMM]  hloubka strany B — jen `island`.
- * @param {Array<{xMM:number, widthMM:number, depthMM?:number, finish?:string}>} params.podestavbyA
- *   `finish` je vlastnost KAŽDÉ SKŘÍŇKY ZVLÁŠŤ (viz buildPodestavba) — jedna
- *   řada může mít skříňky s různou úpravou vedle sebe.
+ * @param {Array<{xMM:number, widthMM:number, depthMM?:number, finish?:string,
+ *   kind?:string, bodyStyle?:string, hasShelf?:boolean}>} params.podestavbyA
+ *   `finish`/`kind`/`bodyStyle`/`hasShelf` (§2 ZADANI-PODESTAVBY-MONO.md) jsou
+ *   vlastnost KAŽDÉ SKŘÍŇKY ZVLÁŠŤ (viz buildPodestavba) — jedna řada může
+ *   mít skříňky s různým druhem/stylem/úpravou vedle sebe.
  * @param {Array<{xMM:number, widthMM:number, depthMM?:number, leftEndType?:string,
  *   rightEndType?:string, collar?:Array}>} params.herdblokA  úseky herdbloku strany A
  * @param {Array<{kind:string, xMM:number, heightMM:number}>} [params.panelItemsA]
@@ -1439,8 +1692,12 @@ export function buildMonoBlock({
   const podestavbyGroup = new THREE.Group();
   podestavbyGroup.name = 'podestavby';
   podA.forEach((p) => {
+    // kind/bodyStyle/hasShelf (§2 ZADANI-PODESTAVBY-MONO.md) — PROTAŽENÉ z
+    // položky beze změny, stejně jako finish; buildPodestavba() si sama
+    // ošetří chybějící/neznámou hodnotu (výchozí parametrů funkce).
     const mesh = buildPodestavba({
       widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish, plinthType, plinthHeightMM,
+      kind: p.kind, bodyStyle: p.bodyStyle, hasShelf: p.hasShelf,
     });
     mesh.position.x = mm(p.xMM);
     podestavbyGroup.add(mesh);
@@ -1508,8 +1765,10 @@ export function buildMonoBlock({
     const podestavbyBGroup = new THREE.Group();
     podestavbyBGroup.name = 'podestavby';
     podestavbyB.forEach((p) => {
+      // kind/bodyStyle/hasShelf — stejné protažení jako u strany A výš.
       const mesh = buildPodestavba({
         widthMM: p.widthMM, depthMM: p.depthMM, bodyHeightMM, finish: p.finish, plinthType, plinthHeightMM,
+        kind: p.kind, bodyStyle: p.bodyStyle, hasShelf: p.hasShelf,
       });
       mesh.position.x = mm(p.xMM);
       podestavbyBGroup.add(mesh);

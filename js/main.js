@@ -209,6 +209,16 @@ function sanitizeMonoCabinetBodyStyle(value) {
   return MONO_CABINET_BODY_STYLES.includes(value) ? value : 'closed';
 }
 
+// gnRack (§1 ZADANI-PODESTAVBY-MONO.md, úkol 16) má JEN dvě polohy —
+// „otevřená nebo s dvířky" (rozhodnutí zadavatele 9. 8. 2026) — na rozdíl
+// od cabinet, které má i 'closed'. Vlastní seznam/helper, ne sdílení s
+// MONO_CABINET_BODY_STYLES, aby 'closed' u gnRack nikdy neprošlo.
+const MONO_GNRACK_BODY_STYLES = ['open', 'doors'];
+
+function sanitizeMonoGnRackBodyStyle(value) {
+  return MONO_GNRACK_BODY_STYLES.includes(value) ? value : 'open';
+}
+
 /** Kladné konečné číslo v [0, max], jinak `fallback` — společný vzorec pro
  *  šířky/odsazení nových polí MONO (widthMM/frontOffsetMM/guardMM/heightMM). */
 function sanitizeMonoPositiveNumber(value, fallback, max = MONO_SAFETY_MAX_MM) {
@@ -242,17 +252,58 @@ function sanitizeMonoDevice(raw) {
 function sanitizeMonoCabinet(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const id = nextId++;
+  // drawers/gnRack (§1 zadání, úkoly 15/16) — šířka je PEVNÁ (400 = GN 1/1,
+  // 600 = GN 2/1), uživatel ji needituje (viz §4). Sanitizace přesně podle
+  // zadání: `raw.widthMM === 600 ? 600 : 400` — žádná jiná hodnota neprojde,
+  // ani z poškozeného/cizího souboru.
+  if (raw.kind === 'drawers' || raw.kind === 'gnRack') {
+    const widthMM = raw.widthMM === 600 ? 600 : 400;
+    const finish = sanitizeFinish(raw.finish);
+    if (raw.kind === 'drawers') {
+      return { id, kind: 'drawers', widthMM, finish };
+    }
+    return {
+      id,
+      kind: 'gnRack',
+      widthMM,
+      bodyStyle: sanitizeMonoGnRackBodyStyle(raw.bodyStyle),
+      finish,
+    };
+  }
   const widthMM = sanitizeMonoPositiveNumber(raw.widthMM, PODESTAVBA_WIDTH_DEFAULT_MM);
   if (raw.kind === 'gap') {
     return { id, kind: 'gap', widthMM };
   }
+  // Neznámý kind (a explicitní 'cabinet') spadne sem — dnešní chování větve
+  // „else". hasShelf NOVĚ (§1 zadání) — jen u cabinet, výchozí false; má
+  // význam jen při bodyStyle:'open', ale hodnota se drží i mimo něj
+  // (uživatel o zaškrtnutí nepřijde při přepnutí stylu, viz §1/§3c zadání).
   return {
     id,
     kind: 'cabinet',
     widthMM,
     bodyStyle: sanitizeMonoCabinetBodyStyle(raw.bodyStyle),
+    hasShelf: !!raw.hasShelf,
     finish: sanitizeFinish(raw.finish),
   };
+}
+
+// Mapování palety → uložený tvar (§1 zadání, tabulka „Mapování palety →
+// položka") — VÝHRADNĚ pro onMonoAdd('podestavby', kind) níže. Paletové kódy
+// drawers11/21 a gnRack11/21 (2. parametr onMonoAdd, viz MONO_TAB_SPECIALS
+// v ui.js) se NIKDY neukládají do souboru — tahle tabulka je přeloží na
+// uložený kind + pevnou šířku ještě PŘED sanitizeMonoCabinet. 'cabinet' a
+// 'gap' v mapě chybí záměrně — pro ně se surový `{ kind }` použije beze
+// změny (fallback níže), přesně jako dnes.
+const MONO_PODESTAVBA_PALETTE_MAP = {
+  drawers11: { kind: 'drawers', widthMM: 400 },
+  drawers21: { kind: 'drawers', widthMM: 600 },
+  gnRack11: { kind: 'gnRack', widthMM: 400 },
+  gnRack21: { kind: 'gnRack', widthMM: 600 },
+};
+
+function translateMonoPodestavbaPaletteKind(kind) {
+  return MONO_PODESTAVBA_PALETTE_MAP[kind] || { kind };
 }
 
 // MonoPanelItem (§1 zadání) — xMM je ABSOLUTNÍ poloha po délce bloku, NENÍ
@@ -1557,7 +1608,9 @@ const ui = setupUI({
     if (layer === 'herdblok') {
       list.push(sanitizeMonoDevice({ type: kind }));
     } else if (layer === 'podestavby') {
-      list.push(sanitizeMonoCabinet({ kind }));
+      // Paletové druhy (drawers11/21, gnRack11/21) se PŘEKLÁDAJÍ na uložený
+      // tvar (§1 zadání) — viz translateMonoPodestavbaPaletteKind výše.
+      list.push(sanitizeMonoCabinet(translateMonoPodestavbaPaletteKind(kind)));
     } else if (layer === 'panel') {
       // §2 zadání — panelItems jsou POLOHY, ne pořadí („polohy, ne pořadí"
       // v §1 zadání) — computeMonoLayout je nekumuluje podle indexu v poli,

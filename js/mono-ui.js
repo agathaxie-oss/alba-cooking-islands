@@ -39,6 +39,11 @@ const END_TYPE_VERTICAL = 'svislaDeska';
 const END_TYPE_CHAMFER = 'svislaDeskaZkos';
 
 const BODY_STYLE_OPTIONS = ['closed', 'doors', 'open']; // modules.js
+// gnRack (§4 ZADANI-PODESTAVBY-MONO.md, úkol 16) nabízí JEN dvě polohy —
+// „otevřená nebo s dvířky" (rozhodnutí zadavatele 9. 8. 2026), 'closed' se
+// u něj vůbec nenabízí. Vlastní seznam, ne podmnožina BODY_STYLE_OPTIONS
+// filtrovaná za běhu — stejná konvence jako ostatní literály v hlavičce.
+const GNRACK_BODY_STYLE_OPTIONS = ['open', 'doors'];
 // PLINTH_TYPES SEM ZÁMĚRNĚ NEPATŘÍ — ÚKOL 13 (ZADANI-SOKL.md) ruší volbu
 // soklu z pásu MONO, viz hlavička modulu výše a buildPodestavbyParamBar níže.
 // H3 se od úkolu 9a (PREDANI.md) nenabízí — zdroj pravdy je modules.js,
@@ -361,6 +366,21 @@ export function createMonoStrip({
     return select;
   }
 
+  // NOVĚ (§4 ZADANI-PODESTAVBY-MONO.md) — pruh parametrů zatím checkbox
+  // neměl (jen number input a select), postaven přesně podle zadání:
+  // `<label><input type=checkbox></label>` uvnitř paramField, ŽÁDNÁ nová
+  // CSS třída. Label obaluje input, aby klik na text taky trefil pole.
+  function paramCheckbox(checked, { fieldKey, onCommit }) {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = !!checked;
+    input.dataset.monoField = fieldKey;
+    input.addEventListener('change', () => onCommit(input.checked));
+    label.appendChild(input);
+    return label;
+  }
+
   // ---------------------------------------------------------------------------
   // Pravítko — značky po 500 mm + koncová na lengthMM (zadání §3). Popisky:
   // první translateX(0), poslední translateX(-100%), ostatní na střed —
@@ -494,6 +514,19 @@ export function createMonoStrip({
     }));
   }
 
+  // Popisek položky podestavby podle druhu a šířky (§4 ZADANI-PODESTAVBY-MONO.md,
+  // tabulka „Dlaždice pásu") — SDÍLENÉ oběma místy, která popisek potřebují:
+  // dlaždice v buildPodestavbyScale níže a titulek pruhu parametrů v
+  // buildPodestavbyParamBar. Neznámý/chybějící kind spadne na 'cabinet' —
+  // stejná konvence jako sanitizeMonoCabinet v main.js.
+  function podestavbaItemLabel(item) {
+    if (!item) return '';
+    if (item.kind === 'gap') return tt('mono.item.gap');
+    if (item.kind === 'drawers') return tt(item.widthMM === 600 ? 'mono.item.drawers21' : 'mono.item.drawers11');
+    if (item.kind === 'gnRack') return tt(item.widthMM === 600 ? 'mono.item.gnRack21' : 'mono.item.gnRack11');
+    return tt('mono.item.cabinet');
+  }
+
   // ---------------------------------------------------------------------------
   // Dráha Podestavby — koncové zóny, řada skříněk/mezer, volba 2A („chybí").
   // ---------------------------------------------------------------------------
@@ -519,8 +552,10 @@ export function createMonoStrip({
     layout.podestavby.forEach(({ item, xMM, widthMM, overflow }) => {
       const isGap = item && item.kind === 'gap';
       scale.appendChild(buildTile({
+        // CSS třída beze změny (§4 zadání) — všechny druhy kromě gap sdílejí
+        // dosavadní mono-tile-cabinet, jen popisek (name) rozlišuje druh/šířku.
         className: isGap ? 'mono-tile-gap mono-tile-wide' : 'mono-tile-cabinet mono-tile-wide',
-        name: isGap ? tt('mono.item.gap') : tt('mono.item.cabinet'),
+        name: podestavbaItemLabel(item),
         sizeText: tt('catalog.widthExact', { mm: Math.round(widthMM) }),
         subText: overflow ? tt('mono.overflow') : '',
         leftPct: pct(xMM, lengthMM),
@@ -682,17 +717,24 @@ export function createMonoStrip({
     if (index !== -1) {
       const { item, widthMM } = layout.podestavby[index];
       const isGap = item.kind === 'gap';
+      const isCabinet = item.kind === 'cabinet';
+      const isGnRack = item.kind === 'gnRack';
+      // drawers i gnRack mají PEVNOU šířku (§1 zadání) — v pruhu jen
+      // zobrazenou, stejně jako u herdbloku (buildHerdblokParamBar výše).
+      const widthEditable = isGap || isCabinet;
 
-      bar.appendChild(makeEl('span', 'mono-param-title', isGap ? tt('mono.item.gap') : tt('mono.item.cabinet')));
+      bar.appendChild(makeEl('span', 'mono-param-title', podestavbaItemLabel(item)));
 
       const fields = makeEl('div', 'mono-param-fields');
-      fields.appendChild(paramField(tt('field.width'), paramNumberInput(Math.round(widthMM), {
-        min: 0,
-        fieldKey: `podestavby:${item.id}:widthMM`,
-        onCommit: (n) => callbacks.onMonoUpdate?.('podestavby', item.id, { widthMM: n }, currentSide),
-      })));
+      fields.appendChild(paramField(tt('field.width'), widthEditable
+        ? paramNumberInput(Math.round(widthMM), {
+          min: 0,
+          fieldKey: `podestavby:${item.id}:widthMM`,
+          onCommit: (n) => callbacks.onMonoUpdate?.('podestavby', item.id, { widthMM: n }, currentSide),
+        })
+        : paramDisplay(tt('catalog.widthExact', { mm: Math.round(widthMM) }))));
 
-      if (!isGap) {
+      if (isCabinet) {
         fields.appendChild(paramField(tt('field.baseType'), paramSelect(
           BODY_STYLE_OPTIONS, item.bodyStyle, (v) => tt(`bodyStyle.${v}`),
           `podestavby:${item.id}:bodyStyle`,
@@ -702,6 +744,27 @@ export function createMonoStrip({
         // field.plinth/PLINTH_TYPES nad podestavbyItem.plinth): sokl je od
         // 31. 8. 2026 vlastnost CELÉHO BLOKU, nastavuje se v levém panelu
         // (ui.js #select-plinth-type), ne tady u jednotlivé skříňky.
+        // NOVĚ (§1/§4 ZADANI-PODESTAVBY-MONO.md) — police má význam jen při
+        // bodyStyle:'open' (§3c zadání), proto checkbox jen tady; hodnota
+        // hasShelf se ale drží i mimo 'open' (viz sanitizeMonoCabinet v
+        // main.js) — uživatel o zaškrtnutí nepřijde přepnutím stylu.
+        if (item.bodyStyle === 'open') {
+          fields.appendChild(paramField(tt('field.hasShelf'), paramCheckbox(item.hasShelf, {
+            fieldKey: `podestavby:${item.id}:hasShelf`,
+            onCommit: (checked) => callbacks.onMonoUpdate?.('podestavby', item.id, { hasShelf: checked }, currentSide),
+          })));
+        }
+      } else if (isGnRack) {
+        // bodyStyle OMEZENÝ na ['open','doors'] (§4 zadání, úkol 16) —
+        // GNRACK_BODY_STYLE_OPTIONS, ne BODY_STYLE_OPTIONS.
+        fields.appendChild(paramField(tt('field.baseType'), paramSelect(
+          GNRACK_BODY_STYLE_OPTIONS, item.bodyStyle, (v) => tt(`bodyStyle.${v}`),
+          `podestavby:${item.id}:bodyStyle`,
+          (v) => callbacks.onMonoUpdate?.('podestavby', item.id, { bodyStyle: v }, currentSide),
+        )));
+      }
+
+      if (!isGap) {
         fields.appendChild(paramField(tt('field.finish'), paramSelect(
           FINISH_TYPES, item.finish, (v) => v,
           `podestavby:${item.id}:finish`,

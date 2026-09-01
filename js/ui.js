@@ -429,6 +429,15 @@ export function setupUI(callbacks) {
     podestavby: [
       { key: 'cabinet', i18nKey: 'mono.item.cabinet', kind: 'cabinet' },
       { key: 'gap', i18nKey: 'mono.item.gap', kind: 'gap' },
+      // NOVĚ (§4 ZADANI-PODESTAVBY-MONO.md, úkoly 15/16) — šířka drawers/
+      // gnRack je PEVNÁ (400/600 mm), proto tu má `widthMM`: řádek pak
+      // ukáže skutečnou šířku místo '—' (viz specials.forEach níže).
+      // Paletové kódy *11/*21 se PŘEKLÁDAJÍ na uložený kind + widthMM až
+      // v main.js (onMonoAdd) — sem NIKDY neukládají.
+      { key: 'drawers11', i18nKey: 'mono.item.drawers11', kind: 'drawers11', widthMM: 400 },
+      { key: 'drawers21', i18nKey: 'mono.item.drawers21', kind: 'drawers21', widthMM: 600 },
+      { key: 'gnRack11', i18nKey: 'mono.item.gnRack11', kind: 'gnRack11', widthMM: 400 },
+      { key: 'gnRack21', i18nKey: 'mono.item.gnRack21', kind: 'gnRack21', widthMM: 600 },
     ],
     panel: [
       { key: 'socket230', i18nKey: 'mono.panel.socket230', kind: 'socket230' },
@@ -493,8 +502,12 @@ export function setupUI(callbacks) {
       paletteEls.list.appendChild(sep);
     }
     specials.forEach((sp) => {
+      // Záznamy s pevnou šířkou (drawers/gnRack, §4 ZADANI-PODESTAVBY-MONO.md)
+      // ukáží skutečnou šířku stejně jako katalogové položky výše, ostatní
+      // (cabinet, gap) zůstávají u dosavadního '—'.
+      const widthText = sp.widthMM ? t('catalog.widthExact', { mm: sp.widthMM }) : '—';
       paletteEls.list.appendChild(paletteRow(
-        sp.key, null, sp.name, '—', () => callbacks.onMonoAdd?.(layer, sp.kind, targetSide), false,
+        sp.key, null, sp.name, widthText, () => callbacks.onMonoAdd?.(layer, sp.kind, targetSide), false,
       ));
     });
 

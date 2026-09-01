@@ -110,8 +110,8 @@ const A_DEV = [
 const A_CAB = [
   {k:'A2.1', n:'Skříňka s dvířky · 600', x:50, w:600, sym:'door', ico:'door',
    p:['600 × 670 mm','křídlová dvířka','provedení H1','nerez AISI 304']},
-  {k:'A2.2', n:'Zásuvkový blok GN 1/1 · 400', x:650, w:400, sym:'drawers', drawers:2, ico:'drawers',
-   p:['400 × 670 mm','2 zásuvky na GN 1/1','plnovýsuvy','provedení H1','nerez AISI 304']},
+  {k:'A2.2', n:'Zásuvkový blok GN 1/1 · 400', x:650, w:400, sym:'drawers', drawers:3, ico:'drawers',
+   p:['400 × 670 mm','3 zásuvky na GN 1/1','plnovýsuvy','provedení H1','nerez AISI 304']},
   {k:null, n:'volný prostor', x:1050, w:600, sym:'gap'},
   {k:'A2.3', n:'Skříňka se zásuvy GN 2/1 · 600', x:1650, w:600, sym:'runners', runners:6, ico:'runners',
    p:['600 × 670 mm','6 párů vsuvů na GN 2/1','rozteč 70 mm','otevřená','provedení H1']},
@@ -226,13 +226,16 @@ function drawCab(side, it){
   R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none', stroke:INK,
     'stroke-width':1, 'stroke-dasharray':'7 4'}));
   if (it.sym === 'drawers'){
-    const n = it.drawers, step = 80, front = side === 'A' ? z1 : z2, sgn = side === 'A' ? -1 : 1;
+    // Zásuvky se kreslí VÝHRADNĚ PŘED lícem pracovní desky, tedy MIMO obrys
+    // bloku — zásuvkový blok desku nesmí překrývat, vidět má být jen to, co je
+    // vysunuté ven. Vztažná hrana je proto obrys bloku (z = 0 / TOT), ne líc
+    // skříňky. Jedno čelo = jeden pruh, počet pruhů = počet zásuvek.
+    const n = it.drawers, STEP = 55;
+    const edge = side === 'A' ? 0 : TOT, sgn = side === 'A' ? -1 : 1;
     for (let i = 0; i < n; i++){
-      const zf = front + sgn*(i+1)*step, zb = side === 'A' ? zf + 300 : zf - 300;
-      R.appendChild(el('rect', {x:x + 10, y:Math.min(Y(zf), Y(zb)), width:w - 20,
-        height:Math.abs(Y(zb) - Y(zf)), fill:'#fff', stroke:INK, 'stroke-width':.9}));
-      const zh = side === 'A' ? zf - 14 : zf + 14;
-      R.appendChild(el('line', {x1:x + w*0.34, y1:Y(zh), x2:x + w*0.66, y2:Y(zh), stroke:INK, 'stroke-width':1.7}));
+      const za = edge + sgn*(i*STEP), zb = edge + sgn*((i+1)*STEP);
+      R.appendChild(el('rect', {x:x + 8, y:Math.min(Y(za), Y(zb)), width:w - 16,
+        height:Math.abs(Y(zb) - Y(za)), fill:'#fff', stroke:INK, 'stroke-width':1}));
     }
   }
   if (it.sym === 'runners'){
@@ -331,7 +334,9 @@ txt(R, X(L - CH/2), Y(0) + 26, `zkosení ${CH}×${CH}`, {fs:8.6, fill:'#41505f'}
 /* ===================== tabulky ===================== */
 const ICO = {
   door:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="25" y1="8" x2="25" y2="38" stroke="#5d6b7a" stroke-width="2"/>',
-  drawers:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="6" y1="18" x2="44" y2="18" stroke="#5d6b7a"/><line x1="6" y1="28" x2="44" y2="28" stroke="#5d6b7a"/>',
+  drawers:'<rect x="6" y="6" width="38" height="34" fill="none" stroke="#5d6b7a"/>'
+    + '<line x1="6" y1="17.3" x2="44" y2="17.3" stroke="#5d6b7a"/>'
+    + '<line x1="6" y1="28.6" x2="44" y2="28.6" stroke="#5d6b7a"/>',
   runners:'<rect x="6" y="6" width="38" height="34" fill="none" stroke="#5d6b7a"/>' +
     [0,1,2,3,4,5].map(i=>`<line x1="10" y1="${10+i*5}" x2="18" y2="${10+i*5}" stroke="#5d6b7a"/><line x1="32" y1="${10+i*5}" x2="40" y2="${10+i*5}" stroke="#5d6b7a"/>`).join(''),
   shelf:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="6" y1="23" x2="44" y2="23" stroke="#5d6b7a" stroke-dasharray="3 2"/>',

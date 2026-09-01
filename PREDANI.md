@@ -254,7 +254,10 @@ a rozhodl PŘEVZÍT tyhle konvence — jsou závazné:
    — ne schematický pás.
 2. **Podestavby čárkovanou čarou** (leží pod deskou, zakrytá hrana).
 3. **Zásuvkové bloky s POVYSUNUTÝMI šuplíky** — počet zásuvek musí jít
-   spočítat přímo z kresby.
+   spočítat přímo z kresby. **Upřesněno 1. 9. 2026:** zásuvky se kreslí
+   VÝHRADNĚ PŘED lícem pracovní desky, tedy MIMO obrys bloku — zásuvkový blok
+   nesmí desku překrývat, vidět má být jen to, co je vysunuté. Vztažná hrana
+   je obrys bloku, ne líc skříňky. Jedno čelo = jeden pruh.
 4. **Podestavby číslované přímo u sebe**, bez odkazové čáry.
 5. **Přístroje a napouštěcí ramena na odkazové šipce** vyvedené mimo blok.
 
@@ -296,6 +299,15 @@ fotku nemají, dostávají schematickou ikonu.
 **POZOR — `<id>-top.svg` v katalogu jsou jen ZÁSTUPNÉ obrázky** (šedý
 obdélník s názvem souboru). Pro půdorys se použít NEDAJÍ; symboly přístrojů
 v kresbě se musí kreslit vlastní.
+
+**ROZPOR K VYJASNĚNÍ — počet zásuvek.** Mockup kreslí zásuvkový blok se
+TŘEMI zásuvkami, protože si to zadavatel vyžádal podle svého projektu.
+**Datový model to ale neumí:** úkol 15 stanovil „zásuvkový blok má PRÁVĚ
+2 zásuvky, počet je konstanta, ne parametr" a `sanitizeMonoCabinet`
+(`js/main.js`) žádné pole pro počet nemá. SEGMENT přitom 2 i 3 umí
+(`DRAWER_COUNT_OPTIONS`, `getSegmentDrawerCount`). Než se půdorys začne
+implementovat, musí zadavatel říct, jestli má MONO povolit i 3 zásuvky —
+pak se rozšíří `MonoCabinet` (nové pole), pás i geometrie.
 
 **Další pokyny ke kresbě** (1. 9. 2026):
 - Do půdorysu se **kreslí zkosené rohy** bloku (50 × 50 mm pod 45°, u ostrova

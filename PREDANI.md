@@ -313,6 +313,12 @@ v týchž zrcadlených polohách, ve kterých je nakreslená.
 se text tiskl dovnitř značky. Odsazení názvu se musí počítat z výšky rámečku,
 ne zadat natvrdo.
 
+**Elektrické zásuvky v panelu musí být označené i v kresbě.** Nejdřív měly
+jen symbol bez popisu, takže nešlo poznat, která je která — dostávají značku
+(`A3.x` / `B3.x`) na krátké odkazové čáře, menší než u přístrojů, protože jde
+o bodový prvek. Soupisy A3/B3 byly v dokumentu už předtím. V popisu bloku
+je navíc řádek **Elektroinstalace** odkazující na tyto soupisy.
+
 **Další pokyny ke kresbě** (1. 9. 2026):
 - Do půdorysu se **kreslí zkosené rohy** bloku (50 × 50 mm pod 45°, u ostrova
   oba rohy zkoseného konce). Zakončovací plech zkosení sleduje.

@@ -78,7 +78,7 @@ const S = 0.30;
 const L = 3200, DA = 850, DB = 850, TOT = DA + DB;
 const IN_L = 50, IN_R = 70, CH = 50;
 const END_L = 'plate', END_R = 'chamfer';
-const PAD_T = 172, PAD_B = 215, PAD_L = 96, PAD_R = 74;
+const PAD_T = 190, PAD_B = 215, PAD_L = 96, PAD_R = 74;
 const px = v => v * S, X = mm => px(mm), Y = z => px(TOT - z);
 const NS = 'http://www.w3.org/2000/svg';
 const el = (n, a = {}) => { const e = document.createElementNS(NS, n);
@@ -180,7 +180,10 @@ const POPIS = [
     + 'čelo 50 mm svislých po celé délce, přesah přes podestavby 30 mm vpředu. '
     + 'Bez výřezů — přístroje sedí na desce.'],
   ['Ovládací panel', 'Výška 240 mm, ustoupený 25 mm za líc desky, pod ním lišta 40 mm. '
-    + 'Na obou čelech ostrova.'],
+    + 'Na obou čelech ostrova. Nese ovládací prvky přístrojů a elektrické zásuvky.'],
+  ['Elektroinstalace', 'Elektrické zásuvky osazené v ovládacím panelu — poloha a provedení '
+    + 'jednotlivých kusů podle soupisů A3 a B3, v půdorysu označené týmiž pozicemi. '
+    + 'Přívod k bloku podle příkonu osazených přístrojů (viz soupisy A1 a B1).'],
 ];
 
 /* ===================== kresba ===================== */
@@ -302,12 +305,20 @@ ARMS.forEach(a => { const x = X(a.x), y = Y(DA);
   const x = X(side === 'A' ? s.x : mirrorPt(s.x)), y = side === 'A' ? Y(25) : Y(1675);
   R.appendChild(el('rect', {x:x-7, y:y-5, width:14, height:10, fill:'#fff', stroke:INK, 'stroke-width':1}));
   R.appendChild(el('circle', {cx:x, cy:y, r:2.4, fill:INK}));
+  // Označení zásuvky — dřív měla v kresbě jen symbol bez popisu, takže nešlo
+  // poznat, která je která. Krátká odkazová čára ven z bloku, značka menší
+  // než u přístrojů (zásuvka je bodový prvek, ne plocha).
+  const ly = side === 'A' ? Y(0) + 30 : -16;
+  const knee = side === 'A' ? ly - 9 : ly + 9;
+  R.appendChild(el('line', {x1:x, y1:knee, x2:x, y2:y + (side === 'A' ? 7 : -7),
+    stroke:INK, 'stroke-width':.9, 'marker-end':'url(#ar)'}));
+  tag(x, ly, s.k, {fs:10.5});
 }));
 A_DEV.forEach(it => { const [z1] = zr('A', it.fo, it.d);
   leader(X(it.x + it.w/2), Y(0) + 176, X(it.x + it.w/2), Y(z1) + 2, it.k, it.n.split(' · ')[0], false); });
 B_DEV.map(mirror).forEach(it => { const [, z2] = zr('B', it.fo, it.d);
-  leader(X(it.x + it.w/2), -125, X(it.x + it.w/2), Y(z2) - 2, it.k, it.n.split(' · ')[0], true); });
-ARMS.forEach((a, i) => leader(X(a.x) + (i ? 70 : -70), -72, X(a.x), Y(DA) - 20, a.k, '', true));
+  leader(X(it.x + it.w/2), -142, X(it.x + it.w/2), Y(z2) - 2, it.k, it.n.split(' · ')[0], true); });
+ARMS.forEach((a, i) => leader(X(a.x) + (i ? 70 : -70), -94, X(a.x), Y(DA) - 20, a.k, '', true));
 tag(X(IN_L/2), Y(TOT) - 16, 'S1', {fs:11.5});
 tag(X(L - IN_R/2) + 6, Y(TOT) - 16, 'S2', {fs:11.5});
 
@@ -341,8 +352,8 @@ yd += 22; dim(0, L, yd, `celková délka ${L}`);
    Dřív chyběly úplně — kótoval se jen řetězec strany A pod blokem, takže
    strana B neměla u sebe žádný rozměr. Polohy se berou z mirror(), tedy
    z týchž souřadnic, ve kterých je strana B nakreslená.                   */
-chain(B_CAB.map(mirror), -22, 'podestavby B');
-chain(B_DEV.map(mirror), -44, 'přístroje B');
+chain(B_CAB.map(mirror), -44, 'podestavby B');
+chain(B_DEV.map(mirror), -66, 'přístroje B');
 vdim(0, DA, -28, `hloubka A ${DA}`); vdim(DA, TOT, -28, `hloubka B ${DB}`);
 vdim(0, TOT, -56, `celkem ${TOT}`);
 R.appendChild(el('line', {x1:X(L-CH), y1:Y(0)+12, x2:X(L), y2:Y(0)+12, stroke:THIN, 'stroke-width':.75}));

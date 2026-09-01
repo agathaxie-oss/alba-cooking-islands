@@ -235,7 +235,40 @@ Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
 ## 21. Půdorys s popisky neumí MONO — VADA + PŘESTAVBA
 
-**ROZPRACOVÁNO 1. 9. 2026 — mockup hotový, implementace NEZAČALA.**
+**HOTOVO 1. 9. 2026.** Implementováno podle `ZADANI-PUDORYS-MONO.md`
+(závazná smlouva, zůstává jako reference) ve dvou etapách:
+
+- **etapa 1** — `computeMonoDocModel()` + `buildMonoFloorplanSVG()` ve
+  `floorplan.js`, 78 klíčů `mono.doc.*`/`mono.param.*` v 5 jazycích,
+  styly karty v `css/style.css`;
+- **etapa 2** — větev MONO v `report.js` (popis bloku, společné prvky,
+  půdorys, karty po stranách; oddíl ramen se u MONO vynechá, ramena jsou
+  mezi společnými prvky).
+
+**`computeMonoDocModel()` je JEDINÝ zdroj pozic a číslování** pro kresbu
+i dokument — `report.js` si nic nedopočítává. Polohy bere z
+`computeMonoLayout()`, **strana B se v modelu ZRCADLÍ** (`lengthMM − xMM −
+widthMM` u ploch, `lengthMM − xMM` u bodových prvků), zatímco fyzické konce
+bloku se nezrcadlí nikdy.
+
+Ověřeno měřením: číslování s přeskočením `gap`, zrcadlení strany B
+(B1.1 @2730, B2.1 @2330), popisky kót, fotky z katalogu vracejí HTTP 200,
+dokument ve všech 5 jazycích, prázdné kategorie se nevypisují, dokument se
+otevře v aplikaci, čistá konzole. **SEGMENT beze změny** — jeho dokument má
+dál „Základní údaje bloku / Technická specifikace / Soupis dílů / Ramena
+a baterie", půdorys vlastní nadpis a popisky ČELO/ZEĎ.
+
+**Dvě vady zachycené až přejímkou** (ne agenty):
+- `{n} zón` sedí jen na 5 a víc — čtyřzónová deska hlásila „4 zón".
+  Počitatelné údaje s PROMĚNNÝM počtem musí mít tvar bez skloňování
+  („počet zón {n}"). U pevných počtů (2 zásuvky, 6 párů vsuvů) to nevadí.
+- Desetinná čísla z katalogu (`powerKW: 13.6`) se vkládala syrově, takže
+  v češtině vycházelo „13.6 kW". Formátují se podle jazyka: en tečka,
+  cs/sk/de/pl čárka; celá čísla bez desetinné části.
+
+Zbytek oddílu popisuje, CO se stavělo a proč — zůstává jako reference.
+
+Původní stav vady:
 
 Zadavatel nahlásil tři věci, které mají JEDNU společnou příčinu:
 neukazují se přístroje strany B, neukazuje se konkrétní skříňka, a půdorys

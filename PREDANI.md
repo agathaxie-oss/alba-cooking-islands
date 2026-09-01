@@ -270,10 +270,33 @@ strana B se měří od svého vlastního levého kraje (viz úkol 18).
 Mockup: **`mockup-pudorys-mono.html`** (běží bez build kroku, otevřít přes
 lokální server). Kreslí ostrov 3200×1700 se všemi pěti konvencemi.
 
-**Otevřená otázka:** zakončovací plechy, sokl, límce a ramena nepatří jedné
-straně (u ostrova je vodopád vidět z obou). V mockupu jsou vedené jako
-„společné díly bloku" s prostým číslováním; druhá možnost je `A4.x`.
-Zadavatel zatím nerozhodl.
+**Struktura dokumentu** (rozhodl zadavatel 1. 9. 2026):
+
+1. **Popis varného bloku** — rozměry, provedení, materiály, popisy zakončení
+   a pracovní desky herdbloku.
+2. **Soupis společných prvků** značených **S1, S2 …** — tím je zodpovězená
+   dřívější otázka: zakončovací plechy, sokl a ramena NEJSOU `A4.x`, mají
+   vlastní řadu S. V půdorysu nesou totéž označení.
+3. Půdorys.
+4. Soupisy prvků podle stran (`A1.x`, `A2.x`, `A3.x`, `B…`).
+
+**Sloupce VŠECH soupisů** (přístroje, podestavby i ostatní prvky):
+`Poz. · Název · Rozměry · Příkon · Podrobný popis`. Příkon včetně připojení
+(např. `3N 400 V/50 Hz`, `Plyn 22 kW · G 1/2″`). **Sloupec „poloha" se
+nepoužívá.**
+
+**Další pokyny ke kresbě** (1. 9. 2026):
+- Do půdorysu se **kreslí zkosené rohy** bloku (50 × 50 mm pod 45°, u ostrova
+  oba rohy zkoseného konce). Zakončovací plech zkosení sleduje.
+- **Žádné čerchované čáry** — středová osa ani hranice neutrální pracovní
+  plochy se nekreslí, fyzicky nic takového neexistuje.
+- **Nepsat „Čelo A / Čelo B"** ani popis orientace.
+- Označení pozic **výrazné** (rámeček, tučně).
+
+**Zdroj dat pro příkon:** katalog už má `powerKW`, `voltage` a `gasKW`
+(i po zónách u sporáků) — sloupec se z nich naplní. **Podrobný popis katalog
+NEMÁ** — buď se doplní jako nové pole položky, nebo se poskládá z toho, co
+položka nese. **Zadavatel zatím nerozhodl.**
 
 **Rozsah: jen MONO.** SEGMENT se nechává být (výslovné rozhodnutí zadavatele
 1. 9. 2026) — jeho větev ve `floorplan.js` se nesmí změnit.

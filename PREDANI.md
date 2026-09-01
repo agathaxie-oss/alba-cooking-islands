@@ -280,10 +280,22 @@ lokální server). Kreslí ostrov 3200×1700 se všemi pěti konvencemi.
 3. Půdorys.
 4. Soupisy prvků podle stran (`A1.x`, `A2.x`, `A3.x`, `B…`).
 
-**Sloupce VŠECH soupisů** (přístroje, podestavby i ostatní prvky):
-`Poz. · Název · Rozměry · Příkon · Podrobný popis`. Příkon včetně připojení
-(např. `3N 400 V/50 Hz`, `Plyn 22 kW · G 1/2″`). **Sloupec „poloha" se
-nepoužívá.**
+**Podoba soupisů** (upřesněno 1. 9. 2026 — nahrazuje dřívější tabulku se
+sloupci): soupis NENÍ tabulka s hlavičkou sloupců, ale **karta na položku** —
+v záhlaví pozice a název, pod tím **fotka vedle popisu**. Fotka tak může být
+větší a popis obsáhlejší.
+
+**Podrobný popis se skládá AUTOMATICKY z parametrů položky** (spojené ' · ',
+včetně rozměrů a příkonu s připojením). Proto **samostatné sloupce „Rozměry"
+a „Příkon" ZANIKLY** — stejně jako dřívější „poloha".
+
+**Fotka:** z katalogu, `img/pristroje/<id>-card.webp` — ověřeno, že jde
+o skutečné fotografie 1500 × 1500 px. Podestavby, zásuvky a společné prvky
+fotku nemají, dostávají schematickou ikonu.
+
+**POZOR — `<id>-top.svg` v katalogu jsou jen ZÁSTUPNÉ obrázky** (šedý
+obdélník s názvem souboru). Pro půdorys se použít NEDAJÍ; symboly přístrojů
+v kresbě se musí kreslit vlastní.
 
 **Další pokyny ke kresbě** (1. 9. 2026):
 - Do půdorysu se **kreslí zkosené rohy** bloku (50 × 50 mm pod 45°, u ostrova

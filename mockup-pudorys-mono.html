@@ -11,16 +11,29 @@
   .wrap{max-width:1320px;margin:0 auto}
   h1{font-size:23px;margin:0 0 4px}
   h2{font-size:18px;margin:0 0 10px;color:var(--alba)}
-  h3{font-size:14.5px;margin:16px 0 5px}
-  h4{font-size:15px;margin:20px 0 2px}
+  h3{font-size:14.5px;margin:18px 0 5px}
+  h4{font-size:15px;margin:22px 0 2px}
   .sub{color:var(--mut);margin:0 0 20px}
   .card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:20px}
   .why{color:var(--mut);font-size:13px;margin:2px 0 14px}
   table{border-collapse:collapse;width:100%;font-size:13px;margin:5px 0 14px}
   th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
   th{background:#eef3f7;font-weight:600}
-  td.k{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:700;width:52px}
-  td.r,td.p{white-space:nowrap}
+  /* soupis: karta na položku — bez hlavičky sloupců, v záhlaví pozice a název,
+     pod tím větší fotka vedle popisu */
+  .polozka{border:1px solid var(--line);border-radius:6px;margin:0 0 10px;overflow:hidden;
+           background:#fff;break-inside:avoid}
+  .polozka .hl{background:#eef3f7;border-bottom:1px solid var(--line);
+               padding:8px 14px;display:flex;gap:12px;align-items:baseline}
+  .polozka .hl .poz{color:var(--alba);font-weight:800;font-variant-numeric:tabular-nums;
+                    font-size:15px;min-width:52px}
+  .polozka .hl .nz{font-weight:600;font-size:14.5px}
+  .polozka .telo{display:flex;gap:16px;padding:13px 14px;align-items:flex-start}
+  .polozka .foto img,.polozka .foto .ikona{width:170px;height:128px;border:1px solid var(--line);
+           border-radius:4px;display:block;object-fit:cover;background:#f7f9fb}
+  .polozka .foto .ikona{display:flex;align-items:center;justify-content:center}
+  .polozka .popis{flex:1;font-size:13.5px;line-height:1.6}
+  @media (max-width:640px){ .polozka .telo{flex-direction:column} }
   table.popis td:first-child{width:210px;font-weight:600;background:#f7f9fb}
   .q{background:#eef6fb;border:1px solid #b9dbef;border-radius:7px;padding:12px 15px;font-size:13px;margin-top:12px}
   .vp{overflow-x:auto;background:#fff;padding:6px 0}
@@ -31,16 +44,14 @@
 <div class="wrap">
 
 <h1>Specifikace varného bloku ALBA MONO</h1>
-<p class="sub">Mockup dokumentu ke schválení. Čísla i texty jsou z ukázkové sestavy —
-v aplikaci se doplní z projektu a z katalogu.</p>
+<p class="sub">Mockup dokumentu ke schválení. Sestava je ukázková — v aplikaci se vše doplní
+z projektu a z katalogu.</p>
 
-<!-- 1 ------------------------------------------------------------------- -->
 <div class="card">
 <h2>1 · Popis varného bloku</h2>
 <table class="popis" id="popis"></table>
 </div>
 
-<!-- 2 ------------------------------------------------------------------- -->
 <div class="card">
 <h2>2 · Soupis společných prvků</h2>
 <p class="why">Prvky, které nepatří jedné straně — u ostrova jsou vidět z obou.
@@ -48,101 +59,107 @@ Značí se <b>S1, S2 …</b> a v půdorysu mají stejné označení.</p>
 <div id="spol"></div>
 </div>
 
-<!-- 3 ------------------------------------------------------------------- -->
 <div class="card">
 <h2>3 · Půdorys</h2>
 <div class="vp"><svg id="dwg"></svg></div>
 </div>
 
-<!-- 4 ------------------------------------------------------------------- -->
 <div class="card">
 <h2>4 · Soupis prvků podle stran</h2>
+<p class="why">Popis se skládá automaticky z parametrů položky — proto tabulka nemá
+samostatné sloupce pro rozměry a příkon.</p>
 <div id="lists"></div>
 <div class="q" id="q"></div>
 </div>
 
 <script>
-/* ===================== měřítko a rám ===================== */
+/* ===================== měřítko ===================== */
 const S = 0.30;
 const L = 3200, DA = 850, DB = 850, TOT = DA + DB;
-const IN_L = 50, IN_R = 70;      // zatažení: vodopád / zkosený vodopád
-const CH   = 50;                 // zkosení rohu v půdorysu (50 × 50, 45°)
+const IN_L = 50, IN_R = 70, CH = 50;
 const END_L = 'plate', END_R = 'chamfer';
 const PAD_T = 126, PAD_B = 186, PAD_L = 96, PAD_R = 74;
-
-const px = v => v * S;
-const X  = mm => px(mm);
-const Y  = z  => px(TOT - z);    // čelo strany A (z = 0) je dole
-
+const px = v => v * S, X = mm => px(mm), Y = z => px(TOT - z);
 const NS = 'http://www.w3.org/2000/svg';
 const el = (n, a = {}) => { const e = document.createElementNS(NS, n);
   for (const k in a) e.setAttribute(k, a[k]); return e; };
-const txt = (g, x, y, s, o = {}) => { const t = el('text', {x, y,
-  'font-size': o.fs || 10, fill: o.fill || '#111820', 'text-anchor': o.anchor || 'middle',
-  'font-weight': o.fw || 400}); t.textContent = s; g.appendChild(t); return t; };
+const txt = (g, x, y, s, o = {}) => { const t = el('text', {x, y, 'font-size':o.fs||10,
+  fill:o.fill||'#111820', 'text-anchor':o.anchor||'middle', 'font-weight':o.fw||400});
+  t.textContent = s; g.appendChild(t); return t; };
+const IMG = 'img/pristroje/';
 
-/* ===================== sestava ===================== */
+/* ===================== sestava =====================
+   `p` = parametry položky. Podrobný popis se z nich SKLÁDÁ automaticky
+   (spojením ' · '), proto tabulka nemá sloupce rozměry ani příkon.        */
 const A_DEV = [
-  {k:'A1.1', n:'Sporák plynový 22 kW', x:50,   w:800, d:700, fo:75, sym:'burners4',
-   pr:'Plyn 22 kW · G 1/2″ · zapalování 230 V/50 Hz',
-   po:'Čtyřhořákový plynový sporák, litinové mřížky, hořáky 2× 6 kW a 2× 5 kW, piezo zapalování, pojistka plamene.'},
-  {k:'A1.2', n:'Fritéza 10 l', x:850, w:400, d:700, fo:75, sym:'fryer1',
-   pr:'9 kW · 3N 400 V/50 Hz',
-   po:'Jednovanová elektrická fritéza, objem 10 l, nerezová vana s výpustí, koš, termostat 60–190 °C.'},
-  {k:'A1.3', n:'Pracovní plocha', x:1250, w:400, d:700, fo:75, sym:'plain',
-   pr:'—',
-   po:'Neutrální pracovní plocha bez přístroje — průběžná deska herdbloku.'},
-  {k:'A1.4', n:'Indukce 1 zóna 5 kW', x:1650, w:500, d:700, fo:75, sym:'induction',
-   pr:'5 kW · 3N 400 V/50 Hz',
-   po:'Jednozónová indukční deska, zóna 400 × 400 mm, sklokeramika, 9 stupňů výkonu.'},
+  {k:'A1.1', n:'Sporák plynový 22 kW · 800', x:50, w:800, d:700, fo:75, sym:'burners4',
+   img:'al-pg22-800-g-card.webp',
+   p:['800 × 700 mm','plyn 22 kW','přípojka G 1/2″','zapalování 230 V/50 Hz',
+      '4 hořáky: 2× 6 kW + 2× 5 kW','litinové mřížky','pojistka plamene']},
+  {k:'A1.2', n:'Fritéza 8+8 l · 400', x:850, w:400, d:700, fo:75, sym:'fryer2',
+   img:'al-fr88-400-e-card.webp',
+   p:['400 × 700 mm','2× 7,5 kW','3N 400 V/50 Hz','dvě vany 8 + 8 l',
+      'samostatné termostaty 60–190 °C','dva koše','výpust vany']},
+  {k:'A1.3', n:'Pracovní plocha · 400', x:1250, w:400, d:700, fo:75, sym:'plain', img:null, ico:'plain',
+   p:['400 × 700 mm','bez přípojky','neutrální plocha na průběžné desce herdbloku']},
+  {k:'A1.4', n:'Sklokeramika 4 zóny · 800', x:1650, w:800, d:700, fo:75, sym:'ceramic',
+   img:'al-cer14-800-e-card.webp',
+   p:['800 × 700 mm','14 kW','3N 400 V/50 Hz','4 zóny','sklokeramický povrch',
+      'plynulá regulace výkonu']},
 ];
 const A_CAB = [
-  {k:'A2.1', n:'Skříňka s dvířky', x:50, w:600, sym:'door',
-   pr:'—', po:'Uzavřená podestavba s křídlovými dvířky, hygienické provedení H1.'},
-  {k:'A2.2', n:'Zásuvkový blok GN 1/1', x:650, w:400, sym:'drawers', drawers:2,
-   pr:'—', po:'Podestavba se 2 zásuvkami na GN 1/1, plnovýsuvy, provedení H1.'},
+  {k:'A2.1', n:'Skříňka s dvířky · 600', x:50, w:600, sym:'door', ico:'door',
+   p:['600 × 670 mm','křídlová dvířka','provedení H1','nerez AISI 304']},
+  {k:'A2.2', n:'Zásuvkový blok GN 1/1 · 400', x:650, w:400, sym:'drawers', drawers:2, ico:'drawers',
+   p:['400 × 670 mm','2 zásuvky na GN 1/1','plnovýsuvy','provedení H1','nerez AISI 304']},
   {k:null, n:'volný prostor', x:1050, w:600, sym:'gap'},
-  {k:'A2.3', n:'Skříňka se zásuvy GN 2/1', x:1650, w:600, sym:'runners', runners:6,
-   pr:'—', po:'Otevřená podestavba se 6 páry vsuvů na GN 2/1, rozteč 70 mm, provedení H1.'},
+  {k:'A2.3', n:'Skříňka se zásuvy GN 2/1 · 600', x:1650, w:600, sym:'runners', runners:6, ico:'runners',
+   p:['600 × 670 mm','6 párů vsuvů na GN 2/1','rozteč 70 mm','otevřená','provedení H1']},
 ];
 const B_DEV = [
-  {k:'B1.1', n:'Sporák plynový 11 kW', x:70, w:400, d:700, fo:75, sym:'burners2',
-   pr:'Plyn 11 kW · G 1/2″ · zapalování 230 V/50 Hz',
-   po:'Dvouhořákový plynový sporák, litinové mřížky, hořáky 6 a 5 kW, pojistka plamene.'},
-  {k:'B1.2', n:'Pracovní plocha', x:470, w:400, d:700, fo:75, sym:'plain',
-   pr:'—', po:'Neutrální pracovní plocha bez přístroje.'},
-  {k:'B1.3', n:'Fritéza 8+8 l', x:870, w:400, d:700, fo:75, sym:'fryer2',
-   pr:'2× 7,5 kW · 3N 400 V/50 Hz',
-   po:'Dvouvanová elektrická fritéza 8 + 8 l, samostatné termostaty, dva koše.'},
+  {k:'B1.1', n:'Sporák plynový 11 kW · 400', x:70, w:400, d:700, fo:75, sym:'burners2',
+   img:'al-pg11-400-g-card.webp',
+   p:['400 × 700 mm','plyn 11 kW','přípojka G 1/2″','zapalování 230 V/50 Hz',
+      '2 hořáky: 6 + 5 kW','litinové mřížky','pojistka plamene']},
+  {k:'B1.2', n:'Pracovní plocha · 400', x:470, w:400, d:700, fo:75, sym:'plain', img:null, ico:'plain',
+   p:['400 × 700 mm','bez přípojky','neutrální plocha']},
+  {k:'B1.3', n:'Fritéza 10+10 l · 600', x:870, w:600, d:700, fo:75, sym:'fryer2',
+   img:'al-fr1010-600-e-card.webp',
+   p:['600 × 700 mm','2× 9 kW','3N 400 V/50 Hz','dvě vany 10 + 10 l',
+      'samostatné termostaty','dva koše']},
 ];
 const B_CAB = [
-  {k:'B2.1', n:'Skříňka otevřená s policí', x:70, w:800, sym:'open',
-   pr:'—', po:'Otevřená podestavba s jednou mezipolicí, provedení H1.'},
+  {k:'B2.1', n:'Skříňka otevřená s policí · 800', x:70, w:800, sym:'open', ico:'shelf',
+   p:['800 × 670 mm','otevřená','jedna mezipolice','provedení H1','nerez AISI 304']},
 ];
 const A_SOC = [
-  {k:'A3.1', n:'Zásuvka 230 V', x:1200, pr:'230 V/50 Hz · 16 A', po:'Zásuvka v čelním panelu, krytí IP44.'},
-  {k:'A3.2', n:'Zásuvka CEE',   x:2000, pr:'3N 400 V/50 Hz · 16 A', po:'Průmyslová zásuvka CEE 5p v čelním panelu, krytí IP44.'},
+  {k:'A3.1', n:'Zásuvka 230 V', x:1200, ico:'socket',
+   p:['230 V/50 Hz','16 A','krytí IP44','v čelním panelu, 1200 mm od levého konce']},
+  {k:'A3.2', n:'Zásuvka CEE', x:2000, ico:'socket',
+   p:['3N 400 V/50 Hz','16 A','CEE 5p','krytí IP44','v čelním panelu, 2000 mm od levého konce']},
 ];
 const B_SOC = [
-  {k:'B3.1', n:'Zásuvka 230 V', x:600, pr:'230 V/50 Hz · 16 A', po:'Zásuvka v čelním panelu, krytí IP44.'},
+  {k:'B3.1', n:'Zásuvka 230 V', x:600, ico:'socket',
+   p:['230 V/50 Hz','16 A','krytí IP44','v čelním panelu, 600 mm od levého konce']},
 ];
-/* společné prvky — S1, S2 … ; ARMS mají v kresbě totéž označení */
-const ARMS = [
-  {k:'S4', x:1150}, {k:'S5', x:2350},
-];
+const ARMS = [{k:'S4', x:1150}, {k:'S5', x:2350}];
 const SPOL = [
-  {k:'S1', n:'Zakončovací plech levý — vodopád', r:'50 × 1700 mm', pr:'—',
-   po:'Pracovní deska přetéká přes bok herdbloku v celé šířce a zakrývá jej; pod ní navazuje boční panel zakrývající podestavbu. Roh v půdorysu ostrý.'},
-  {k:'S2', n:'Zakončovací plech pravý — zkosený vodopád', r:'70 × 1700 mm', pr:'—',
-   po:'Totéž jako S1, navíc zkosení rohů 50 × 50 mm pod 45° v půdorysu. U ostrova jsou zkosené oba rohy tohoto konce. Ve svislém řezu se proti vodopádu nic nemění.'},
-  {k:'S3', n:'Sokl konstrukční, výška 150 mm', r:'v. 150 mm, uskočení 50 mm', pr:'—',
-   po:'Nerezový rám, na kterém blok sedí, jen pod souvislými úseky skříněk. Uskočení 50 mm od líců skříněk ze všech stran. Bez nožiček.'},
-  {k:'S4', n:'Napouštěcí rameno', r:'v. 300 mm, vyložení 250 mm', pr:'Voda 1/2″',
-   po:'Otočné napouštěcí rameno na spáře mezi řadami A a B, poloha 1150 mm od levého konce.'},
-  {k:'S5', n:'Napouštěcí rameno', r:'v. 300 mm, vyložení 250 mm', pr:'Voda 1/2″',
-   po:'Otočné napouštěcí rameno na spáře mezi řadami A a B, poloha 2350 mm od levého konce.'},
+  {k:'S1', n:'Zakončovací plech levý — vodopád', ico:'end',
+   p:['50 × 1700 mm','nerez AISI 304','deska přetéká přes bok v celé šířce',
+      'pod ní boční panel kryjící podestavbu','roh v půdorysu ostrý']},
+  {k:'S2', n:'Zakončovací plech pravý — zkosený vodopád', ico:'endch',
+   p:['70 × 1700 mm','nerez AISI 304','zkosení rohů 50 × 50 mm pod 45° v půdorysu',
+      'u ostrova zkosené oba rohy tohoto konce','ve svislém řezu shodné s vodopádem']},
+  {k:'S3', n:'Sokl konstrukční', ico:'plinth',
+   p:['výška 150 mm','uskočení 50 mm od líců skříněk ze všech stran',
+      'nerezový rám, na kterém blok sedí','jen pod souvislými úseky skříněk','bez nožiček']},
+  {k:'S4', n:'Napouštěcí rameno', ico:'arm',
+   p:['výška 300 mm','vyložení 250 mm','přípojka vody 1/2″','otočné',
+      'na spáře mezi řadami, 1150 mm od levého konce']},
+  {k:'S5', n:'Napouštěcí rameno', ico:'arm',
+   p:['výška 300 mm','vyložení 250 mm','přípojka vody 1/2″','otočné',
+      'na spáře mezi řadami, 2350 mm od levého konce']},
 ];
-
 const POPIS = [
   ['Produktová řada', 'ALBA MONO — ostrovní varný blok'],
   ['Rozměry (d × š × v)', `${L} × ${TOT} × 900 mm`],
@@ -152,15 +169,13 @@ const POPIS = [
   ['Provedení', 'Průběžná pracovní deska přes obě strany, ovládací panel na obou čelech, '
     + 'podestavby obou stran nezávislé. Blok stojí na konstrukčním soklu.'],
   ['Materiály', 'Nerezová ocel ČSN 17 240 (AISI 304), broušený povrch. Pracovní deska, '
-    + 'boční kryty, zakončovací plechy, korpusy podestaveb i sokl v nerezu; '
-    + 'ovládací panel v nerezu s ovládacími prvky přístrojů.'],
+    + 'boční kryty, zakončovací plechy, korpusy podestaveb i sokl v nerezu.'],
   ['Povrchová úprava', 'Hygienické provedení dle skříňky: HS+, H1 nebo H2 '
     + '(H2 má v koutech podestavby radius 16 mm, H1 a HS+ ostrý roh).'],
-  ['Zakončení levé', 'Vodopád — svislá deska. Deska přetéká přes bok v celé šířce, '
-    + 'zatažení panelu a lišty 50 mm. Rohy v půdorysu ostré. Viz S1.'],
-  ['Zakončení pravé', 'Zkosený vodopád. Zatažení panelu a lišty 70 mm '
-    + '(20 mm rovná část + 50 mm zkosení). Zkosení je POUZE v půdorysu — '
-    + 've svislém řezu se proti vodopádu nemění nic. Viz S2.'],
+  ['Zakončení levé', 'Vodopád — svislá deska, zatažení panelu a lišty 50 mm, '
+    + 'rohy v půdorysu ostré. Viz S1.'],
+  ['Zakončení pravé', 'Zkosený vodopád, zatažení 70 mm (20 mm rovná část + 50 mm zkosení). '
+    + 'Zkosení je pouze v půdorysu. Viz S2.'],
   ['Pracovní deska herdbloku', 'Jediná průběžná deska přes obě strany v hloubkách A + B, '
     + 'čelo 50 mm svislých po celé délce, přesah přes podestavby 30 mm vpředu. '
     + 'Bez výřezů — přístroje sedí na desce.'],
@@ -168,7 +183,7 @@ const POPIS = [
     + 'Na obou čelech ostrova.'],
 ];
 
-/* ===================== kreslení ===================== */
+/* ===================== kresba ===================== */
 const mirror = it => ({...it, x: L - it.x - it.w});
 const mirrorPt = x => L - x;
 const zr = (side, from, size) => side === 'A' ? [from, from + size] : [1700 - from - size, 1700 - from];
@@ -183,212 +198,176 @@ defs.innerHTML = `<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWi
 const R = el('g', {transform:`translate(${PAD_L},${PAD_T})`}); svg.appendChild(R);
 const INK = '#111820', THIN = '#6b7783';
 
-/* --- obrys bloku se ZKOSENÝMI ROHY -------------------------------------- */
-function blockOutline(){
-  const lc = END_L === 'chamfer', rc = END_R === 'chamfer';
-  const p = [];
-  p.push(lc ? [CH, 0] : [0, 0]);
-  p.push(rc ? [L - CH, 0] : [L, 0]);
-  if (rc) p.push([L, CH]);
-  p.push(rc ? [L, TOT - CH] : [L, TOT]);
-  if (rc) p.push([L - CH, TOT]);
-  p.push(lc ? [CH, TOT] : [0, TOT]);
-  if (lc) p.push([0, TOT - CH]);
-  if (lc) p.push([0, CH]);
-  return p;
-}
-const pts = blockOutline().map(([x, z]) => `${X(x)},${Y(z)}`).join(' ');
-R.appendChild(el('polygon', {points:pts, fill:'none', stroke:INK, 'stroke-width':1.7}));
+const lc = END_L === 'chamfer', rc = END_R === 'chamfer';
+const outline = [];
+outline.push(lc ? [CH, 0] : [0, 0]);
+outline.push(rc ? [L - CH, 0] : [L, 0]);
+if (rc) outline.push([L, CH]);
+outline.push(rc ? [L, TOT - CH] : [L, TOT]);
+if (rc) outline.push([L - CH, TOT]);
+outline.push(lc ? [CH, TOT] : [0, TOT]);
+if (lc) { outline.push([0, TOT - CH]); outline.push([0, CH]); }
+R.appendChild(el('polygon', {points: outline.map(([x,z]) => `${X(x)},${Y(z)}`).join(' '),
+  fill:'none', stroke:INK, 'stroke-width':1.7}));
+R.appendChild(el('rect', {x:0, y:0, width:X(IN_L), height:Y(0), fill:'#e8ecf0', stroke:INK, 'stroke-width':1.1}));
+R.appendChild(el('polygon', {points:[[L-IN_R,0],[L-CH,0],[L,CH],[L,TOT-CH],[L-CH,TOT],[L-IN_R,TOT]]
+  .map(([x,z]) => `${X(x)},${Y(z)}`).join(' '), fill:'#e8ecf0', stroke:INK, 'stroke-width':1.1}));
 
-/* zakončovací plechy — pravý sleduje zkosení */
-R.appendChild(el('rect', {x:0, y:0, width:X(IN_L), height:Y(0),
-  fill:'#e8ecf0', stroke:INK, 'stroke-width':1.1}));
-const rp = [[L - IN_R, 0], [L - CH, 0], [L, CH], [L, TOT - CH], [L - CH, TOT], [L - IN_R, TOT]]
-  .map(([x, z]) => `${X(x)},${Y(z)}`).join(' ');
-R.appendChild(el('polygon', {points:rp, fill:'#e8ecf0', stroke:INK, 'stroke-width':1.1}));
-
-/* --- podestavby: ČÁRKOVANĚ --------------------------------------------- */
-function drawCab(side, it){
-  if (it.sym === 'gap') return;
-  const [z1, z2] = zr(side, 30, 670);
-  const x = X(it.x), w = X(it.w), y = Y(z2), h = Y(z1) - Y(z2);
-  R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none',
-    stroke:INK, 'stroke-width':1, 'stroke-dasharray':'7 4'}));
-  if (it.sym === 'drawers') drawDrawers(side, it, x, w, z1, z2);
-  if (it.sym === 'runners') drawRunners(it, x, w, z1, z2);
-  if (it.sym === 'open')    drawShelf(x, w, z1, z2);
-  if (it.sym === 'door')    drawDoor(side, x, w, z1, z2);
-  const cx = x + w / 2, cy = Y(side === 'A' ? z2 - 70 : z1 + 70) + 4;
-  tag(cx, cy, it.k);
-}
-function drawDrawers(side, it, x, w, z1, z2){
-  const n = it.drawers, step = 80, front = side === 'A' ? z1 : z2, sgn = side === 'A' ? -1 : 1;
-  for (let i = 0; i < n; i++){
-    const zf = front + sgn * (i + 1) * step, zb = side === 'A' ? zf + 300 : zf - 300;
-    const yy = Math.min(Y(zf), Y(zb)), hh = Math.abs(Y(zb) - Y(zf));
-    R.appendChild(el('rect', {x:x + 10, y:yy, width:w - 20, height:hh,
-      fill:'#fff', stroke:INK, 'stroke-width':.9}));
-    const zh = side === 'A' ? zf - 14 : zf + 14;
-    R.appendChild(el('line', {x1:x + w*0.34, y1:Y(zh), x2:x + w*0.66, y2:Y(zh),
-      stroke:INK, 'stroke-width':1.7}));
-  }
-}
-function drawRunners(it, x, w, z1, z2){
-  const n = it.runners, zA = z1 + 60, zB = z2 - 60, span = zB - zA;
-  for (let i = 0; i < n; i++){
-    const z = zA + span * (i / (n - 1));
-    [[x + 4, x + 24], [x + w - 24, x + w - 4]].forEach(([a, b]) =>
-      R.appendChild(el('line', {x1:a, y1:Y(z), x2:b, y2:Y(z), stroke:THIN, 'stroke-width':1})));
-  }
-}
-function drawShelf(x, w, z1, z2){
-  const z = (z1 + z2) / 2;
-  R.appendChild(el('line', {x1:x + 8, y1:Y(z), x2:x + w - 8, y2:Y(z),
-    stroke:THIN, 'stroke-width':1, 'stroke-dasharray':'5 3'}));
-}
-function drawDoor(side, x, w, z1, z2){
-  const zf = side === 'A' ? z1 : z2;
-  R.appendChild(el('line', {x1:x + w*0.30, y1:Y(zf), x2:x + w*0.70, y2:Y(zf),
-    stroke:INK, 'stroke-width':2.4}));
-}
-
-/* --- přístroje: pravá poloha i velikost, BEZ výplně --------------------- */
-function drawDev(side, it){
-  if (it.sym === 'plain') return;          // neutrální plocha nemá fyzickou hranici
-  const [z1, z2] = zr(side, it.fo, it.d);
-  const x = X(it.x), w = X(it.w), y = Y(z2), h = Y(z1) - Y(z2);
-  R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none', stroke:INK, 'stroke-width':1.3}));
-  const cx = x + w/2, cy = y + h/2;
-  if (it.sym === 'burners4')  burners(cx, cy, w, h, 2, 2);
-  if (it.sym === 'burners2')  burners(cx, cy, w, h, 1, 2);
-  if (it.sym === 'fryer1')    fryer(x, y, w, h, 1);
-  if (it.sym === 'fryer2')    fryer(x, y, w, h, 2);
-  if (it.sym === 'induction') induction(cx, cy);
-}
-function burners(cx, cy, w, h, cols, rows){
-  const r = Math.min(w/(cols*2.6), h/(rows*2.6), 19);
-  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++){
-    const bx = cx + (i - (cols-1)/2) * (w/(cols+0.35));
-    const by = cy + (j - (rows-1)/2) * (h/(rows+0.35));
-    R.appendChild(el('circle', {cx:bx, cy:by, r, fill:'none', stroke:INK, 'stroke-width':1.1}));
-    R.appendChild(el('circle', {cx:bx, cy:by, r:r*0.34, fill:'none', stroke:INK, 'stroke-width':1}));
-    for (let a = 0; a < 6; a++){ const t = a*Math.PI/3;
-      R.appendChild(el('line', {x1:bx+Math.cos(t)*r*0.34, y1:by+Math.sin(t)*r*0.34,
-        x2:bx+Math.cos(t)*r, y2:by+Math.sin(t)*r, stroke:INK, 'stroke-width':.9})); }
-  }
-}
-function fryer(x, y, w, h, n){
-  for (let i = 0; i < n; i++){ const vw = (w - 14)/n - 4;
-    R.appendChild(el('rect', {x:x + 7 + i*(vw + 4), y:y + h*0.22, width:vw, height:h*0.56,
-      rx:3, fill:'none', stroke:INK, 'stroke-width':1.1})); }
-}
-function induction(cx, cy){
-  R.appendChild(el('rect', {x:cx-24, y:cy-24, width:48, height:48, fill:'none', stroke:INK, 'stroke-width':1.1}));
-  [17, 10].forEach(r => R.appendChild(el('circle', {cx, cy, r, fill:'none', stroke:INK, 'stroke-width':.9})));
-}
-function drawArm(a){
-  const x = X(a.x), y = Y(DA);
-  R.appendChild(el('path', {d:`M ${x-13} ${y+16} L ${x-13} ${y-6} A 13 13 0 0 1 ${x+13} ${y-6} L ${x+13} ${y+16}`,
-    fill:'none', stroke:INK, 'stroke-width':1.6}));
-  R.appendChild(el('circle', {cx:x, cy:y+16, r:3.4, fill:INK}));
-}
-function drawSocket(side, s){
-  const x = X(side === 'A' ? s.x : mirrorPt(s.x)), y = side === 'A' ? Y(25) : Y(1675);
-  R.appendChild(el('rect', {x:x-7, y:y-5, width:14, height:10, fill:'#fff', stroke:INK, 'stroke-width':1}));
-  R.appendChild(el('circle', {cx:x, cy:y, r:2.4, fill:INK}));
-}
-
-/* --- VÝRAZNÁ značka pozice --------------------------------------------- */
 function tag(cx, cy, key, o = {}){
   const fs = o.fs || 13, w = key.length * fs * 0.66 + 12, h = fs + 8;
   R.appendChild(el('rect', {x:cx - w/2, y:cy - h + 4, width:w, height:h, rx:2.5,
     fill:'#fff', stroke:'#0083C6', 'stroke-width':1.5}));
   txt(R, cx, cy, key, {fs, fw:800, fill:'#0083C6'});
 }
+function drawCab(side, it){
+  if (it.sym === 'gap') return;
+  const [z1, z2] = zr(side, 30, 670);
+  const x = X(it.x), w = X(it.w), y = Y(z2), h = Y(z1) - Y(z2);
+  R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none', stroke:INK,
+    'stroke-width':1, 'stroke-dasharray':'7 4'}));
+  if (it.sym === 'drawers'){
+    const n = it.drawers, step = 80, front = side === 'A' ? z1 : z2, sgn = side === 'A' ? -1 : 1;
+    for (let i = 0; i < n; i++){
+      const zf = front + sgn*(i+1)*step, zb = side === 'A' ? zf + 300 : zf - 300;
+      R.appendChild(el('rect', {x:x + 10, y:Math.min(Y(zf), Y(zb)), width:w - 20,
+        height:Math.abs(Y(zb) - Y(zf)), fill:'#fff', stroke:INK, 'stroke-width':.9}));
+      const zh = side === 'A' ? zf - 14 : zf + 14;
+      R.appendChild(el('line', {x1:x + w*0.34, y1:Y(zh), x2:x + w*0.66, y2:Y(zh), stroke:INK, 'stroke-width':1.7}));
+    }
+  }
+  if (it.sym === 'runners'){
+    const n = it.runners, zA = z1 + 60, zB = z2 - 60;
+    for (let i = 0; i < n; i++){ const z = zA + (zB - zA)*(i/(n-1));
+      [[x+4, x+24],[x+w-24, x+w-4]].forEach(([a,b]) =>
+        R.appendChild(el('line', {x1:a, y1:Y(z), x2:b, y2:Y(z), stroke:THIN, 'stroke-width':1}))); }
+  }
+  if (it.sym === 'open') R.appendChild(el('line', {x1:x+8, y1:Y((z1+z2)/2), x2:x+w-8, y2:Y((z1+z2)/2),
+    stroke:THIN, 'stroke-width':1, 'stroke-dasharray':'5 3'}));
+  if (it.sym === 'door'){ const zf = side === 'A' ? z1 : z2;
+    R.appendChild(el('line', {x1:x+w*0.30, y1:Y(zf), x2:x+w*0.70, y2:Y(zf), stroke:INK, 'stroke-width':2.4})); }
+  tag(x + w/2, Y(side === 'A' ? z2 - 70 : z1 + 70) + 4, it.k);
+}
+function drawDev(side, it){
+  if (it.sym === 'plain') return;
+  const [z1, z2] = zr(side, it.fo, it.d);
+  const x = X(it.x), w = X(it.w), y = Y(z2), h = Y(z1) - Y(z2);
+  R.appendChild(el('rect', {x, y, width:w, height:h, fill:'none', stroke:INK, 'stroke-width':1.3}));
+  const cx = x + w/2, cy = y + h/2;
+  if (it.sym === 'burners4') burners(cx, cy, w, h, 2, 2, true);
+  if (it.sym === 'burners2') burners(cx, cy, w, h, 1, 2, true);
+  if (it.sym === 'ceramic')  burners(cx, cy, w, h, 2, 2, false);
+  if (it.sym === 'fryer2')   fryer(x, y, w, h);
+}
+function burners(cx, cy, w, h, cols, rows, spokes){
+  const r = Math.min(w/(cols*2.6), h/(rows*2.6), 19);
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++){
+    const bx = cx + (i-(cols-1)/2)*(w/(cols+0.35)), by = cy + (j-(rows-1)/2)*(h/(rows+0.35));
+    R.appendChild(el('circle', {cx:bx, cy:by, r, fill:'none', stroke:INK, 'stroke-width':1.1}));
+    if (!spokes) continue;
+    R.appendChild(el('circle', {cx:bx, cy:by, r:r*0.34, fill:'none', stroke:INK, 'stroke-width':1}));
+    for (let a = 0; a < 6; a++){ const t = a*Math.PI/3;
+      R.appendChild(el('line', {x1:bx+Math.cos(t)*r*0.34, y1:by+Math.sin(t)*r*0.34,
+        x2:bx+Math.cos(t)*r, y2:by+Math.sin(t)*r, stroke:INK, 'stroke-width':.9})); }
+  }
+}
+function fryer(x, y, w, h){
+  for (let i = 0; i < 2; i++){ const vw = (w - 14)/2 - 4;
+    R.appendChild(el('rect', {x:x + 7 + i*(vw + 4), y:y + h*0.22, width:vw, height:h*0.56,
+      rx:3, fill:'none', stroke:INK, 'stroke-width':1.1})); }
+}
 function leader(labelX, labelY, tipX, tipY, key, name, up){
   const kneeY = up ? labelY + 10 : labelY - 10;
   R.appendChild(el('path', {d:`M ${labelX} ${kneeY} L ${labelX} ${(kneeY+tipY)/2} L ${tipX} ${tipY}`,
     fill:'none', stroke:INK, 'stroke-width':.9, 'marker-end':'url(#ar)'}));
   tag(labelX, labelY, key);
-  txt(R, labelX, labelY + (up ? -15 : 16), name, {fs:9, fill:THIN});
+  if (name) txt(R, labelX, labelY + (up ? -15 : 16), name, {fs:9, fill:THIN});
 }
-
 A_CAB.forEach(it => drawCab('A', it));
 B_CAB.map(mirror).forEach(it => drawCab('B', it));
 A_DEV.forEach(it => drawDev('A', it));
 B_DEV.map(mirror).forEach(it => drawDev('B', it));
-ARMS.forEach(drawArm);
-A_SOC.forEach(s => drawSocket('A', s));
-B_SOC.forEach(s => drawSocket('B', s));
-
+ARMS.forEach(a => { const x = X(a.x), y = Y(DA);
+  R.appendChild(el('path', {d:`M ${x-13} ${y+16} L ${x-13} ${y-6} A 13 13 0 0 1 ${x+13} ${y-6} L ${x+13} ${y+16}`,
+    fill:'none', stroke:INK, 'stroke-width':1.6}));
+  R.appendChild(el('circle', {cx:x, cy:y+16, r:3.4, fill:INK})); });
+[['A', A_SOC], ['B', B_SOC]].forEach(([side, list]) => list.forEach(s => {
+  const x = X(side === 'A' ? s.x : mirrorPt(s.x)), y = side === 'A' ? Y(25) : Y(1675);
+  R.appendChild(el('rect', {x:x-7, y:y-5, width:14, height:10, fill:'#fff', stroke:INK, 'stroke-width':1}));
+  R.appendChild(el('circle', {cx:x, cy:y, r:2.4, fill:INK}));
+}));
 A_DEV.forEach(it => { const [z1] = zr('A', it.fo, it.d);
-  leader(X(it.x + it.w/2), Y(0) + 142, X(it.x + it.w/2), Y(z1) + 2, it.k, it.n, false); });
+  leader(X(it.x + it.w/2), Y(0) + 142, X(it.x + it.w/2), Y(z1) + 2, it.k, it.n.split(' · ')[0], false); });
 B_DEV.map(mirror).forEach(it => { const [, z2] = zr('B', it.fo, it.d);
-  leader(X(it.x + it.w/2), -80, X(it.x + it.w/2), Y(z2) - 2, it.k, it.n, true); });
+  leader(X(it.x + it.w/2), -80, X(it.x + it.w/2), Y(z2) - 2, it.k, it.n.split(' · ')[0], true); });
 ARMS.forEach((a, i) => leader(X(a.x) + (i ? 70 : -70), -32, X(a.x), Y(DA) - 20, a.k, '', true));
-/* označení zakončovacích plechů */
 tag(X(IN_L/2), Y(TOT) - 16, 'S1', {fs:11.5});
 tag(X(L - IN_R/2) + 6, Y(TOT) - 16, 'S2', {fs:11.5});
 
-/* --- kótování ----------------------------------------------------------- */
 function dim(x1, x2, y, label, small){
   const a = X(x1), b = X(x2);
   R.appendChild(el('line', {x1:a, y1:y, x2:b, y2:y, stroke:THIN, 'stroke-width':.75}));
-  [a, b].forEach(x => R.appendChild(el('line', {x1:x, y1:y-3.5, x2:x, y2:y+3.5, stroke:THIN, 'stroke-width':.75})));
+  [a,b].forEach(x => R.appendChild(el('line', {x1:x, y1:y-3.5, x2:x, y2:y+3.5, stroke:THIN, 'stroke-width':.75})));
   txt(R, (a+b)/2, y - 4, label, {fs: small ? 8.8 : 9.8, fill:'#41505f'});
 }
 function vdim(z1, z2, x, label){
   const a = Y(z1), b = Y(z2);
   R.appendChild(el('line', {x1:x, y1:a, x2:x, y2:b, stroke:THIN, 'stroke-width':.75}));
-  [a, b].forEach(y => R.appendChild(el('line', {x1:x-3.5, y1:y, x2:x+3.5, y2:y, stroke:THIN, 'stroke-width':.75})));
-  const t = txt(R, x - 5, (a+b)/2, label, {fs:9, fill:'#41505f'});
+  [a,b].forEach(y => R.appendChild(el('line', {x1:x-3.5, y1:y, x2:x+3.5, y2:y, stroke:THIN, 'stroke-width':.75})));
+  const t = txt(R, x-5, (a+b)/2, label, {fs:9, fill:'#41505f'});
   t.setAttribute('transform', `rotate(-90 ${x-5} ${(a+b)/2})`);
 }
 let yd = Y(0) + 66;
 A_CAB.forEach(it => { if (X(it.w) > 34) dim(it.x, it.x + it.w, yd, `${it.w}`, true); });
 txt(R, -8, yd + 3, 'podestavby A', {fs:8.8, fill:THIN, anchor:'end'});
 yd += 20;
-dim(0, IN_L, yd, `${IN_L}`, true);
-dim(L - IN_R, L, yd, `${IN_R}`, true);
+dim(0, IN_L, yd, `${IN_L}`, true); dim(L - IN_R, L, yd, `${IN_R}`, true);
 dim(IN_L, L - IN_R, yd, `použitelných ${L - IN_L - IN_R}`, true);
-yd += 22;
-dim(0, L, yd, `celková délka ${L}`);
-vdim(0, DA, -28, `hloubka A ${DA}`);
-vdim(DA, TOT, -28, `hloubka B ${DB}`);
+yd += 22; dim(0, L, yd, `celková délka ${L}`);
+vdim(0, DA, -28, `hloubka A ${DA}`); vdim(DA, TOT, -28, `hloubka B ${DB}`);
 vdim(0, TOT, -56, `celkem ${TOT}`);
-/* kóta zkosení */
-const zx = X(L - CH), zy = Y(0);
-R.appendChild(el('line', {x1:zx, y1:zy + 12, x2:X(L), y2:zy + 12, stroke:THIN, 'stroke-width':.75}));
-txt(R, X(L - CH/2), zy + 26, `zkosení ${CH}×${CH}`, {fs:8.6, fill:'#41505f'});
+R.appendChild(el('line', {x1:X(L-CH), y1:Y(0)+12, x2:X(L), y2:Y(0)+12, stroke:THIN, 'stroke-width':.75}));
+txt(R, X(L - CH/2), Y(0) + 26, `zkosení ${CH}×${CH}`, {fs:8.6, fill:'#41505f'});
 
 /* ===================== tabulky ===================== */
-const COLS = ['Poz.','Název','Rozměry','Příkon','Podrobný popis'];
+const ICO = {
+  door:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="25" y1="8" x2="25" y2="38" stroke="#5d6b7a" stroke-width="2"/>',
+  drawers:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="6" y1="18" x2="44" y2="18" stroke="#5d6b7a"/><line x1="6" y1="28" x2="44" y2="28" stroke="#5d6b7a"/>',
+  runners:'<rect x="6" y="6" width="38" height="34" fill="none" stroke="#5d6b7a"/>' +
+    [0,1,2,3,4,5].map(i=>`<line x1="10" y1="${10+i*5}" x2="18" y2="${10+i*5}" stroke="#5d6b7a"/><line x1="32" y1="${10+i*5}" x2="40" y2="${10+i*5}" stroke="#5d6b7a"/>`).join(''),
+  shelf:'<rect x="6" y="8" width="38" height="30" fill="none" stroke="#5d6b7a"/><line x1="6" y1="23" x2="44" y2="23" stroke="#5d6b7a" stroke-dasharray="3 2"/>',
+  socket:'<rect x="12" y="14" width="26" height="18" fill="none" stroke="#5d6b7a"/><circle cx="25" cy="23" r="4" fill="#5d6b7a"/>',
+  plain:'<rect x="6" y="12" width="38" height="22" fill="none" stroke="#5d6b7a"/><line x1="6" y1="12" x2="44" y2="12" stroke="#5d6b7a" stroke-width="2.5"/>',
+  end:'<rect x="18" y="4" width="14" height="38" fill="#e8ecf0" stroke="#5d6b7a"/>',
+  endch:'<polygon points="18,4 32,4 32,10 32,36 32,42 18,42" fill="#e8ecf0" stroke="#5d6b7a"/><line x1="32" y1="10" x2="26" y2="4" stroke="#5d6b7a"/>',
+  plinth:'<rect x="6" y="18" width="38" height="12" fill="#e8ecf0" stroke="#5d6b7a"/>',
+  arm:'<path d="M17 40 L17 18 A8 8 0 0 1 33 18 L33 40" fill="none" stroke="#5d6b7a" stroke-width="2"/>',
+};
+const foto = it => it.img
+  ? `<img src="${IMG}${it.img}" alt="${it.n}">`
+  : `<div class="ikona"><svg width="96" height="88" viewBox="0 0 50 46">${ICO[it.ico] || ''}</svg></div>`;
+// karta položky: záhlaví = pozice + název; tělo = fotka vedle popisu
 const tbl = (nadpis, rows) =>
-  (nadpis ? `<h3>${nadpis}</h3>` : '') + `<table><thead><tr>` +
-  COLS.map(c => `<th>${c}</th>`).join('') + `</tr></thead><tbody>` +
-  rows.map(r => `<tr><td class="k">${r[0]}</td><td>${r[1]}</td><td class="r">${r[2]}</td>` +
-    `<td class="p">${r[3]}</td><td>${r[4]}</td></tr>`).join('') + `</tbody></table>`;
+  (nadpis ? `<h3>${nadpis}</h3>` : '') +
+  rows.map(it => `<div class="polozka">
+      <div class="hl"><span class="poz">${it.k}</span><span class="nz">${it.n}</span></div>
+      <div class="telo"><div class="foto">${foto(it)}</div>
+        <div class="popis">${it.p.join(' · ')}</div></div>
+    </div>`).join('');
 
 document.getElementById('popis').innerHTML =
   POPIS.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('');
-document.getElementById('spol').innerHTML =
-  tbl('', SPOL.map(s => [s.k, s.n, s.r, s.pr, s.po]));
-
-const dev = a => a.map(i => [i.k, i.n, `${i.w} × ${i.d} mm`, i.pr, i.po]);
-const cab = a => a.filter(i => i.k).map(i => [i.k, i.n, `${i.w} × 670 mm`, i.pr, i.po]);
-const soc = a => a.map(i => [i.k, i.n, '—', i.pr, i.po]);
+document.getElementById('spol').innerHTML = tbl('', SPOL);
 document.getElementById('lists').innerHTML =
-  `<h4>Strana A</h4>` +
-  tbl('A1 — Přístroje', dev(A_DEV)) + tbl('A2 — Podestavby', cab(A_CAB)) +
-  tbl('A3 — Zásuvky a prvky panelu', soc(A_SOC)) +
-  `<h4>Strana B</h4>` +
-  tbl('B1 — Přístroje', dev(B_DEV)) + tbl('B2 — Podestavby', cab(B_CAB)) +
-  tbl('B3 — Zásuvky a prvky panelu', soc(B_SOC));
+  `<h4>Strana A</h4>` + tbl('A1 — Přístroje', A_DEV) +
+  tbl('A2 — Podestavby', A_CAB.filter(i => i.k)) + tbl('A3 — Zásuvky a prvky panelu', A_SOC) +
+  `<h4>Strana B</h4>` + tbl('B1 — Přístroje', B_DEV) +
+  tbl('B2 — Podestavby', B_CAB.filter(i => i.k)) + tbl('B3 — Zásuvky a prvky panelu', B_SOC);
 document.getElementById('q').innerHTML =
-  '<b>Zdroj dat:</b> příkon a připojení se plní z katalogu — položky mají pole '
-  + '<code>powerKW</code>, <code>voltage</code> a <code>gasKW</code>, u sporáků i po jednotlivých '
-  + 'zónách. Podrobný popis katalog zatím NEMÁ; buď se doplní jako nové pole položky, '
-  + 'nebo se bude skládat z toho, co položka nese (typ, počet zón, objem, provedení). Řekněte, co je vám bližší.';
+  '<b>Zdroj dat:</b> fotky jsou skutečné soubory z katalogu (<code>img/pristroje/…-card.webp</code>). '
+  + 'Podrobný popis se skládá automaticky z parametrů položky — v katalogu už jsou '
+  + '<code>powerKW</code>, <code>voltage</code>, <code>gasKW</code>, rozměry a zóny; '
+  + 'zbytek (mřížky, termostaty, krytí) se doplní z polí, která položka nese. '
+  + 'Podestavby a společné prvky fotku nemají, mají schematickou ikonu.';
 </script>
 </div>
 </body>

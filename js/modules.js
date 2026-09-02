@@ -305,13 +305,31 @@ export function buildPlinth(group, widthM, depthM, plinthType = DEFAULT_PLINTH, 
 }
 
 /**
+ * Sloučení podestaveb sousedů (ZADANI-SLOUCENI-PODESTAVEB.md §4) — tělesa
+ * segmentu jsou dnes vědomě o pár mm užší než widthM, aby se sousední
+ * segmenty neprolínaly. Na sloučeném líci se ta rezerva nemá odečítat, ať
+ * mezi sousedy nezůstane spára. Spočítá asymetrický okraj: `reserveTotal` je
+ * dnešní CELKOVÁ rezerva (rozdíl šířky), na nesloučeném líci se z ní odečte
+ * polovina (stejně jako dnes rozdělená na obě strany), na sloučeném líci nic.
+ * `merge.prev` = lík +x (předchozí segment v poli), `merge.next` = lík −x
+ * (následující segment) — orientace změřená, viz createSegmentMesh.
+ */
+function mergeInset(reserveTotal, merge) {
+  const half = reserveTotal / 2;
+  const insetPos = merge?.prev ? 0 : half; // +x lík
+  const insetNeg = merge?.next ? 0 : half; // −x lík
+  return { width: insetPos + insetNeg, centerX: (insetNeg - insetPos) / 2 };
+}
+
+/**
  * Uzavřený korpus (plný box) — používá se u přístrojů, vlastního modulu,
  * výplně a u neutrálního modulu s dvířky (jako podklad pod dvířky).
  */
-function buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY) {
+function buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge = { prev: false, next: false }) {
   const height = bodyTopY - bodyBottomY;
-  const body = box(widthM - 0.003, height, depthM - 0.003, createStainlessMaterial());
-  body.position.set(0, bodyBottomY + height / 2, depthM / 2);
+  const { width: reserveWidth, centerX } = mergeInset(0.003, merge);
+  const body = box(widthM - reserveWidth, height, depthM - 0.003, createStainlessMaterial());
+  body.position.set(centerX, bodyBottomY + height / 2, depthM / 2);
   group.add(body);
   return body;
 }
@@ -329,16 +347,23 @@ const OPEN_SHELF_THICKNESS = 0.02;
  * `cavityTopY` je horní hranice DUTINY (pokud segment má panel, dutina pod
  * ním končí — panel do dutiny nepatří), zatímco `bodyTopY` je plná
  * konstrukční výška korpusu (boky jdou až k desce i za panelem).
+ * `merge` (ZADANI-SLOUCENI-PODESTAVEB.md §4) — na sloučeném líci (+x pro
+ * `merge.prev`, −x pro `merge.next`) se boční stěna vůbec nestaví. Zbytek
+ * (dno/záda/lem/dutina/police) zůstává na dnešní šířce widthM − wallT*2 beze
+ * změny — zadání mění jen boční stěnu.
  */
-function buildOpenBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, hasShelf) {
+function buildOpenBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, hasShelf, merge = { prev: false, next: false }) {
   const stainless = createStainlessMaterial();
   const cavity = createCavityMaterial();
   const height = bodyTopY - bodyBottomY;
   const wallT = OPEN_WALL_T;
   const lipDepth = OPEN_LIP_DEPTH;
 
-  // boční stěny (celá výška korpusu, i za panelem — žádná díra vzadu)
+  // boční stěny (celá výška korpusu, i za panelem — žádná díra vzadu) —
+  // na sloučeném líci se nestaví (side=1 → +x → merge.prev, side=-1 → −x → merge.next)
   [-1, 1].forEach((side) => {
+    if (side === 1 && merge?.prev) return;
+    if (side === -1 && merge?.next) return;
     const wall = box(wallT, height, depthM, stainless);
     wall.position.set((side * (widthM - wallT)) / 2, bodyBottomY + height / 2, depthM / 2);
     group.add(wall);
@@ -383,9 +408,13 @@ function buildOpenBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY,
   }
 }
 
-/** Podestavba s dvířky — uzavřený korpus + křídlová dvířka s úchytkami. */
-function buildDoorBody(group, widthM, depthM, bodyBottomY, bodyTopY) {
-  buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
+/**
+ * Podestavba s dvířky — uzavřený korpus + křídlová dvířka s úchytkami.
+ * `merge` se propisuje jen do korpusu (spára/stěna) — dvířka zůstávají PER
+ * SEGMENT beze změny (ZADANI-SLOUCENI-PODESTAVEB.md §4 bod 3).
+ */
+function buildDoorBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge = { prev: false, next: false }) {
+  buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge);
   const stainless = createStainlessMaterial();
   const knobMat = createKnobMaterial();
   const height = bodyTopY - bodyBottomY;
@@ -423,10 +452,12 @@ const DRAWER_FRONT_THICKNESS = 0.01;
  * vodorovně dělenými čely s úchytkami. `cavityTopY` je horní hranice prostoru
  * pro čela (pokud segment má panel, čela končí pod panelem — stejné pravidlo
  * jako u polic v buildOpenBody), zatímco `bodyTopY` je plná konstrukční výška
- * korpusu (jde až k desce i za panelem).
+ * korpusu (jde až k desce i za panelem). `merge` se propisuje jen do korpusu
+ * — čela zásuvek zůstávají PER SEGMENT beze změny (ZADANI-SLOUCENI-
+ * PODESTAVEB.md §4 bod 3).
  */
-function buildDrawersBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, drawerCount) {
-  buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
+function buildDrawersBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, drawerCount, merge = { prev: false, next: false }) {
+  buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge);
 
   const stainless = createStainlessMaterial();
   const handleMat = createKnobMaterial();
@@ -455,27 +486,32 @@ function buildDrawersBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTo
 /**
  * Postaví "tělo" podestavby dle stylu — dispatcher pro closed / open / doors.
  * `cavityTopY`/`hasShelf` se využijí jen u stylu 'open' (viz buildOpenBody).
+ * `merge` (ZADANI-SLOUCENI-PODESTAVEB.md §4) se protahuje do všech stylů.
  */
-function buildBodyByStyle(group, style, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, hasShelf) {
+function buildBodyByStyle(group, style, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, hasShelf, merge = { prev: false, next: false }) {
   if (style === 'open') {
-    return buildOpenBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY ?? bodyTopY, !!hasShelf);
+    return buildOpenBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY ?? bodyTopY, !!hasShelf, merge);
   }
-  if (style === 'doors') return buildDoorBody(group, widthM, depthM, bodyBottomY, bodyTopY);
-  return buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
+  if (style === 'doors') return buildDoorBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge);
+  return buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge);
 }
 
 /**
  * Čelní ovládací panel — VŽDY předsazený před čelní stěnu korpusu (korpus má
  * čelo na z≈0, viz buildClosedBody/buildOpenBody/buildDoorBody), aby byl
  * zřetelně viditelný a neschovával se v rovině stěny korpusu. Obsahuje i
- * malou nálepku s logem ALBA u pravého okraje (§6 SPEC).
+ * malou nálepku s logem ALBA u pravého okraje (§6 SPEC). Ovládací panel
+ * zůstává PER SEGMENT (ZADANI-SLOUCENI-PODESTAVEB.md §4 bod 3) — `merge` mu
+ * jen zacelí stejnou rezervu jako u korpusu (bod 2), aby na sloučeném líci
+ * nezůstala vidět spára mezi panely sousedů.
  */
-function buildPanelBand(group, widthM, panelBottomY, panelTopY) {
+function buildPanelBand(group, widthM, panelBottomY, panelTopY, merge = { prev: false, next: false }) {
   const height = panelTopY - panelBottomY;
   const thickness = 0.012;
   const centerZ = -0.012; // předsazeno před čelo korpusu (mezera ~6 mm od stěny)
-  const panel = box(widthM - 0.01, height, thickness, createPanelMaterial());
-  panel.position.set(0, panelBottomY + height / 2, centerZ);
+  const { width: reserveWidth, centerX } = mergeInset(0.01, merge);
+  const panel = box(widthM - reserveWidth, height, thickness, createPanelMaterial());
+  panel.position.set(centerX, panelBottomY + height / 2, centerZ);
   group.add(panel);
   const centerY = panelBottomY + height / 2;
   const frontZ = centerZ - thickness / 2; // nejpřednější plocha panelu — odsud se umisťují ovládací prvky ještě dál dopředu
@@ -1213,8 +1249,16 @@ function addBitmapOverlay(group, widthM, depthM, topY, dataURL) {
  * `plinth` (`{type, heightMM}`) je vlastnost CELÉHO BLOKU (ZADANI-SOKL.md,
  * 31. 8. 2026) — dodává ji volající (block.js), segment.plinth se pro
  * kreslení nečte. Výchozí `{}` spadne na DEFAULT_PLINTH/PLINTH_HEIGHT_DEFAULT_MM.
+ * `merge` (`{prev, next}`, ZADANI-SLOUCENI-PODESTAVEB.md §4) — sloučení
+ * podestavby s SOUSEDNÍM segmentem v řadě (SEGMENT, netýká se MONO):
+ * `merge.prev` = tento segment je sloučený s PŘEDCHOZÍM v poli (lík +x),
+ * `merge.next` = NÁSLEDUJÍCÍ segment je sloučený s tímto (lík −x) — orientace
+ * změřená, počítá ji volající (buildSideSegments v block.js). Na sloučeném
+ * líci se nestaví boční stěna (buildOpenBody) a neodečítá dnešní rezerva pár
+ * mm (buildClosedBody/buildPanelBand), aby mezi sousedy nezůstala spára.
+ * Výbava (dvířka/zásuvková čela/police/panel jako prvek) zůstává PER SEGMENT.
  */
-export function createSegmentMesh(segment, depthM, workHeightM, plinth = {}) {
+export function createSegmentMesh(segment, depthM, workHeightM, plinth = {}, merge = { prev: false, next: false }) {
   const widthMM = getSegmentWidthMM(segment);
   const widthM = mm(widthMM);
   const bodyTopY = workHeightM - TOP_THICKNESS; // podklad těsně pod průběžnou deskou
@@ -1237,11 +1281,11 @@ export function createSegmentMesh(segment, depthM, workHeightM, plinth = {}) {
     // se bere ze sdílené getSegmentBodyStyle, ne z vlastního inline výrazu.
     const style = getSegmentBodyStyle(segment);
     const cavityTopY = segment.hasPanel ? panelBottomY : bodyTopY;
-    buildBodyByStyle(group, style, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, !!segment.hasShelf);
+    buildBodyByStyle(group, style, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, !!segment.hasShelf, merge);
     if (segment.hasPanel) {
       // ovládací panel je jen předsazená dekorace navíc před horní pás čela,
       // korpus pod ním zůstává celý (žádná díra vzadu)
-      buildPanelBand(group, widthM, panelBottomY, bodyTopY);
+      buildPanelBand(group, widthM, panelBottomY, bodyTopY, merge);
     }
     return group;
   }
@@ -1250,16 +1294,16 @@ export function createSegmentMesh(segment, depthM, workHeightM, plinth = {}) {
     // stejné pravidlo jako u neutrálního modulu — má-li segment panel,
     // prostor pro čela pod ním končí (panel do zásuvek nepatří)
     const cavityTopY = segment.hasPanel ? panelBottomY : bodyTopY;
-    buildDrawersBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, getSegmentDrawerCount(segment));
+    buildDrawersBody(group, widthM, depthM, bodyBottomY, bodyTopY, cavityTopY, getSegmentDrawerCount(segment), merge);
     if (segment.hasPanel) {
-      buildPanelBand(group, widthM, panelBottomY, bodyTopY);
+      buildPanelBand(group, widthM, panelBottomY, bodyTopY, merge);
     }
     return group;
   }
 
   if (segment.type === CUSTOM_TYPE) {
-    buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
-    const { centerY, frontZ } = buildPanelBand(group, widthM, panelBottomY, bodyTopY);
+    buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge);
+    const { centerY, frontZ } = buildPanelBand(group, widthM, panelBottomY, bodyTopY, merge);
     renderControls(group, widthM, centerY, frontZ, segment.controlsType || 'knob', segment.controlsCount || 0);
     if (segment.imageDataURL) {
       addBitmapOverlay(group, widthM, depthM, workHeightM, segment.imageDataURL);
@@ -1271,11 +1315,14 @@ export function createSegmentMesh(segment, depthM, workHeightM, plinth = {}) {
   const def = getCatalogEntry(segment.type);
   if (!def) {
     // neznámý typ — vykreslí se jako prázdná uzavřená výplň, ať aplikace nespadne
-    buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY);
+    buildClosedBody(group, widthM, depthM, bodyBottomY, bodyTopY, merge);
     return group;
   }
-  buildBodyByStyle(group, getSegmentBodyStyle(segment), widthM, depthM, bodyBottomY, bodyTopY);
-  const { centerY, frontZ } = buildPanelBand(group, widthM, panelBottomY, bodyTopY);
+  // cavityTopY/hasShelf se u katalogového přístroje nevyužívají (jen 'open'
+  // styl by je použil, katalog ho nemá) — undefined zachovává dosavadní
+  // chování (buildBodyByStyle spadne na bodyTopY / false), merge je až za nimi.
+  buildBodyByStyle(group, getSegmentBodyStyle(segment), widthM, depthM, bodyBottomY, bodyTopY, undefined, undefined, merge);
+  const { centerY, frontZ } = buildPanelBand(group, widthM, panelBottomY, bodyTopY, merge);
   // §10.1 SPEC v4 — u topFixed přístrojů se prvek na desce i seskupení
   // ovládacích prvků kreslí ve JMENOVITÉ šířce (katalogové widthMM), vodorovně
   // vystředěné, bez ohledu na skutečnou (zvětšenou) šířku podestavby.

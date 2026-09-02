@@ -163,6 +163,9 @@ const DICTS = {
     // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
     // topFixed přístroje na širší podestavbě)
     'field.deviceAlign': 'Device position',
+    // ZADANI-SLOUCENI-PODESTAVEB.md §5 — sloučení podestavby s předchozím segmentem (SEGMENT only)
+    'field.mergeWithPrev': 'Merge base cabinet with previous',
+    'field.mergeWithPrevHint': 'Merged base cabinets share finish, base type and panel',
 
     'bodyStyle.closed': 'Closed',
     'bodyStyle.doors': 'With doors',
@@ -687,6 +690,9 @@ const DICTS = {
     // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
     // topFixed přístroje na širší podestavbě)
     'field.deviceAlign': 'Geräteposition',
+    // ZADANI-SLOUCENI-PODESTAVEB.md §5 — sloučení podestavby s předchozím segmentem (SEGMENT only)
+    'field.mergeWithPrev': 'Unterbau mit vorherigem zusammenführen',
+    'field.mergeWithPrevHint': 'Zusammengeführte Unterbauten teilen sich Ausführung, Unterbautyp und Bedienpanel',
 
     'bodyStyle.closed': 'Geschlossen',
     'bodyStyle.doors': 'Mit Türen',
@@ -1211,6 +1217,9 @@ const DICTS = {
     // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
     // topFixed přístroje na širší podestavbě)
     'field.deviceAlign': 'Pozycja urządzenia',
+    // ZADANI-SLOUCENI-PODESTAVEB.md §5 — sloučení podestavby s předchozím segmentem (SEGMENT only)
+    'field.mergeWithPrev': 'Połącz szafkę podblatową z poprzednią',
+    'field.mergeWithPrevHint': 'Połączone szafki podblatowe mają wspólne wykończenie, typ szafki i panel sterowania',
 
     'bodyStyle.closed': 'Zamknięta',
     'bodyStyle.doors': 'Z drzwiczkami',
@@ -1738,6 +1747,9 @@ const DICTS = {
     // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
     // topFixed přístroje na širší podestavbě)
     'field.deviceAlign': 'Umístění přístroje',
+    // ZADANI-SLOUCENI-PODESTAVEB.md §5 — sloučení podestavby s předchozím segmentem (jen SEGMENT)
+    'field.mergeWithPrev': 'Sloučit podestavbu s předchozí',
+    'field.mergeWithPrevHint': 'Sloučené podestavby sdílejí provedení, typ těla a panel',
 
     'bodyStyle.closed': 'Uzavřená',
     'bodyStyle.doors': 'S dvířky',
@@ -2264,6 +2276,9 @@ const DICTS = {
     // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
     // topFixed přístroje na širší podestavbě)
     'field.deviceAlign': 'Umiestnenie prístroja',
+    // ZADANI-SLOUCENI-PODESTAVEB.md §5 — sloučení podestavby s předchozím segmentem (jen SEGMENT)
+    'field.mergeWithPrev': 'Zlúčiť podstavbu s predchádzajúcou',
+    'field.mergeWithPrevHint': 'Zlúčené podstavby zdieľajú prevedenie, typ tela a panel',
 
     'bodyStyle.closed': 'Uzavretá',
     'bodyStyle.doors': 'S dvierkami',

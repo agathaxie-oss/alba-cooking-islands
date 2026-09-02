@@ -1045,7 +1045,10 @@ export function setupUI(callbacks) {
   // Beze změny logiky oproti dřívějšímu `renderSegmentItem` — jen kontejner má
   // třídu `strip-detail-grid` místo `module-extra` (přeliv řeší CSS pásu, §3.6
   // zadání) a border-top odpadá (řeší ho `.strip-detail` v CSS).
-  function renderSegmentDetail(seg) {
+  // ZADANI-SLOUCENI-PODESTAVEB.md §5 — `hasPrev` říká, jestli má segment
+  // předchůdce ve SVÉ řadě (volající pozná ze segmentsA/segmentsB, ve které
+  // právě je); jen tehdy má smysl nabízet sloučení podestavby s ním.
+  function renderSegmentDetail(seg, hasPrev) {
     let extra = null;
 
     if (seg.type === NEUTRAL_TYPE) {
@@ -1294,7 +1297,34 @@ export function setupUI(callbacks) {
       }
     }
 
+    // sloučení podestavby s předchozím segmentem — na KONEC pruhu, za
+    // všechna ostatní pole, a jen když segment má s čím splynout (§5 zadání);
+    // u prvního segmentu řady se nevykreslí vůbec.
+    if (extra && hasPrev) appendMergeField(extra, seg);
+
     return extra;
+  }
+
+  /** Zaškrtávátko „sloučit podestavbu s předchozí" (ZADANI-SLOUCENI-PODESTAVEB.md
+   *  §5) — u VŠECH typů segmentu, proto sedí až za if/else řetězcem výše místo
+   *  uvnitř jedné větve, stejně jako appendFinishField. Stav čte přímo
+   *  seg.mergeWithPrev (chybějící hodnota = false, dodá to už normalizeMergeFlags
+   *  v main.js, ale UI se na to nespoléhá). Skutečné sloučení (posun na
+   *  souvislý běh, rozdělení skupiny, propsání parametrů) řeší Agent A. */
+  function appendMergeField(extra, seg) {
+    const mergeLabel = document.createElement('label');
+    mergeLabel.className = 'extra-field extra-checkbox';
+    const mergeCheckbox = document.createElement('input');
+    mergeCheckbox.type = 'checkbox';
+    mergeCheckbox.checked = !!seg.mergeWithPrev;
+    mergeCheckbox.title = t('field.mergeWithPrevHint');
+    mergeCheckbox.addEventListener('click', (ev) => ev.stopPropagation());
+    mergeCheckbox.addEventListener('change', () => {
+      callbacks.onSegmentMergeChange(seg.id, mergeCheckbox.checked);
+    });
+    mergeLabel.appendChild(mergeCheckbox);
+    mergeLabel.appendChild(document.createTextNode(` ${t('field.mergeWithPrev')}`));
+    extra.appendChild(mergeLabel);
   }
 
   // --- ramena jako karty v pásu (krok 3B redesignu) ----------------------------------
@@ -1633,7 +1663,10 @@ export function setupUI(callbacks) {
       () => callbacks.onRemoveSegment(seg.id),
       t('segment.remove'),
     ));
-    const grid = renderSegmentDetail(seg);
+    // hasPrev = segment NENÍ na indexu 0 své řady (§5 zadání) — `segments`
+    // výše je právě segmentsA/segmentsB podle activeTab, tedy „svá řada".
+    const hasPrev = segments.indexOf(seg) > 0;
+    const grid = renderSegmentDetail(seg, hasPrev);
     if (grid) els.stripDetail.appendChild(grid);
   }
 

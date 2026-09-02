@@ -140,12 +140,23 @@ function buildSideSegments(fittingSegments, usableWidthMM, rowDepthMM, heightMM,
   const selectable = [];
 
   let cursorM = 0;
-  fittingSegments.forEach((seg) => {
+  fittingSegments.forEach((seg, i) => {
     const widthMM = getSegmentWidthMM(seg);
     const widthM = mm(widthMM);
     const xCenterM = mm(usableWidthMM) / 2 - (cursorM + widthM / 2);
 
-    const mesh = createSegmentMesh(seg, rowDepthM, heightM, plinth);
+    // Sloučení podestaveb (ZADANI-SLOUCENI-PODESTAVEB.md §4) — příznaky se
+    // čtou z pole: vlastní seg.mergeWithPrev je líc +x (merge.prev), příznak
+    // NÁSLEDUJÍCÍHO segmentu je líc −x (merge.next). Orientace je změřená
+    // (viz komentář nad createSegmentMesh v modules.js) — první segment pole
+    // leží na nejvyšším +X, takže předchozí soused je vždy na +x straně TOHOTO
+    // segmentu a následující na −x straně.
+    const merge = {
+      prev: !!seg.mergeWithPrev,
+      next: !!fittingSegments[i + 1]?.mergeWithPrev,
+    };
+
+    const mesh = createSegmentMesh(seg, rowDepthM, heightM, plinth, merge);
     mesh.position.x = xCenterM;
     group.add(mesh);
 

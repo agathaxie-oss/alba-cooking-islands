@@ -233,6 +233,51 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 27. Sloučení podestaveb (SEGMENT) — POŽADAVEK, etapa 1 HOTOVA
+
+**Etapa 1 HOTOVA 2. 9. 2026, etapa 2 ZBÝVÁ.** Zadavatel: „těch více přístrojů
+by se dalo udělat tak, že bychom tam dali možnost *sloučit přístroje* a
+v rámci projektu by se to počítalo pořád stejně, jen by se sloučily
+podestavby — opticky ve 3D a ve finálním výpisu." Závazné zadání je
+`ZADANI-SLOUCENI-PODESTAVEB.md`.
+
+**Zásada, na které to stojí:** každý přístroj zůstává SVÝM segmentem.
+Kapacita řady, pořadí, výběr, číslování ani formát souboru se nemění.
+Sloučení je vlastnost ZOBRAZENÍ a propisování parametrů, ne nová jednotka
+modelu. Nové instance pole `mergeWithPrev` (boolean, výchozí `false`) má
+KAŽDÝ typ segmentu; skupina je souvislý běh, kde druhý a další mají `true`.
+
+Hotovo v etapě 1 (tři agenti, žádný sdílený soubor):
+- `js/main.js` — pole v `sanitizeSegment`/`createCatalogSegment`,
+  `normalizeMergeFlags()` (index 0 vždy `false`), rozdělení skupiny při
+  přesunu i smazání, propisování `finish`/`bodyStyle`/`podestavba`/
+  `hasPanel`/`hasShelf` po jednotlivých polích, handler
+  `onSegmentMergeChange(id, merged)`.
+- `js/modules.js` + `js/block.js` — `createSegmentMesh(..., merge)`;
+  na sloučeném líci se nestaví boční stěna a neodečítá se dnešní rezerva
+  (3 mm korpus, 10 mm panel), takže nezůstane spára. Dvířka, zásuvková čela,
+  police a ovládací panel zůstávají PER SEGMENT.
+- `js/ui.js` + `js/i18n.js` — zaškrtávátko na konci pruhu parametrů, jen od
+  druhého segmentu v řadě; `field.mergeWithPrev` + `field.mergeWithPrevHint`
+  v 5 jazycích.
+
+**ORIENTACE JE ZMĚŘENÁ, NEHÁDAT:** `buildSideSegments` klade první segment
+pole na nejvyšší +X, takže PŘEDCHOZÍ soused leží na +x líci (`merge.prev`)
+a NÁSLEDUJÍCÍ na −x (`merge.next`). Ověřeno: u otevřené podestavby 400 mm
+`{prev:true}` odebere stěnu na +191 mm, `{next:true}` na −191 mm.
+
+Ověřeno měřením: tři neutrální moduly 400 mm vedle sebe — nesloučené korpusy
+`1181,5..1578,5` / `781,5..1178,5` (spára 3 mm), po sloučení se dotýkají
+přesně na 1180,0 a 780,0, sousední nesloučený pár si 3mm spáru drží.
+Dál v prohlížeči: propsání provedení H2 i typu podestavby na celou skupinu,
+prohození sousedů i smazání prostředního člena skupinu ROZDĚLÍ (nepohltí),
+první segment volbu nenabízí, kapacita řady beze změny (1600/3160),
+MONO beze změny, čistá konzole.
+
+**Etapa 2 ZBÝVÁ:** půdorys (`js/floorplan.js`) a soupis dílů (`js/report.js`)
+sloučení zatím NEZNAJÍ — kreslí a vypisují každou podestavbu zvlášť. To je
+ta část zadavatelova požadavku „a ve finálním výpisu".
+
 ## 26. Kombinovaný kryt ostrova visel v prázdnu — VADA
 
 **HOTOVO 2. 9. 2026.** Zadavatel po opravě úkolu 25: „U ostrova v MONO tam

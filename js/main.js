@@ -538,6 +538,10 @@ function createCatalogSegment(type) {
   // sanitizeSegment() u načteného souboru, ať nová instance nikdy nemá
   // deviceAlign undefined (mirror bodyStyle/widthMM níže).
   seg.deviceAlign = 'center';
+  // ZADANI-SLOUCENI-PODESTAVEB.md §1 — nový segment jde vždy na KONEC pole
+  // (viz onAddInstrument níže), takže nemá s čím splynout — normalizeMergeFlags
+  // po přidání pak není potřeba volat.
+  seg.mergeWithPrev = false;
   if (def) {
     seg.widthMM = def.widthMM;
     const allowed = Array.isArray(def.allowedBodyStyles) && def.allowedBodyStyles.length
@@ -991,6 +995,14 @@ function sanitizeSegment(raw) {
   // se TOLERUJE — hodnota se prostě nikam nezkopíruje, soubor se kvůli ní
   // nezamítá.
   const finish = sanitizeFinish(raw.finish);
+  // ZADANI-SLOUCENI-PODESTAVEB.md §1 — mergeWithPrev je INSTANCE pole u
+  // VŠECH typů segmentu (stejné pravidlo napříč neutral/drawers/custom/
+  // katalog jako u finish výše): „podestavba tohoto segmentu je sloučená
+  // s předchozím v řadě". Jen doslovné `true` se počítá jako sloučeno —
+  // chybějící/cizí/neplatná hodnota (starší soubor bez pole) → false, tedy
+  // beze změny vzhledu. Konečnou platnost (index 0 vždy false) dořeší
+  // normalizeMergeFlags() po načtení celého pole, viz applyConfig níže.
+  const mergeWithPrev = raw.mergeWithPrev === true;
   if (raw.type === NEUTRAL_TYPE) {
     return {
       id,
@@ -1000,6 +1012,7 @@ function sanitizeSegment(raw) {
       hasPanel: !!raw.hasPanel,
       hasShelf: !!raw.hasShelf,
       finish,
+      mergeWithPrev,
     };
   }
   if (raw.type === DRAWERS_TYPE) {
@@ -1016,6 +1029,7 @@ function sanitizeSegment(raw) {
       hasPanel,
       drawerCount,
       finish,
+      mergeWithPrev,
     };
   }
   if (raw.type === CUSTOM_TYPE) {
@@ -1029,11 +1043,12 @@ function sanitizeSegment(raw) {
       controlsCount: clamp(Number(raw.controlsCount) || 0, 0, 8),
       imageDataURL: typeof raw.imageDataURL === 'string' ? raw.imageDataURL : null,
       finish,
+      mergeWithPrev,
     };
   }
   // katalogový přístroj — typ ověří modules.js/catalog.js při stavbě (neznámý = prázdná výplň)
   const def = getCatalogEntry(raw.type);
-  const seg = { id, type: raw.type, finish };
+  const seg = { id, type: raw.type, finish, mergeWithPrev };
   // ZADANI-ZAROVNANI-PRISTROJE.md §1/§2 — deviceAlign je INSTANCE pole jen
   // katalogového segmentu (ne neutral/drawers/custom). Smysl má jen u
   // def.topFixed přístroje širšího, než je jeho jmenovitá šířka (§2) — tam,
@@ -1055,6 +1070,77 @@ function sanitizeSegment(raw) {
     seg.widthMM = clamp(seg.widthMM || minWidth, minWidth, CATALOG_WIDTH_MAX);
   }
   return seg;
+}
+
+// ZADANI-SLOUCENI-PODESTAVEB.md §1 — normalizace mergeWithPrev, volaná po
+// KAŽDÉ změně pole segmentů (načtení souboru, přesun, smazání — přidání řeší
+// jednodušeji rovnou literálem `mergeWithPrev: false`, viz createCatalogSegment
+// a onAddNeutral/onAddDrawers/onOpenCustomNew níže). Jen doslovné `true` platí
+// jako sloučeno a segment na indexu 0 nemá s čím splynout, ať se do souboru
+// dostane cokoli. Mutuje pole na místě, nic nevrací.
+function normalizeMergeFlags(list) {
+  list.forEach((seg, i) => {
+    seg.mergeWithPrev = i === 0 ? false : seg.mergeWithPrev === true;
+  });
+}
+
+// ZADANI-SLOUCENI-PODESTAVEB.md §3 — „katalogový" segment je tu definovaný
+// jako opak neutrálu/zásuvek/custom (stejná konvence jako u sanitizeSegment
+// výše) — používá se k rozhodnutí, kam patří bodyStyle vs. podestavba.
+function isCatalogSegmentType(type) {
+  return type !== NEUTRAL_TYPE && type !== DRAWERS_TYPE && type !== CUSTOM_TYPE;
+}
+
+// ZADANI-SLOUCENI-PODESTAVEB.md §3 — najde souvislý běh (skupinu) segmentů
+// obsahující `index` (hranice dává mergeWithPrev, stejná konstrukce jako u
+// normalizeMergeFlags: skupina je souvislá zprava doleva) a zapíše `value`
+// do `field` u VŠECH členů, kteří dané pole mají — kde ho segment nemá, se
+// beze změny přeskočí. `bodyStyle` (katalogový segment) a `podestavba`
+// (neutrál) jsou tentýž pojem ve dvou typech, proto propsání jednoho zapíše
+// i „most" do druhého typu; hodnota 'closed' most nepřekročí, protože
+// neutrál ji nezná. Skupina o jednom členu je normální stav — pak se nezmění
+// nic mimo `index` samotný.
+function propagateMergeGroupField(list, index, field, value) {
+  if (!Array.isArray(list) || index < 0 || index >= list.length) return;
+  let start = index;
+  while (start > 0 && list[start].mergeWithPrev === true) start--;
+  let end = index;
+  while (end < list.length - 1 && list[end + 1].mergeWithPrev === true) end++;
+  for (let i = start; i <= end; i++) {
+    const seg = list[i];
+    const catalog = isCatalogSegmentType(seg.type);
+    if (field === 'finish') {
+      seg.finish = value;
+    } else if (field === 'bodyStyle') {
+      if (catalog) {
+        const sanitized = sanitizeBodyStyle(getCatalogEntry(seg.type), value);
+        if (sanitized === value) seg.bodyStyle = sanitized; // přístroj styl neumí → segment se přeskočí
+      } else if (seg.type === NEUTRAL_TYPE && (value === 'doors' || value === 'open')) {
+        seg.podestavba = value; // most bodyStyle → podestavba ('closed' ho nepřekročí)
+      }
+    } else if (field === 'podestavba') {
+      if (seg.type === NEUTRAL_TYPE) {
+        seg.podestavba = value;
+      } else if (catalog) {
+        const sanitized = sanitizeBodyStyle(getCatalogEntry(seg.type), value); // most podestavba → bodyStyle
+        if (sanitized === value) seg.bodyStyle = sanitized;
+      }
+    } else if (field === 'hasPanel') {
+      if (seg.type === NEUTRAL_TYPE) {
+        seg.hasPanel = value;
+      } else if (seg.type === DRAWERS_TYPE) {
+        seg.hasPanel = value;
+        // s panelem je počet zásuvek vždy pevně 2 (stejné pravidlo jako
+        // onDrawersPanelChange) — důsledek propsaného hasPanel, ne
+        // propisování drawerCount samotného (to zůstává per-segment).
+        if (value === true) seg.drawerCount = 2;
+      }
+    } else if (field === 'hasShelf') {
+      if (seg.type === NEUTRAL_TYPE) {
+        seg.hasShelf = value;
+      }
+    }
+  }
 }
 
 function applyConfig(config) {
@@ -1216,6 +1302,11 @@ function applyConfig(config) {
 
   state.dimensions = { lengthMM, depthAMM, depthBMM, heightMM };
   state.plinth = plinth;
+  // ZADANI-SLOUCENI-PODESTAVEB.md §1 — normalizace PO KAŽDÉ změně pole,
+  // tedy i po načtení souboru: starší projekt bez mergeWithPrev se tím
+  // srovná na samé `false` (dnešní vzhled), index 0 nikdy nezůstane sloučený.
+  normalizeMergeFlags(segmentsA);
+  normalizeMergeFlags(segmentsB);
   state.segmentsA = segmentsA;
   state.segmentsB = segmentsB;
   state.arms = arms;
@@ -1380,6 +1471,8 @@ const ui = setupUI({
       hasPanel: false,
       hasShelf: false,
       finish: DEFAULT_FINISH,
+      // ZADANI-SLOUCENI-PODESTAVEB.md §1 — nový segment jde na KONEC pole, nemá s čím splynout.
+      mergeWithPrev: false,
     });
     rebuildBlock();
   },
@@ -1391,6 +1484,8 @@ const ui = setupUI({
       hasPanel: false,
       drawerCount: DEFAULT_DRAWER_COUNT,
       finish: DEFAULT_FINISH,
+      // ZADANI-SLOUCENI-PODESTAVEB.md §1 — nový segment jde na KONEC pole, nemá s čím splynout.
+      mergeWithPrev: false,
     });
     rebuildBlock();
   },
@@ -1398,6 +1493,9 @@ const ui = setupUI({
     customDialog.open(null, (result) => {
       getSideList(side).push({
         id: nextId++, type: CUSTOM_TYPE, finish: DEFAULT_FINISH, ...result,
+        // ZADANI-SLOUCENI-PODESTAVEB.md §1 — nový segment jde na KONEC pole,
+        // nemá s čím splynout; za `...result`, ať žádná cizí hodnota nepřebije.
+        mergeWithPrev: false,
       });
       rebuildBlock();
     });
@@ -1411,8 +1509,22 @@ const ui = setupUI({
     });
   },
   onRemoveSegment(id) {
+    // ZADANI-SLOUCENI-PODESTAVEB.md §2 — skupina se PŘI SMAZÁNÍ ROZDĚLÍ: kdo
+    // po smazání stojí na indexu mazaného segmentu (= původní následník),
+    // ztrácí mergeWithPrev — jinak by se omylem slepil s tím, co bylo PŘED
+    // dírou (to by bylo pohlcení, ne rozdělení). findSegment dá i stranu, ať
+    // víme, ze kterého pole brát index; obě pole se normalizují — neuškodí.
+    const found = findSegment(id);
+    if (found) {
+      const list = getSideList(found.side);
+      const idx = list.findIndex((s) => s.id === id);
+      const next = list[idx + 1];
+      if (next) next.mergeWithPrev = false;
+    }
     state.segmentsA = state.segmentsA.filter((s) => s.id !== id);
     state.segmentsB = state.segmentsB.filter((s) => s.id !== id);
+    normalizeMergeFlags(state.segmentsA);
+    normalizeMergeFlags(state.segmentsB);
     if (state.selectedId === id) state.selectedId = null;
     rebuildBlock();
   },
@@ -1425,6 +1537,15 @@ const ui = setupUI({
     if (idx < 0 || newIdx < 0 || newIdx >= list.length) return;
     const [item] = list.splice(idx, 1);
     list.splice(newIdx, 0, item);
+    // ZADANI-SLOUCENI-PODESTAVEB.md §2 — skupina se PŘI PŘESUNU ROZDĚLÍ:
+    // přesouvaný segment opouští svou skupinu (1) a totéž dostane ten, kdo
+    // teď stojí na jeho PŮVODNÍM indexu `idx` (2) — u sousedního prohození je
+    // to právě ten prohozený soused. Sloučení vázané na souseda PO přesunu
+    // tedy neplatí, to je záměr zadání.
+    item.mergeWithPrev = false;
+    const backfill = list[idx];
+    if (backfill) backfill.mergeWithPrev = false;
+    normalizeMergeFlags(list);
     rebuildBlock();
   },
   onSelectSegment(id) {
@@ -1442,18 +1563,28 @@ const ui = setupUI({
     const found = findSegment(id);
     if (!found) return;
     found.seg.podestavba = style === 'open' ? 'open' : 'doors';
+    // ZADANI-SLOUCENI-PODESTAVEB.md §3 — propsání sloučené skupině; most do
+    // bodyStyle katalogového segmentu řeší propagateMergeGroupField samo.
+    const list = getSideList(found.side);
+    propagateMergeGroupField(list, list.indexOf(found.seg), 'podestavba', found.seg.podestavba);
     rebuildBlock();
   },
   onNeutralPanelChange(id, hasPanel) {
     const found = findSegment(id);
     if (!found) return;
     found.seg.hasPanel = !!hasPanel;
+    // ZADANI-SLOUCENI-PODESTAVEB.md §3 — hasPanel se propisuje sloučené skupině.
+    const list = getSideList(found.side);
+    propagateMergeGroupField(list, list.indexOf(found.seg), 'hasPanel', found.seg.hasPanel);
     rebuildBlock();
   },
   onNeutralShelfChange(id, hasShelf) {
     const found = findSegment(id);
     if (!found) return;
     found.seg.hasShelf = !!hasShelf;
+    // ZADANI-SLOUCENI-PODESTAVEB.md §3 — hasShelf se propisuje sloučené skupině.
+    const list = getSideList(found.side);
+    propagateMergeGroupField(list, list.indexOf(found.seg), 'hasShelf', found.seg.hasShelf);
     rebuildBlock();
   },
   onDrawersPanelChange(id, hasPanel) {
@@ -1462,6 +1593,12 @@ const ui = setupUI({
     found.seg.hasPanel = !!hasPanel;
     // s panelem je počet zásuvek vždy pevně 2 (viz getSegmentDrawerCount)
     if (found.seg.hasPanel) found.seg.drawerCount = 2;
+    // ZADANI-SLOUCENI-PODESTAVEB.md §3 — hasPanel se propisuje sloučené
+    // skupině; drawerCount=2 u ostatních DRAWERS členů je jen důsledek
+    // propsaného hasPanel (propagateMergeGroupField), ne propisování
+    // drawerCount samotného.
+    const list = getSideList(found.side);
+    propagateMergeGroupField(list, list.indexOf(found.seg), 'hasPanel', found.seg.hasPanel);
     rebuildBlock();
   },
   onDrawersCountChange(id, drawerCount) {
@@ -1488,6 +1625,11 @@ const ui = setupUI({
     const def = getCatalogEntry(found.seg.type);
     if (!def) return;
     found.seg.bodyStyle = sanitizeBodyStyle(def, bodyStyle);
+    // ZADANI-SLOUCENI-PODESTAVEB.md §3 — bodyStyle se propisuje sloučené
+    // skupině; most do podestavby neutrálního segmentu řeší
+    // propagateMergeGroupField samo.
+    const list = getSideList(found.side);
+    propagateMergeGroupField(list, list.indexOf(found.seg), 'bodyStyle', found.seg.bodyStyle);
     rebuildBlock();
   },
   // ZADANI-ZAROVNANI-PRISTROJE.md §4 — stejný vzorec jako
@@ -1511,6 +1653,45 @@ const ui = setupUI({
     const found = findSegment(id);
     if (!found) return;
     found.seg.finish = sanitizeFinish(finish);
+    // ZADANI-SLOUCENI-PODESTAVEB.md §3 — finish se propisuje sloučené skupině.
+    const list = getSideList(found.side);
+    propagateMergeGroupField(list, list.indexOf(found.seg), 'finish', found.seg.finish);
+    rebuildBlock();
+  },
+  // ZADANI-SLOUCENI-PODESTAVEB.md §1/§4 — ui.js volá přesně tímhle jménem
+  // (checkbox se nabízí jen od druhého segmentu v řadě, ale handler se na to
+  // nesmí spoléhat, viz index<=0 níže). Při ZAPNUTÍ (merged===true) se
+  // hodnoty vezmou z PRVNÍHO člena skupiny V POŘADÍ POLE (nejlevější v pásu)
+  // — skupinu je nutné určit AŽ PO nastavení příznaku, ať do ní patří i
+  // právě sloučený segment. Při vypnutí se nic nepropisuje, segment jen
+  // opouští skupinu.
+  onSegmentMergeChange(id, merged) {
+    const found = findSegment(id);
+    if (!found) return;
+    const list = getSideList(found.side);
+    const idx = list.findIndex((s) => s.id === id);
+    if (idx <= 0) return; // první segment nemá s čím splynout, zůstává false
+    found.seg.mergeWithPrev = !!merged;
+    normalizeMergeFlags(list);
+    if (merged === true) {
+      let start = idx;
+      while (start > 0 && list[start].mergeWithPrev === true) start--;
+      const first = list[start];
+      propagateMergeGroupField(list, start, 'finish', first.finish);
+      if (first.type === NEUTRAL_TYPE) {
+        propagateMergeGroupField(list, start, 'podestavba', first.podestavba);
+      } else if (isCatalogSegmentType(first.type)) {
+        propagateMergeGroupField(list, start, 'bodyStyle', first.bodyStyle);
+      }
+      // první člen ani jedno nemá (DRAWERS/CUSTOM) → pojem bodyStyle/podestavba
+      // se nepropisuje vůbec, viz podmínky výše.
+      if (first.type === NEUTRAL_TYPE || first.type === DRAWERS_TYPE) {
+        propagateMergeGroupField(list, start, 'hasPanel', first.hasPanel);
+      }
+      if (first.type === NEUTRAL_TYPE) {
+        propagateMergeGroupField(list, start, 'hasShelf', first.hasShelf);
+      }
+    }
     rebuildBlock();
   },
   onSinkVatWidthChange(id, vatWidthMM) {

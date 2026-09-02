@@ -233,6 +233,41 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 23. Přepínač stran patří NAD záložky, ne pod ně — POŽADAVEK
+
+**HOTOVO 2. 9. 2026.** Zadavatel: „přepínač stran dole v pruhu nedává moc
+logiku, strukturálně by měl být nad řádkem Herdblok – Podestavby… záložkami,
+které zasahují do prostoru 3D modelu a neposouvají spodní pruh. Strany jsou
+nadřazené svému obsahu."
+
+Vybraná varianta z `mockup-prepinac-stran.html`: **varianta 3** — připojené
+záložky se zaoblenými horními rohy, aktivní plnou firemní modrou.
+
+**Tím se RUŠÍ oprava z úkolu 22.** Přepínač už nezabírá výšku pásu, takže se
+pás u ostrova vrátil na 268 px a **3D pohled dostal 40 px zpět**. Pravidlo
+`#assembly-strip.strip-mono:has(.mono-side-switch)` je smazané, třída
+`.mono-side-switch` zanikla.
+
+**Dvě věci, na kterých to stálo — obojí `overflow: hidden`:**
+1. `#mono-strip-body` — proto se záložky musely přesunout z panelu do nového
+   `#mono-side-tabs`, který leží v `#assembly-strip` mimo něj (index.html).
+2. `.assembly-strip` — tohle je past: záložky byly na správných souřadnicích
+   a `getBoundingClientRect()` je hlásil nad pásem, ale **nevykreslily se**,
+   protože je strop ořízl. Geometrické měření na to NESTAČÍ; odhalil to až
+   `document.elementFromPoint()`, který na jejich místě vracel plátno 3D.
+   Řeší `overflow: visible` scopnutý na `.strip-mono` — obsah pásu se dál
+   ořezává sám, protože `.mono-strip-body` má vlastní `overflow: hidden`,
+   a SEGMENT si sdílené pravidlo nechává (ověřeno: má dál `hidden`).
+
+Záložky se ukazují jen u `island` a jen na záložkách s PER-STRANA obsahem
+(Herdblok, Podestavby, Čelní panel) — u Límců a Ramen ne, ty jsou sdílené
+pro celý blok. Při přepnutí na SEGMENT je schová `ui.js`, protože `mono-ui.js`
+už nekreslí a zůstaly by viset nad pásem.
+
+Ověřeno: `elementFromPoint` vrací `mono-side-tab`, přepnutí strany funguje
+(odznak palety „do B"), u zdi i SEGMENT schované, SEGMENT má pás i overflow
+beze změny, čistá konzole.
+
 ## 22. U ostrova odjel pruh parametrů pod okraj obrazovky — VADA
 
 **HOTOVO 2. 9. 2026.** Zadavatel: „když zvolím ostrovní variantu, specifikace

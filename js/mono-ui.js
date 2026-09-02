@@ -1060,22 +1060,33 @@ export function createMonoStrip({
   }
 
   // ---------------------------------------------------------------------------
-  // Přepínač strany A/B (§4 ZADANI-MONO-OSTROV.md) — jen u ostrova a jen pro
-  // záložky herdblok/podestavby/panel (jejich obsah je PER-STRANA); limec a
-  // ramena mají sdílený obsah, tam se vůbec nevolá. Znovupoužívá STEJNÝ stav
-  // (state.editSide) a callback (onEditSideChange) jako SEGMENT v ui.js —
-  // žádný nový mechanismus, jen jiná kresba (§4: doslovné znovupoužití
-  // .strip-tab, vzhled přepínače je převzatý ze SEGMENTu). Obal má vlastní
-  // třídu `.mono-side-switch` (jediná nová CSS třída, §11 zadání).
+  // Záložky strany A/B (§4 ZADANI-MONO-OSTROV.md) — jen u ostrova a jen pro
+  // záložky herdblok/podestavby/panel (jejich obsah je PER-STRANA); límec a
+  // ramena mají sdílený obsah, tam se nenabízejí. Znovupoužívají STEJNÝ stav
+  // (state.editSide) a callback (onEditSideChange) jako SEGMENT v ui.js.
+  //
+  // ZMĚNA 2. 9. 2026 (zadavatel): dřív se přepínač vkládal DOVNITŘ panelu pod
+  // řádek záložek Herdblok/Podestavby. To bylo obrácené — strana je NADŘAZENÁ
+  // svému obsahu, takže patří nad ně. Teď se kreslí do #mono-side-tabs, který
+  // leží mimo #mono-strip-body (ten má overflow:hidden) a je absolutně umístěný
+  // nad horní hranu pásu, tedy do prostoru 3D pohledu. Pás proto nemusí být
+  // u ostrova vyšší — zvýšení z úkolu 22 se tím zrušilo a 3D dostalo 40 px zpět.
   // ---------------------------------------------------------------------------
-  function buildSideSwitch(currentSide) {
-    const wrap = makeEl('div', 'mono-side-switch');
-    wrap.setAttribute('role', 'tablist');
+  function renderSideTabs(isIsland, currentSide) {
+    const wrap = els.sideTabs;
+    if (!wrap) return;
+    wrap.textContent = '';
+    // Zalozky stran se tykaji jen zalozek s PER-STRANA obsahem; limec a
+    // ramena jsou sdilene pro cely blok, tam se prepinac nenabizi (stejne
+    // pravidlo jako driv, jen se ted vyhodnocuje na jednom miste).
+    const perSide = activeTab === 'herdblok' || activeTab === 'podestavby' || activeTab === 'panel';
+    wrap.hidden = !(isIsland && perSide);
+    if (wrap.hidden) return;
     ['A', 'B'].forEach((side) => {
       const isActive = currentSide === side;
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = isActive ? 'strip-tab active' : 'strip-tab';
+      btn.className = isActive ? 'mono-side-tab active' : 'mono-side-tab';
       btn.setAttribute('role', 'tab');
       btn.setAttribute('aria-selected', String(isActive));
       btn.title = tt('strip.editSideTitle', { side });
@@ -1087,7 +1098,6 @@ export function createMonoStrip({
       });
       wrap.appendChild(btn);
     });
-    return wrap;
   }
 
   // ---------------------------------------------------------------------------
@@ -1097,8 +1107,6 @@ export function createMonoStrip({
   function buildHerdPodePanel(monoState, layout, lengthMM, isIsland, currentSide) {
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = !(activeTab === 'herdblok' || activeTab === 'podestavby');
-
-    if (isIsland) panel.appendChild(buildSideSwitch(currentSide));
 
     panel.appendChild(buildTrackViewport([
       buildRuler(lengthMM),
@@ -1128,8 +1136,6 @@ export function createMonoStrip({
   function buildPanelPanel(state, monoState, layout, lengthMM, isIsland, currentSide) {
     const panel = makeEl('div', 'mono-panel');
     panel.hidden = activeTab !== 'panel';
-
-    if (isIsland) panel.appendChild(buildSideSwitch(currentSide));
 
     panel.appendChild(buildTrackViewport([
       buildRuler(lengthMM),
@@ -1200,6 +1206,9 @@ export function createMonoStrip({
     const focusInfo = captureFocus();
 
     renderTabs();
+    // Zalozky stran se kresli MIMO els.body (viz index.html) — musi se proto
+    // prekreslit zvlast, jinak by po prepnuti strany zustala zvyraznena stara.
+    renderSideTabs(isIsland, currentSide);
 
     els.body.textContent = '';
     els.body.appendChild(buildHerdPodePanel(monoState, layout, lengthMM, isIsland, currentSide));
@@ -1223,6 +1232,7 @@ export function createMonoStrip({
     selected = null;
     lastState = null;
     if (els.body) els.body.textContent = '';
+    if (els.sideTabs) { els.sideTabs.textContent = ''; els.sideTabs.hidden = true; }
     if (els.tabs) els.tabs.textContent = '';
   }
 

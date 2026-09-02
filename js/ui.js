@@ -273,6 +273,9 @@ export function setupUI(callbacks) {
     // tolerantně (getElementById vrátí null, nikdy nespadne) a všude, kde se
     // dál používá, se ošetřuje (viz renderStrip a getMonoStrip).
     monoStripBody: document.getElementById('mono-strip-body'),
+    // Zalozky stran A/B u ostrova MONO — lezi MIMO #mono-strip-body
+    // (ten ma overflow:hidden), viz komentar u elementu v index.html.
+    monoSideTabs: document.getElementById('mono-side-tabs'),
 
     viewButtons: Array.from(document.querySelectorAll('[data-view]')),
     sideSwitch: document.getElementById('side-switch'),
@@ -336,7 +339,7 @@ export function setupUI(callbacks) {
   function getMonoStrip() {
     if (!monoStrip) {
       monoStrip = createMonoStrip({
-        els: { tabs: els.stripTabs, body: els.monoStripBody },
+        els: { tabs: els.stripTabs, body: els.monoStripBody, sideTabs: els.monoSideTabs },
         t,
         // Callbacky MONO jsou obsahem main.js (§4 zadání) — ui.js je jen
         // PROPOUŠTÍ (proto spread), kromě onMonoTabChange: tu si ui.js
@@ -1622,6 +1625,9 @@ export function setupUI(callbacks) {
     els.assemblyStrip.classList.toggle('strip-mono', isMono);
     if (els.stripBody) els.stripBody.hidden = isMono;
     if (els.monoStripBody) els.monoStripBody.hidden = !isMono;
+    // Zalozky stran schovava u SEGMENTu ui.js — mono-ui.js pri prepnuti
+    // produktu uz nekresli, takze by nad pasem zustaly viset.
+    if (!isMono && els.monoSideTabs) els.monoSideTabs.hidden = true;
     if (els.stripCapacity) els.stripCapacity.hidden = isMono;
     if (isMono) { getMonoStrip().render(state); return; }
 

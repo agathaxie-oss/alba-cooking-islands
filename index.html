@@ -212,6 +212,14 @@
 
       <section id="assembly-strip" class="assembly-strip"
                aria-label="Assembly" data-i18n-aria-label="side.segments">
+        <!-- Zalozky stran A/B u ostrova MONO. Lezi ZAMERNE mimo
+             #mono-strip-body: ten ma overflow:hidden, takze cokoli uvnitr nej
+             se nad pas nedostane. Umistuji se absolutne nad horni hranu pasu
+             (viz .mono-side-tabs v style.css), tedy do prostoru 3D pohledu —
+             pas tim nemusi byt vyssi a hierarchie sedi: strana je NADRAZENA
+             zalozkam Herdblok/Podestavby pod ni. Naplnuje mono-ui.js. -->
+        <div id="mono-side-tabs" class="mono-side-tabs" role="tablist" hidden></div>
+
         <div class="strip-head">
           <div id="strip-tabs" class="strip-tabs" role="tablist"></div>
           <span id="strip-capacity" class="strip-capacity"></span>

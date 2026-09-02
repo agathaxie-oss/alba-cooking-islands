@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Mockup — sloučené podestavby v půdorysu a soupisu (etapa 2)</title>
+<style>
+  :root{ --accent:#0083C6; --accent-dark:#0070ab; --border:#d5dde4; --muted:#6b7783; }
+  *{box-sizing:border-box}
+  body{margin:0;background:#f4f6f8;color:#111820;font:14px/1.55 "Segoe UI",system-ui,sans-serif;padding:26px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:16px;margin:0 0 3px;color:var(--accent)}
+  h3{font-size:13px;margin:18px 0 6px;color:#111820;text-transform:uppercase;letter-spacing:.04em}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:20px}
+  .why{color:var(--muted);font-size:13px;margin:2px 0 14px}
+  .plus{color:#2b7a3d}.minus{color:#a3462f}
+  .plan{border:1px solid var(--border);border-radius:6px;overflow:hidden;background:#fff}
+  .plan svg{display:block;width:100%;height:auto}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid #c9d2da;padding:5px 7px;text-align:left;vertical-align:top}
+  th{background:#eef3f7;font-weight:600}
+  td.grp{background:#f2f8fc;vertical-align:middle}
+  .tag{display:inline-block;font-size:11px;font-weight:600;color:#fff;background:var(--accent-dark);
+       border-radius:3px;padding:1px 6px;margin-right:6px}
+  .note{border-left:3px solid var(--accent);background:#f3f9fd;padding:9px 12px;margin:12px 0;font-size:13px}
+  .q{border-left:3px solid #d09a2a;background:#fdf8ee;padding:9px 12px;margin:12px 0;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Sloučené podestavby — půdorys a soupis dílů</h1>
+<p class="sub">Etapa 2 sloučení (<code>ZADANI-SLOUCENI-PODESTAVEB.md</code>). Etapa 1 (model, 3D, rozhraní) je hotová.
+Ukázková sestava: <b>A1 Neutrální modul 400</b> + <b>A2 Sporák 22 kW 800</b> + <b>A3 Fritéza 400</b> jsou
+sloučené do jedné podestavby 1600 mm, <b>A4 Neutrální modul 400</b> stojí samostatně.</p>
+
+<div class="card">
+<h2>Půdorys — dnešní stav</h2>
+<p class="why">Kresba o sloučení neví: A1, A2 i A3 mají vlastní obrys s dělicí čarou, jako by tam
+stály tři samostatné skříňky. Řetězcová kóta dole měří pozice (400 / 800 / 400 / 400) — skutečná
+šířka vyráběné podestavby (1600) v kresbě nikde není.</p>
+<div class="plan" id="plan-dnes"></div>
+</div>
+
+<div class="card">
+<h2>Varianta A — jeden obrys + dvě řady kót <span class="tag">DOPORUČENO</span></h2>
+<p class="why"><span class="plus">Pro:</span> dělicí čáry uvnitř skupiny zmizí, takže kresba ukazuje
+to, co se skutečně vyrobí — jednu skříňku 1600 mm. Pozice A1–A3 zůstávají u svých přístrojů, protože
+přístroje jsou pořád tři. Druhá řada kót („Podestavby") měří skutečné skříňky.
+<b>Tenhle způsob už v aplikaci je</b> — takhle kótuje půdorys MONO (řady „Podestavby" a „Přístroje"),
+takže SEGMENT by se choval stejně jako MONO.
+&nbsp;<span class="minus">Proti:</span> půdorys je o jednu řadu kót vyšší (~40 px v dokumentu).</p>
+<div class="plan" id="plan-a"></div>
+</div>
+
+<div class="card">
+<h2>Varianta B — jeden obrys, jedna řada kót</h2>
+<p class="why"><span class="plus">Pro:</span> nejjednodušší, výška kresby se nemění.
+&nbsp;<span class="minus">Proti:</span> šířky jednotlivých pozic (400 / 800 / 400) z kresby úplně
+zmizí — v půdorysu už nepřečtete, jak široký je který přístroj. To je ztráta informace, kterou
+dnešní kresba má.</p>
+<div class="plan" id="plan-b"></div>
+</div>
+
+<div class="card">
+<h2>Soupis dílů — dnešní stav</h2>
+<p class="why">Sloupec „Podestavba" se u sloučené skupiny třikrát zopakuje. Čte se to tak, že
+se objednávají tři skříňky s dvířky (400 + 800 + 400), ne jedna o šířce 1600.</p>
+<table>
+<thead><tr><th>Poz.</th><th>Přístroj / prvek</th><th>Katalogové označení</th><th>Rozměr (š × h × v)</th><th>Podestavba</th><th>Provedení</th></tr></thead>
+<tbody>
+<tr><td>A1</td><td>Neutrální modul</td><td>—</td><td>400 × 800 × 900 mm</td><td>S dvířky · Police: ne · Panel: ne</td><td>H1</td></tr>
+<tr><td>A2</td><td>Sporák plynový 22 kW · 800</td><td>AL-PG22-800-G</td><td>800 × 800 × 900 mm</td><td>S dvířky · Police: ne · Panel: ano</td><td>H1</td></tr>
+<tr><td>A3</td><td>Fritéza 10 l · 400</td><td>AL-FR10-400-E</td><td>400 × 800 × 900 mm</td><td>S dvířky · Police: ne · Panel: ano</td><td>H1</td></tr>
+<tr><td>A4</td><td>Neutrální modul</td><td>—</td><td>400 × 800 × 900 mm</td><td>Otevřená · Police: ano · Panel: ne</td><td>H1</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Soupis — varianta 1: sloučená buňka <span class="tag">DOPORUČENO</span></h2>
+<p class="why"><span class="plus">Pro:</span> počet řádků se nemění (jeden přístroj = jeden řádek,
+přesně jak jste to chtěl), ale podestavba se v tabulce objeví <b>jednou</b> a se svou skutečnou
+šířkou. Sloučená buňka je i vizuálně jasná — hned je vidět, kam skupina sahá.
+&nbsp;<span class="minus">Proti:</span> sloučené buňky se hůř kopírují do Excelu.</p>
+<table>
+<thead><tr><th>Poz.</th><th>Přístroj / prvek</th><th>Katalogové označení</th><th>Rozměr (š × h × v)</th><th>Podestavba</th><th>Provedení</th></tr></thead>
+<tbody>
+<tr><td>A1</td><td>Neutrální modul</td><td>—</td><td>400 × 800 × 900 mm</td>
+    <td class="grp" rowspan="3"><b>Sloučená podestavba A1–A3</b><br>1600 × 800 × 900 mm<br>S dvířky · Police: ne · Panel: ne</td>
+    <td>H1</td></tr>
+<tr><td>A2</td><td>Sporák plynový 22 kW · 800</td><td>AL-PG22-800-G</td><td>800 × 800 × 900 mm</td><td>H1</td></tr>
+<tr><td>A3</td><td>Fritéza 10 l · 400</td><td>AL-FR10-400-E</td><td>400 × 800 × 900 mm</td><td>H1</td></tr>
+<tr><td>A4</td><td>Neutrální modul</td><td>—</td><td>400 × 800 × 900 mm</td><td>Otevřená · Police: ano · Panel: ne</td><td>H1</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Soupis — varianta 2: samostatná tabulka podestaveb</h2>
+<p class="why"><span class="plus">Pro:</span> podestavby se objednávají zvlášť, tak ať mají zvlášť
+tabulku — přesně jako u MONO, kde jsou výpisy přístrojů a podestaveb oddělené. Dobře se to čte
+i kopíruje.
+&nbsp;<span class="minus">Proti:</span> dokument SEGMENT je delší a rozdělený; sloupec „Podestavba"
+z hlavní tabulky zmizí, takže u jednoho přístroje se musíte dívat na dvě místa.</p>
+<h3>Přístroje a prvky</h3>
+<table>
+<thead><tr><th>Poz.</th><th>Přístroj / prvek</th><th>Katalogové označení</th><th>Rozměr (š × h × v)</th><th>Podestavba</th><th>Provedení</th></tr></thead>
+<tbody>
+<tr><td>A1</td><td>Neutrální modul</td><td>—</td><td>400 × 800 × 900 mm</td><td>P1</td><td>H1</td></tr>
+<tr><td>A2</td><td>Sporák plynový 22 kW · 800</td><td>AL-PG22-800-G</td><td>800 × 800 × 900 mm</td><td>P1</td><td>H1</td></tr>
+<tr><td>A3</td><td>Fritéza 10 l · 400</td><td>AL-FR10-400-E</td><td>400 × 800 × 900 mm</td><td>P1</td><td>H1</td></tr>
+<tr><td>A4</td><td>Neutrální modul</td><td>—</td><td>400 × 800 × 900 mm</td><td>P2</td><td>H1</td></tr>
+</tbody>
+</table>
+<h3>Podestavby</h3>
+<table>
+<thead><tr><th>Poz.</th><th>Pod pozicemi</th><th>Rozměr (š × h × v)</th><th>Provedení těla</th><th>Povrch</th></tr></thead>
+<tbody>
+<tr><td>P1</td><td>A1–A3</td><td>1600 × 800 × 900 mm</td><td>S dvířky · Police: ne · Panel: ne</td><td>H1</td></tr>
+<tr><td>P2</td><td>A4</td><td>400 × 800 × 900 mm</td><td>Otevřená · Police: ano · Panel: ne</td><td>H1</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="card">
+<h2>Na co se ptám</h2>
+<div class="q"><b>Sloupec „Rozměr" u přístroje.</b> Dnes je to šířka segmentu × hloubka × výška, tedy
+vlastně rozměr jeho podestavby. Když se podestavby sloučí, zůstane 400 / 800 / 400 jako
+<b>půdorysný zábor přístroje v bloku</b>. Necháváme to tak (doporučuji), nebo se má u sloučených
+pozic přepnout na jmenovitý rozměr přístroje z katalogu?</div>
+<div class="q"><b>Číslování P1, P2…</b> má smysl jen u varianty 2. U varianty 1 se podestavba
+odkazuje rozsahem pozic („A1–A3") a žádné nové číslování nevzniká.</div>
+<div class="note">Ať vyjde cokoli, platí dál: <b>počet přístrojů, pořadí ani čísla pozic se nemění</b>
+a MONO se nedotýkáme. Sloučení mění jen to, jak se podestavby kreslí a vypisují.</div>
+</div>
+
+</div>
+
+<template id="tpl">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4542 1896" font-family="Segoe UI, Arial, sans-serif" text-rendering="geometricPrecision">
+<rect x="0" y="0" width="4542" height="1896" fill="#ffffff"/>
+<text x="960" y="128" font-size="73.6" font-weight="700" fill="#000">Půdorysné schéma — Jednostranný blok</text>
+<line x1="975" y1="512" x2="975" y2="275.2" stroke="#000" stroke-width="2.24"/>
+<line x1="4175" y1="512" x2="4175" y2="275.2" stroke="#000" stroke-width="2.24"/>
+<line x1="975" y1="364.8" x2="975" y2="275.2" stroke="#000" stroke-width="4.48"/>
+<line x1="4175" y1="364.8" x2="4175" y2="275.2" stroke="#000" stroke-width="4.48"/>
+<line x1="975" y1="320" x2="4175" y2="320" stroke="#000" stroke-width="4.48"/>
+<text x="2575" y="284.8" font-size="54.4" fill="#000" text-anchor="middle">Celková délka: 3200 mm</text>
+<line x1="960" y1="527" x2="736" y2="527" stroke="#000" stroke-width="2.24"/>
+<line x1="960" y1="1327" x2="736" y2="1327" stroke="#000" stroke-width="2.24"/>
+<line x1="768" y1="527" x2="768" y2="1327" stroke="#000" stroke-width="2.24"/>
+<line x1="745.6" y1="527" x2="790.4" y2="527" stroke="#000" stroke-width="2.24"/>
+<line x1="745.6" y1="1327" x2="790.4" y2="1327" stroke="#000" stroke-width="2.24"/>
+<text x="736" y="927" font-size="44.8" fill="#333" text-anchor="middle" transform="rotate(-90 736 927)">Hloubka podestavby: 800 mm</text>
+<line x1="960" y1="527" x2="448" y2="527" stroke="#000" stroke-width="2.24"/>
+<line x1="960" y1="1377" x2="448" y2="1377" stroke="#000" stroke-width="2.24"/>
+<line x1="480" y1="527" x2="480" y2="1377" stroke="#000" stroke-width="4.48"/>
+<line x1="457.6" y1="527" x2="502.4" y2="527" stroke="#000" stroke-width="4.48"/>
+<line x1="457.6" y1="1377" x2="502.4" y2="1377" stroke="#000" stroke-width="4.48"/>
+<text x="448" y="952" font-size="54.4" fill="#000" text-anchor="middle" transform="rotate(-90 448 952)">Hloubka bloku: 850 mm</text>
+<rect x="960" y="512" width="3230" height="880" fill="#fbfbfb" stroke="#000" stroke-width="4.48"/>
+<text x="2575" y="627.2" font-size="48" fill="#333" text-anchor="middle" font-weight="600">ČELO (pohledová strana)</text>
+<text x="2575" y="1340.8" font-size="48" fill="#333" text-anchor="middle" font-weight="600">ZEĎ</text>
+<rect x="975" y="527" width="20" height="850" fill="#e2e2e2" stroke="#000" stroke-width="2.24"/>
+<rect x="4155" y="527" width="20" height="850" fill="#e2e2e2" stroke="#000" stroke-width="2.24"/>
+<rect x="995" y="1327" width="3160" height="50" fill="none" stroke="#999" stroke-width="2.24" stroke-dasharray="22.4,22.4"/>
+<text x="2575" y="1364.3" font-size="35.2" fill="#888" text-anchor="middle" font-style="italic">mezera 50 mm (u zdi)</text>
+
+<g id="cab-split">
+  <rect x="995" y="527" width="400" height="800" fill="#f7f7f7" stroke="#000" stroke-width="2.24"/>
+  <rect x="1395" y="527" width="800" height="800" fill="#f7f7f7" stroke="#000" stroke-width="2.24"/>
+  <rect x="2195" y="527" width="400" height="800" fill="#f7f7f7" stroke="#000" stroke-width="2.24"/>
+</g>
+<g id="cab-merged">
+  <rect x="995" y="527" width="1600" height="800" fill="#f7f7f7" stroke="#000" stroke-width="2.24"/>
+</g>
+<rect x="2595" y="527" width="400" height="800" fill="#f7f7f7" stroke="#000" stroke-width="2.24"/>
+
+<g stroke="#000" stroke-width="2.24" fill="none">
+  <circle cx="1595" cy="783" r="104"/><circle cx="1595" cy="783" r="33.3" fill="#000"/>
+  <line x1="1628.1" y1="816.1" x2="1664.9" y2="852.9"/><line x1="1561.9" y1="816.1" x2="1525.1" y2="852.9"/>
+  <line x1="1561.9" y1="749.9" x2="1525.1" y2="713.1"/><line x1="1628.1" y1="749.9" x2="1664.9" y2="713.1"/>
+  <circle cx="1995" cy="783" r="104"/><circle cx="1995" cy="783" r="33.3" fill="#000"/>
+  <line x1="2028.1" y1="816.1" x2="2064.9" y2="852.9"/><line x1="1961.9" y1="816.1" x2="1925.1" y2="852.9"/>
+  <line x1="1961.9" y1="749.9" x2="1925.1" y2="713.1"/><line x1="2028.1" y1="749.9" x2="2064.9" y2="713.1"/>
+  <circle cx="1595" cy="1071" r="104"/><circle cx="1595" cy="1071" r="33.3" fill="#000"/>
+  <line x1="1628.1" y1="1104.1" x2="1664.9" y2="1140.9"/><line x1="1561.9" y1="1104.1" x2="1525.1" y2="1140.9"/>
+  <line x1="1561.9" y1="1037.9" x2="1525.1" y2="1001.1"/><line x1="1628.1" y1="1037.9" x2="1664.9" y2="1001.1"/>
+  <circle cx="1995" cy="1071" r="104"/><circle cx="1995" cy="1071" r="33.3" fill="#000"/>
+  <line x1="2028.1" y1="1104.1" x2="2064.9" y2="1140.9"/><line x1="1961.9" y1="1104.1" x2="1925.1" y2="1140.9"/>
+  <line x1="1961.9" y1="1037.9" x2="1925.1" y2="1001.1"/><line x1="2028.1" y1="1037.9" x2="2064.9" y2="1001.1"/>
+  <rect x="2315" y="679" width="160" height="496"/>
+  <line x1="2339" y1="753.4" x2="2451" y2="753.4"/><line x1="2339" y1="927" x2="2451" y2="927"/>
+  <line x1="2339" y1="1100.6" x2="2451" y2="1100.6"/>
+</g>
+
+<rect x="1102.8" y="565.4" width="184.3" height="115.2" fill="#fff" stroke="#000" stroke-width="4.48"/>
+<text x="1195" y="648.3" font-size="76.8" font-weight="700" fill="#000" text-anchor="middle">A1</text>
+<text x="1195" y="1295" font-size="41.6" fill="#000" text-anchor="middle">Neutrální modul</text>
+<rect x="1702.8" y="565.4" width="184.3" height="115.2" fill="#fff" stroke="#000" stroke-width="4.48"/>
+<text x="1795" y="648.3" font-size="76.8" font-weight="700" fill="#000" text-anchor="middle">A2</text>
+<text x="1795" y="1295" font-size="41.6" fill="#000" text-anchor="middle">Sporák plynový 22 kW · 800</text>
+<rect x="2302.8" y="565.4" width="184.3" height="115.2" fill="#fff" stroke="#000" stroke-width="4.48"/>
+<text x="2395" y="648.3" font-size="76.8" font-weight="700" fill="#000" text-anchor="middle">A3</text>
+<text x="2395" y="1295" font-size="41.6" fill="#000" text-anchor="middle">Fritéza 10 l · 400</text>
+<rect x="2702.8" y="565.4" width="184.3" height="115.2" fill="#fff" stroke="#000" stroke-width="4.48"/>
+<text x="2795" y="648.3" font-size="76.8" font-weight="700" fill="#000" text-anchor="middle">A4</text>
+<text x="2795" y="1295" font-size="41.6" fill="#000" text-anchor="middle">Neutrální modul</text>
+
+<g id="chains"></g>
+</svg>
+</template>
+
+<script>
+const TPL = document.getElementById('tpl');
+
+/** Jedna řada řetězcové kóty: svislé odkazy, vodorovná čára, značky a čísla.
+ *  `edges` jsou x-souřadnice hranic v kresbě, `label` volitelný popis vlevo. */
+function chainRow(edges, y, label) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const g = document.createElementNS(NS, 'g');
+  const add = (tag, attrs, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    g.appendChild(e);
+    return e;
+  };
+  edges.forEach((x) => {
+    add('line', { x1: x, y1: 1392, x2: x, y2: y, stroke: '#000', 'stroke-width': 2.24 });
+    add('line', { x1: x - 20.8, y1: y, x2: x + 20.8, y2: y, stroke: '#000', 'stroke-width': 2.24 });
+  });
+  add('line', { x1: edges[0], y1: y, x2: edges[edges.length - 1], y2: y, stroke: '#000', 'stroke-width': 2.24 });
+  for (let i = 0; i < edges.length - 1; i++) {
+    add('text', {
+      x: (edges[i] + edges[i + 1]) / 2, y: y + 54.4, 'font-size': 44.8,
+      fill: '#333', 'text-anchor': 'middle',
+    }, String(Math.round(edges[i + 1] - edges[i])));
+  }
+  if (label) {
+    add('text', { x: 940, y: y + 16, 'font-size': 40, fill: '#666', 'text-anchor': 'end', 'font-style': 'italic' }, label);
+  }
+  return g;
+}
+
+/** Postaví jeden panel: `merged` sloučí obrys skupiny, `rows` popíše řady kót. */
+function panel(hostId, { merged, rows, viewH }) {
+  const svg = TPL.content.firstElementChild.cloneNode(true);
+  svg.querySelector(merged ? '#cab-split' : '#cab-merged').remove();
+  if (viewH) svg.setAttribute('viewBox', `0 0 4542 ${viewH}`);
+  const chains = svg.querySelector('#chains');
+  rows.forEach((r) => chains.appendChild(chainRow(r.edges, r.y, r.label)));
+  document.getElementById(hostId).appendChild(svg);
+}
+
+// dnešní stav — tři obrysy, jedna řada kót po pozicích
+panel('plan-dnes', {
+  merged: false,
+  rows: [{ edges: [995, 1395, 2195, 2595, 2995], y: 1600 }],
+});
+
+// varianta A — sloučený obrys, dvě řady kót (jako MONO)
+panel('plan-a', {
+  merged: true,
+  viewH: 2040,
+  rows: [
+    { edges: [995, 1395, 2195, 2595, 2995], y: 1600, label: 'Pozice' },
+    { edges: [995, 2595, 2995], y: 1790, label: 'Podestavby' },
+  ],
+});
+
+// varianta B — sloučený obrys, jedna řada kót po podestavbách
+panel('plan-b', {
+  merged: true,
+  rows: [{ edges: [995, 2595, 2995], y: 1600 }],
+});
+</script>
+</body>
+</html>

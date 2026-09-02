@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Mockup — přepínač stran nad pásem</title>
+<style>
+  :root{ --accent:#0083C6; --accent-dark:#0070ab; --border:#d5dde4; --muted:#6b7783; --panel:#fff; }
+  *{box-sizing:border-box}
+  body{margin:0;background:#f4f6f8;color:#111820;font:14px/1.55 "Segoe UI",system-ui,sans-serif;padding:26px}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:16px;margin:0 0 3px;color:var(--accent)}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:20px}
+  .why{color:var(--muted);font-size:13px;margin:2px 0 14px}
+  .plus{color:#2b7a3d}.minus{color:#a3462f}
+
+  .app{border:1px solid var(--border);border-radius:6px;overflow:hidden;background:#fff}
+  .viewport{height:150px;background:linear-gradient(#f7f9fb,#e8edf1);position:relative}
+  .blok{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);
+        width:250px;height:52px;background:#dfe5ea;border:1px solid #b9c4cd;border-radius:3px}
+  .strip{position:relative;border-top:1px solid var(--border);background:var(--panel)}
+  .strip-head{display:flex;align-items:center;gap:10px;padding:0 12px;height:34px;
+              border-bottom:1px solid var(--border)}
+  .strip-tab{padding:4px 12px;font-size:12px;color:var(--muted);background:none;
+             border:1px solid transparent;border-radius:4px;cursor:pointer}
+  .strip-tab.active{color:#fff;background:var(--accent-dark);border-color:var(--accent-dark)}
+  .rows{padding:10px 12px 12px;font-size:12px;color:var(--muted)}
+  .row{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .row b{width:74px;font-weight:600;color:#111820}
+  .tile{flex:1;height:26px;border:1px solid var(--border);border-radius:4px;background:#f8fafb}
+
+  .sides-v1{position:absolute;bottom:100%;left:12px;display:flex;gap:3px}
+  .sides-v1 button{font:600 12px/1 inherit;padding:7px 16px 8px;border:1px solid var(--border);
+    border-bottom:none;border-radius:6px 6px 0 0;background:#eef2f5;color:var(--muted);cursor:pointer}
+  .sides-v1 button.active{background:var(--panel);color:var(--accent-dark);margin-bottom:-1px;padding-bottom:9px}
+
+  .sides-v2{position:absolute;bottom:calc(100% + 8px);left:12px;display:flex;gap:2px;
+    background:rgba(255,255,255,.92);border:1px solid var(--border);border-radius:999px;
+    padding:3px;box-shadow:0 2px 6px rgba(17,24,32,.13)}
+  .sides-v2 button{font:600 12px/1 inherit;padding:6px 15px;border:none;border-radius:999px;
+    background:none;color:var(--muted);cursor:pointer}
+  .sides-v2 button.active{background:var(--accent-dark);color:#fff}
+
+  .sides-v3{position:absolute;bottom:100%;left:12px;display:flex;align-items:flex-end;gap:3px}
+  .sides-v3 button{font:600 12px/1 inherit;padding:7px 16px 8px;border:1px solid var(--border);
+    border-bottom:none;border-radius:6px 6px 0 0;background:#eef2f5;color:var(--muted);cursor:pointer}
+  .sides-v3 button.active{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff}
+
+  .dnes{border:1px dashed #c3ccd4;border-radius:6px;padding:8px 10px;background:#fbfcfd;margin:2px 0 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Přepínač stran nad pásem</h1>
+<p class="sub">Strany jsou nadřazené obsahu, takže patří nad záložky Herdblok / Podestavby, ne pod ně.
+Záložky vystupují do prostoru 3D pohledu, takže pás nemusí být vyšší.</p>
+
+<div class="card">
+<h2>Dnešní stav — pro srovnání</h2>
+<p class="why">Přepínač je <b>uvnitř</b> pásu pod záložkami. Zabírá 35 px jeho výšky, kvůli čemuž
+musel být pás u ostrova o 40 px vyšší (úkol 22) — a hierarchie je obrácená: strana se tváří
+jako podřízená obsahu.</p>
+<div class="app">
+  <div class="viewport"><div class="blok"></div></div>
+  <div class="strip">
+    <div class="strip-head">
+      <button class="strip-tab active">Herdblok</button><button class="strip-tab">Podestavby</button>
+      <button class="strip-tab">Čelní panel</button><button class="strip-tab">Límce</button>
+    </div>
+    <div class="rows">
+      <div class="dnes">
+        <button class="strip-tab active">Strana A</button><button class="strip-tab">Strana B</button>
+      </div>
+      <div class="row"><b>Herdblok</b><div class="tile"></div></div>
+      <div class="row"><b>Podestavby</b><div class="tile"></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h2>Varianta 1 — připojené záložky, aktivní splývá s pásem</h2>
+<p class="why"><span class="plus">Pro:</span> aktivní strana opticky splývá s pásem, takže je vidět,
+že pás patří jí — nejsilněji sděluje nadřazenost.
+&nbsp;<span class="minus">Proti:</span> nenápadnější než dnešní plné modré tlačítko.</p>
+<div class="app">
+  <div class="viewport"><div class="blok"></div></div>
+  <div class="strip">
+    <div class="sides-v1"><button class="active">Strana A</button><button>Strana B</button></div>
+    <div class="strip-head">
+      <button class="strip-tab active">Herdblok</button><button class="strip-tab">Podestavby</button>
+      <button class="strip-tab">Čelní panel</button><button class="strip-tab">Límce</button>
+    </div>
+    <div class="rows">
+      <div class="row"><b>Herdblok</b><div class="tile"></div></div>
+      <div class="row"><b>Podestavby</b><div class="tile"></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h2>Varianta 2 — plovoucí pilulka</h2>
+<p class="why"><span class="plus">Pro:</span> nejvýraznější, aktivní strana je vidět na první pohled;
+odsazená od pásu, takže nesplývá se záložkami pod ní.
+&nbsp;<span class="minus">Proti:</span> plave nad 3D bez vazby na pás — nadřazenost sděluje slaběji než V1.</p>
+<div class="app">
+  <div class="viewport"><div class="blok"></div></div>
+  <div class="strip">
+    <div class="sides-v2"><button class="active">Strana A</button><button>Strana B</button></div>
+    <div class="strip-head">
+      <button class="strip-tab active">Herdblok</button><button class="strip-tab">Podestavby</button>
+      <button class="strip-tab">Čelní panel</button><button class="strip-tab">Límce</button>
+    </div>
+    <div class="rows">
+      <div class="row"><b>Herdblok</b><div class="tile"></div></div>
+      <div class="row"><b>Podestavby</b><div class="tile"></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h2>Varianta 3 — připojené záložky, aktivní plnou barvou</h2>
+<p class="why"><span class="plus">Pro:</span> spojuje obojí — je připojená k pásu jako V1, ale aktivní
+strana je zvýrazněná stejně silně jako dnes (firemní modrá).
+&nbsp;<span class="minus">Proti:</span> dvě plné modré plochy nad sebou (strana a záložka) spolu soupeří.</p>
+<div class="app">
+  <div class="viewport"><div class="blok"></div></div>
+  <div class="strip">
+    <div class="sides-v3"><button class="active">Strana A</button><button>Strana B</button></div>
+    <div class="strip-head">
+      <button class="strip-tab active">Herdblok</button><button class="strip-tab">Podestavby</button>
+      <button class="strip-tab">Čelní panel</button><button class="strip-tab">Límce</button>
+    </div>
+    <div class="rows">
+      <div class="row"><b>Herdblok</b><div class="tile"></div></div>
+      <div class="row"><b>Podestavby</b><div class="tile"></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h2>Co to přinese navíc</h2>
+<p class="why" style="margin:0">Pás se u ostrova vrátí na 268 px, tedy <b>o 40 px více 3D pohledu</b> —
+oprava z úkolu 22 (zvýšení pásu na 308 px) se tím stane zbytečnou a zruší se. Záložky stran zabírají
+jen úzký pruh těsně nad pásem, kde model stejně nebývá.</p>
+</div>
+
+</div>
+</body>
+</html>

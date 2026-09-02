@@ -1280,9 +1280,26 @@ export function createSegmentMesh(segment, depthM, workHeightM, plinth = {}) {
   // ovládacích prvků kreslí ve JMENOVITÉ šířce (katalogové widthMM), vodorovně
   // vystředěné, bez ohledu na skutečnou (zvětšenou) šířku podestavby.
   const topWidthM = def.topFixed ? mm(def.widthMM) : widthM;
-  renderControls(group, topWidthM, centerY, frontZ, def.controls.type, def.controls.count);
-  decoratePanelExtras(group, def.topFeature ? def.topFeature.type : 'none', topWidthM, centerY, frontZ);
-  applyTopFeature(group, def, segment, topWidthM, depthM, workHeightM);
+  // ZADANI-ZAROVNANI-PRISTROJE.md §3 — vystřední (výchozí) lze u topFixed
+  // přístroje užšího než podestavba nahradit zarovnáním k levému/pravému
+  // okraji (segment.deviceAlign). rozdilM vyjde 0 samo (topWidthM === widthM),
+  // když přístroj roztahuje plochu na celou šířku nebo když se do podestavby
+  // vejde přesně — offset se tedy nikde zvlášť neblokuje. ZNAMÉNKO OVĚŘENO
+  // MĚŘENÍM (viz zadání): kladné world X se promítá VLEVO na obrazovce, takže
+  // kladný lokální posun jde doleva → 'left' = +rozdilM/2, 'right' = −rozdilM/2.
+  const rozdilM = widthM - topWidthM;
+  const offsetM = segment.deviceAlign === 'left' ? rozdilM / 2
+    : segment.deviceAlign === 'right' ? -rozdilM / 2
+    : 0;
+  // Posouvá se jen to, co leží NA desce (plocha, ovladače, doplňky panelu) —
+  // korpus, panel a sokl výše se offsetu netýkají. Obalení do vlastní Group
+  // místo posunu každého dílce zvlášť, jak doporučuje zadání.
+  const topGroup = new THREE.Group();
+  topGroup.position.x = offsetM;
+  renderControls(topGroup, topWidthM, centerY, frontZ, def.controls.type, def.controls.count);
+  decoratePanelExtras(topGroup, def.topFeature ? def.topFeature.type : 'none', topWidthM, centerY, frontZ);
+  applyTopFeature(topGroup, def, segment, topWidthM, depthM, workHeightM);
+  group.add(topGroup);
   if (def.imageDataURL) {
     addBitmapOverlay(group, widthM, depthM, workHeightM, def.imageDataURL);
   }

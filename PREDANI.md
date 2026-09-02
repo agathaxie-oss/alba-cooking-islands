@@ -233,6 +233,66 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 24. Zarovnání přístroje v segmentu (SEGMENT) — POŽADAVEK
+
+**HOTOVO 2. 9. 2026.** Zadavatel: „pokud je tam jeden přístroj, mít možnost
+jej umístit v rámci segmentu vlevo, vpravo nebo doprostřed." Implementováno
+podle `ZADANI-ZAROVNANI-PRISTROJE.md` (závazná smlouva, zůstává jako reference).
+
+Nové INSTANCE pole `deviceAlign` ('left'|'center'|'right', výchozí `'center'`)
+jen u KATALOGOVÝCH segmentů. `'center'` je dnešní chování, takže starší soubor
+se načte beze změny vzhledu. Verze formátu se NEMĚNÍ.
+
+**Platí jen u `def.topFixed === true`** — ty se kreslí v jmenovité katalogové
+šířce a dosud se vždy vystředily. U roztažitelných přístrojů se plocha natáhne
+na celou šířku, takže není čím pohnout; volba se pro ně nenabízí. Druhá
+podmínka: `widthMM > def.widthMM`.
+
+**ZNAMÉNKO (změřeno, neodvozuj znovu):** kladné world X je na obrazovce VLEVO
+— první segment v poli má world X 580 a promítá se na NDC −0,218. Proto
+`'left'` → `+rozdil/2`. Naměřeno na segmentu 1200 s přístrojem 800: střed
+hořáků `center` 80, `left` 280, `right` −120, tedy přesně ±200.
+
+**Posouvají se VŠECHNY TŘI věci, které sdílejí `topWidthM`** — varná plocha,
+ovladače i doplňky panelu. Ověřeno porovnáním všech těles: posunuly se
+o 200 mm hořáky i všechny 4 knoflíky, zatímco panel, deska a logo ALBA na
+panelu zůstaly stát (patří segmentu, ne přístroji).
+
+**Půdorys má vlastní znaménko** — pracuje v souřadnicích kresby, ne ve world X.
+Naměřeno: u zdi `center` 1055 → `left` 855 (na stránce doleva, shoda se 3D).
+U OSTROVA se strana B chová ZRCADLOVĚ (1458 → 1658, tedy na stránce doprava)
+a je to SPRÁVNĚ: její řada je v kresbě otočená, takže „vlevo" z pohledu
+obsluhy u strany B je na stránce vpravo. Kdo to „opraví", rozbije to.
+
+**Pozor na past v katalogu:** všechny položky mají `widthAdjustable: false`,
+ale to ovlivňuje jen popisek v paletě — šířku segmentu jde v pruhu parametrů
+zvětšit až po `CATALOG_WIDTH_MAX`, takže je volba dosažitelná.
+
+## 25. Boční kryt se kreslil do převisu — VADA
+
+**HOTOVO 2. 9. 2026.** Zadavatel: „Když máme převis, tak se tam na konci
+kreslí opláštění podestavby. To nedává smysl." Doložil screenshotem.
+
+**Příčina (změřená):** `computeSideCovers()` přidávala kryt na KAŽDÝ odkrytý
+boční líc skříňky. U krajní skříňky, která nedosahuje na kraj bloku, tím
+vznikl kryt čelem do převisu — panel, za kterým už nic není. Naměřeno na
+bloku 3200 s řadou 50–1650: kryty na `0–50` (kraj bloku, správně) a
+`1650–1670` (konec řady pod převisem, VADA). Kryt navíc sahá v ose Z 30–850,
+zatímco skříňka jen 30–700, takže vyčníval 150 mm za její záda — proto ve 3D
+působil jako plachta ve vzduchu.
+
+Opraveno: kryt se nepřidá, když jde o VNĚJŠÍ stranu krajní skříňky, která
+není na kraji bloku (`i === 0 && !atEdge`, zrcadlově vpravo). Skříňka zůstává
+uzavřená vlastní `bocni-stena`.
+
+**Hloubka krytů 30–850 se NEMĚNILA** — je to vědomé rozhodnutí zadavatele
+(ČÁST E, „Vnitřní kryty 20 mm jdou až ke stěně"), ne vada.
+
+Ověřeno měřením ve třech sestavách: převis vpravo → zůstal jen kryt `0–50`;
+mezery uprostřed řady → všechny čtyři kryty mezer zůstaly (`850–870`,
+`1180–1200`, `2000–2020`, `2330–2350`) i oba krajní; plná řada od kraje ke
+kraji → oba krajní kryty beze změny.
+
 ## 23. Přepínač stran patří NAD záložky, ne pod ně — POŽADAVEK
 
 **HOTOVO 2. 9. 2026.** Zadavatel: „přepínač stran dole v pruhu nedává moc

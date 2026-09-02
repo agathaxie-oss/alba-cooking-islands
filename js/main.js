@@ -534,6 +534,10 @@ function findMonoItem(layer, id, side = 'A') {
 function createCatalogSegment(type) {
   const def = getCatalogEntry(type);
   const seg = { id: nextId++, type, finish: DEFAULT_FINISH };
+  // ZADANI-ZAROVNANI-PRISTROJE.md §1 — stejná výchozí hodnota jako
+  // sanitizeSegment() u načteného souboru, ať nová instance nikdy nemá
+  // deviceAlign undefined (mirror bodyStyle/widthMM níže).
+  seg.deviceAlign = 'center';
   if (def) {
     seg.widthMM = def.widthMM;
     const allowed = Array.isArray(def.allowedBodyStyles) && def.allowedBodyStyles.length
@@ -969,6 +973,14 @@ async function saveConfig() {
   ui.render(state);
 }
 
+// ZADANI-ZAROVNANI-PRISTROJE.md §1 — zarovnání přístroje v segmentu (jen
+// katalogový segment, viz sanitizeSegment níže). Neznámá/chybějící hodnota
+// spadne na 'center', což je DNEŠNÍ chování (přístroj se vystřeďuje) — starší
+// soubor bez tohoto pole se tedy načte beze změny vzhledu.
+function sanitizeDeviceAlign(value) {
+  return value === 'left' || value === 'right' ? value : 'center';
+}
+
 function sanitizeSegment(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const id = nextId++;
@@ -1022,6 +1034,12 @@ function sanitizeSegment(raw) {
   // katalogový přístroj — typ ověří modules.js/catalog.js při stavbě (neznámý = prázdná výplň)
   const def = getCatalogEntry(raw.type);
   const seg = { id, type: raw.type, finish };
+  // ZADANI-ZAROVNANI-PRISTROJE.md §1/§2 — deviceAlign je INSTANCE pole jen
+  // katalogového segmentu (ne neutral/drawers/custom). Smysl má jen u
+  // def.topFixed přístroje širšího, než je jeho jmenovitá šířka (§2) — tam,
+  // kde nesedí, offset v modules.js/createSegmentMesh vyjde 0 sám od sebe,
+  // takže se tu nic dál neomezuje.
+  seg.deviceAlign = sanitizeDeviceAlign(raw.deviceAlign);
   if (def) {
     // šířka je vlastnost INSTANCE (§7.1); chybějící/neplatné widthMM se
     // doplní na výchozí hodnotu katalogu. Hloubka podestavby už NENÍ
@@ -1470,6 +1488,19 @@ const ui = setupUI({
     const def = getCatalogEntry(found.seg.type);
     if (!def) return;
     found.seg.bodyStyle = sanitizeBodyStyle(def, bodyStyle);
+    rebuildBlock();
+  },
+  // ZADANI-ZAROVNANI-PRISTROJE.md §4 — stejný vzorec jako
+  // onCatalogBodyStyleChange výše; ui.js volá jen u topFixed přístroje
+  // širšího, než je jeho jmenovitá šířka, ale handler samotný to neomezuje
+  // (na ostatních segmentech se pole beztak nezobrazí a offset v
+  // modules.js/createSegmentMesh vyjde 0 sám od sebe).
+  onCatalogDeviceAlignChange(id, align) {
+    const found = findSegment(id);
+    if (!found) return;
+    const def = getCatalogEntry(found.seg.type);
+    if (!def) return;
+    found.seg.deviceAlign = sanitizeDeviceAlign(align);
     rebuildBlock();
   },
   // ÚKOL 13 (ZADANI-SOKL.md) — onSegmentPlinthChange ODSTRANĚN: provedení

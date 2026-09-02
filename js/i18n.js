@@ -160,10 +160,17 @@ const DICTS = {
     'field.drawerCount': 'Number of drawers',
     'field.vatWidth': 'Basin width (mm)',
     'field.vatDepth': 'Basin depth (mm)',
+    // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
+    // topFixed přístroje na širší podestavbě)
+    'field.deviceAlign': 'Device position',
 
     'bodyStyle.closed': 'Closed',
     'bodyStyle.doors': 'With doors',
     'bodyStyle.open': 'Open',
+
+    'deviceAlign.left': 'Left',
+    'deviceAlign.center': 'Center',
+    'deviceAlign.right': 'Right',
 
     'plinth.legs': 'Legs',
     'plinth.building': 'Building plinth',
@@ -677,10 +684,17 @@ const DICTS = {
     'field.drawerCount': 'Anzahl der Schubladen',
     'field.vatWidth': 'Beckenbreite (mm)',
     'field.vatDepth': 'Beckentiefe (mm)',
+    // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
+    // topFixed přístroje na širší podestavbě)
+    'field.deviceAlign': 'Geräteposition',
 
     'bodyStyle.closed': 'Geschlossen',
     'bodyStyle.doors': 'Mit Türen',
     'bodyStyle.open': 'Offen',
+
+    'deviceAlign.left': 'Links',
+    'deviceAlign.center': 'Mitte',
+    'deviceAlign.right': 'Rechts',
 
     'plinth.legs': 'Füße',
     'plinth.building': 'Bausockel',
@@ -1194,10 +1208,17 @@ const DICTS = {
     'field.drawerCount': 'Liczba szuflad',
     'field.vatWidth': 'Szerokość zbiornika (mm)',
     'field.vatDepth': 'Głębokość zbiornika (mm)',
+    // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
+    // topFixed přístroje na širší podestavbě)
+    'field.deviceAlign': 'Pozycja urządzenia',
 
     'bodyStyle.closed': 'Zamknięta',
     'bodyStyle.doors': 'Z drzwiczkami',
     'bodyStyle.open': 'Otwarta',
+
+    'deviceAlign.left': 'Do lewej',
+    'deviceAlign.center': 'Do środka',
+    'deviceAlign.right': 'Do prawej',
 
     'plinth.legs': 'Nóżki',
     'plinth.building': 'Cokół murowany',
@@ -1714,10 +1735,17 @@ const DICTS = {
     'field.drawerCount': 'Počet zásuvek',
     'field.vatWidth': 'Šířka vany (mm)',
     'field.vatDepth': 'Hloubka vany (mm)',
+    // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
+    // topFixed přístroje na širší podestavbě)
+    'field.deviceAlign': 'Umístění přístroje',
 
     'bodyStyle.closed': 'Uzavřená',
     'bodyStyle.doors': 'S dvířky',
     'bodyStyle.open': 'Otevřená',
+
+    'deviceAlign.left': 'Vlevo',
+    'deviceAlign.center': 'Na střed',
+    'deviceAlign.right': 'Vpravo',
 
     'plinth.legs': 'Nožičky',
     'plinth.building': 'Stavební sokl',
@@ -2233,10 +2261,17 @@ const DICTS = {
     'field.drawerCount': 'Počet zásuviek',
     'field.vatWidth': 'Šírka vane (mm)',
     'field.vatDepth': 'Hĺbka vane (mm)',
+    // ZADANI-ZAROVNANI-PRISTROJE.md §5 — zarovnání přístroje na desce (jen
+    // topFixed přístroje na širší podestavbě)
+    'field.deviceAlign': 'Umiestnenie prístroja',
 
     'bodyStyle.closed': 'Uzavretá',
     'bodyStyle.doors': 'S dvierkami',
     'bodyStyle.open': 'Otvorená',
+
+    'deviceAlign.left': 'Vľavo',
+    'deviceAlign.center': 'Na stred',
+    'deviceAlign.right': 'Vpravo',
 
     'plinth.legs': 'Nožičky',
     'plinth.building': 'Stavebný sokel',

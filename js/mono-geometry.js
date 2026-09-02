@@ -1267,7 +1267,9 @@ export function buildPodestavba({
 // nevylučuje). buildSideCover() zůstává exportovaná pro samostatné použití,
 // ale hlavní cestou je computeSideCovers() + buildMonoBlock(), který kryty
 // vygeneruje SÁM z řady podestaveb — není to volba volajícího (viz zadání,
-// bod 5): každá odkrytá boční strana podestavby musí kryt dostat, tloušťka
+// bod 5): každá odkrytá boční strana podestavby musí kryt dostat (KROMĚ
+// krajní strany řady, která míří do převisu — tam kryt nemá co zakrývat,
+// viz JSDoc computeSideCovers a oprava vady 2. 9. 2026), tloušťka
 // (THICK 50 / THIN 20) se odvodí z toho, jestli je podestavba na kraji bloku.
 
 /**
@@ -1435,7 +1437,10 @@ function herdblokDepthAtX(xMM, herdblok) {
  * Odvodí boční kryty z řady podestaveb — NENÍ to volba volajícího (viz
  * zadání, bod 5): každá strana podestavby, na kterou zboku přímo nenavazuje
  * jiná podestavba (tolerance SIDE_ADJACENCY_TOL_MM mm, ne přesná rovnost
- * floatů), musí dostat boční kryt.
+ * floatů), musí dostat boční kryt — S VÝJIMKOU krajní strany řady, která
+ * míří do PŘEVISU (viz níž a oprava vady 2. 9. 2026): tam už není ani
+ * podestavba, ani kraj bloku, jen volný prostor, takže kryt by neměl co
+ * zakrývat a nepřidává se.
  *
  * Tloušťka SIDE_COVER_THICK_MM (50) se použije JEN na straně, která leží
  * přesně na "kraji" bloku — levá strana NEJLEVĚJŠÍ podestavby na
@@ -1454,10 +1459,16 @@ function herdblokDepthAtX(xMM, herdblok) {
  * (leftEndType/rightEndType), blok tak může mít na jednom konci 50 a na
  * druhém 20.
  *
- * Všechny ostatní odkryté strany (obě strany mostu/mezery mezi
- * podestavbami, nebo krajní strana odsazená volným prostorem — převis)
- * dostanou SIDE_COVER_THIN_MM (20). Kryt leží VEDLE podestavby ve volném
- * prostoru, ne uvnitř ní.
+ * Všechny ostatní odkryté strany uprostřed řady (obě strany mostu/mezery
+ * mezi podestavbami) dostanou SIDE_COVER_THIN_MM (20). Kryt leží VEDLE
+ * podestavby ve volném prostoru, ne uvnitř ní.
+ *
+ * VÝJIMKA — PŘEVIS (oprava vady 2. 9. 2026, „opláštění podestavby na konci
+ * převisu"): krajní strana řady (i===0 vlevo / i===sorted.length−1 vpravo),
+ * která NENÍ na kraji bloku (atEdge===false), leží v převisu desky — za ní
+ * už není žádná podestavba ani hrana bloku. Takový kryt by stál čelem do
+ * prázdna a nic by nezakrýval (skříňka má vlastní bocni-stena, takže
+ * odkrytá nezůstane), proto se pro tuhle stranu kryt vůbec nepřidává.
  *
  * Hloubka (zadní hrana) každého krytu se odvozuje z depthMM úseku herdbloku,
  * který leží nad danou podestavbou (viz herdblokDepthAtX výše) — hloubka
@@ -1501,19 +1512,33 @@ function computeSideCovers(podestavby, herdblok) {
 
     if (!hasLeftNeighbor) {
       const atEdge = i === 0 && leftEdgeX !== null && Math.abs(p.xMM - leftEdgeX) <= SIDE_ADJACENCY_TOL_MM;
-      // VÝJIMKA: zkosený vodopád (VERTICAL_PLATE_CHAMFER) s podestavbou na
-      // kraji dostává tenký kryt, ne silný — atEdge samo o sobě nestačí.
-      const thicknessMM = atEdge && leftEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
-        ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
-      covers.push({ xMM: p.xMM - thicknessMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok), atEdge });
+      // OPRAVA VADY (2. 9. 2026): i===0 a !atEdge znamená, že levá strana
+      // krajní podestavby NENÍ na kraji bloku — před ní je jen volný
+      // prostor (PŘEVIS), ne stěna ani další podestavba. Kryt by tam stál
+      // čelem do prázdna a nic by nezakrýval, proto se nepřidává. Boční
+      // stěna mostu/mezery uprostřed řady (hasLeftNeighbor je false i u
+      // i>0) tímhle není dotčená — tam kryt smysl má a zůstává, protože
+      // podmínka je vázaná na i===0, ne jen na chybějícího souseda.
+      const isOverhangEnd = i === 0 && !atEdge;
+      if (!isOverhangEnd) {
+        // VÝJIMKA: zkosený vodopád (VERTICAL_PLATE_CHAMFER) s podestavbou
+        // na kraji dostává tenký kryt, ne silný — atEdge samo o sobě nestačí.
+        const thicknessMM = atEdge && leftEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
+          ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
+        covers.push({ xMM: p.xMM - thicknessMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok), atEdge });
+      }
     }
     if (!hasRightNeighbor) {
       const atEdge = i === sorted.length - 1 && rightEdgeX !== null
         && Math.abs((p.xMM + p.widthMM) - rightEdgeX) <= SIDE_ADJACENCY_TOL_MM;
-      // VÝJIMKA — stejné pravidlo jako výš, pro pravý konec.
-      const thicknessMM = atEdge && rightEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
-        ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
-      covers.push({ xMM: p.xMM + p.widthMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok), atEdge });
+      // OPRAVA VADY — stejné pravidlo jako výš, pro pravý konec řady.
+      const isOverhangEnd = i === sorted.length - 1 && !atEdge;
+      if (!isOverhangEnd) {
+        // VÝJIMKA — stejné pravidlo jako výš, pro pravý konec.
+        const thicknessMM = atEdge && rightEndType !== END_TYPES.VERTICAL_PLATE_CHAMFER
+          ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
+        covers.push({ xMM: p.xMM + p.widthMM, thicknessMM, depthMM: herdblokDepthAtX(p.xMM, herdblok), atEdge });
+      }
     }
   });
 

@@ -1201,6 +1201,31 @@ export function setupUI(callbacks) {
         widthLabel.appendChild(widthInput);
         extra.appendChild(widthLabel);
 
+        // ZADANI-ZAROVNANI-PRISTROJE.md §4 — zarovnání přístroje na desce
+        // má smysl jen u topFixed přístrojů (kreslí se v jmenovité šířce) A
+        // ZÁROVEŇ jen když je podestavba širší než přístroj (jinak není kam
+        // uhnout) — v opačném případě se pole vůbec nevykresluje.
+        if (def.topFixed === true && getSegmentWidthMM(seg) > def.widthMM) {
+          const alignLabel = document.createElement('label');
+          alignLabel.className = 'extra-field';
+          alignLabel.textContent = t('field.deviceAlign');
+          const alignSelect = document.createElement('select');
+          const currentAlign = ['left', 'center', 'right'].includes(seg.deviceAlign) ? seg.deviceAlign : 'center';
+          ['left', 'center', 'right'].forEach((val) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = t(`deviceAlign.${val}`);
+            if (currentAlign === val) opt.selected = true;
+            alignSelect.appendChild(opt);
+          });
+          alignSelect.addEventListener('click', (ev) => ev.stopPropagation());
+          alignSelect.addEventListener('change', () => {
+            callbacks.onCatalogDeviceAlignChange(seg.id, alignSelect.value);
+          });
+          alignLabel.appendChild(alignSelect);
+          extra.appendChild(alignLabel);
+        }
+
         // §10.2 SPEC v4 — styl podestavby omezený na povolené typy přístroje;
         // je-li povolený jen jeden, zobrazí se prostý text místo selectu.
         const allowedStyles = Array.isArray(def.allowedBodyStyles) && def.allowedBodyStyles.length

@@ -222,7 +222,7 @@ function drawDrawersTopView(parts, item, drawX, drawZ, strokeThin) {
   }
 }
 
-function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin) {
+function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin, mirrorX = false) {
   const def = item.def;
   const type = def && def.topFeature ? def.topFeature.type : 'none';
   if (type === 'none' || type === 'bitmap' || !type) return;
@@ -237,7 +237,44 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin) {
   const w = def && def.topFixed ? nominalWidthMM : item.widthMM;
   const d = item.plinthDepthMM;
   const zTop = item.zTop;
-  const cxMM = item.xCenter;
+
+  // ZADANI-ZAROVNANI-PRISTROJE.md §6 — posun přístroje v buňce podle
+  // segment.deviceAlign (doplňuje main.js/sanitizeSegment, chybějící pole →
+  // 'center' = dnešní chování). rozdilMM je 0 mimo topFixed (tam w ===
+  // item.widthMM, viz výš) i u přesně padnoucího přístroje (widthMM ===
+  // def.widthMM) — posun se tedy sám neuplatní, žádná další podmínka není
+  // potřeba.
+  const rozdilMM = item.widthMM - w;
+  const align = (item.seg && item.seg.deviceAlign) || 'center';
+  // Lokální posun VE STEJNÉ KONVENCI jako offsetM v modules.js
+  // createSegmentMesh (§3: 'left' kladné, 'right' záporné) — teprve teď se
+  // promítá do souřadnic KRESBY, ne do world X.
+  const localOffsetMM = align === 'left' ? rozdilMM / 2 : align === 'right' ? -rozdilMM / 2 : 0;
+  // ZNAMÉNKO PRO KRESBU (odvozeno z drawX v tomhle souboru, ne opsáno z §3):
+  // drawX(xMM) (níž v souboru) roste STEJNÝM směrem jako xMM — větší
+  // argument = víc VPRAVO na obrázku. layoutRow (výš) dává straně A
+  // `xCenter = -xLocalCenter` a straně B (mirrorX) `xCenter = +xLocalCenter`,
+  // tedy STEJNÁ lokální veličina má na obou stranách OPAČNÉ znaménko v
+  // souřadnici kresby — to je zrcadlení strany B (`sideB.group.rotation.y =
+  // Math.PI` v block.js), promítnuté do 2D. Lokální posun přístroje leží na
+  // téže ose jako xCenter (jen v menším měřítku uvnitř buňky), takže musí
+  // projít STEJNOU transformací: `mirrorX ? +localOffsetMM : -localOffsetMM`.
+  // Kontrola na první segment obou stran (cursor=0, tedy xLocalCenter stejné
+  // pro obě): strana A dostane world X = +xLocalCenter (bez rotace) → podle
+  // změřeného faktu ze zadání (kladné world X = vlevo na 3D obrazovce) se
+  // kreslí vlevo; ve zdejší kresbě má strana A `xCenter = -xLocalCenter`, a
+  // protože drawX roste s argumentem, menší (víc záporné) `xCenter` = víc
+  // VLEVO na obrázku — sedí to se 3D. Strana B po rotaci o 180° dostane
+  // world X = -xLocalCenter → kreslí se VPRAVO na 3D obrazovce; zdejší
+  // `xCenter = +xLocalCenter` (stejné číslo, opačné znaménko než u strany A)
+  // → větší = víc VPRAVO na obrázku — opět sedí se 3D. Stejnou dvojicí
+  // závěrů (A: přímo, B: se znaménkem otočeným) se řídí i posun přístroje:
+  // 'left' na straně A se v půdorysu objeví VLEVO v buňce (shoda s 3D), ale
+  // 'left' na straně B se objeví VPRAVO v buňce — to je SPRÁVNĚ, protože
+  // strana B je fyzicky otočená o 180° (zády ke straně A) a přístroj na ní
+  // sedí zrcadlově stejně jako celá řada segmentů.
+  const offsetMM = mirrorX ? localOffsetMM : -localOffsetMM;
+  const cxMM = item.xCenter + offsetMM;
   const px = (dxMM) => drawX(cxMM + dxMM);
   const pz = (fracOfDepth) => drawZ(zTop + fracOfDepth * d);
   const sw = strokeThin;
@@ -1192,7 +1229,10 @@ export function buildFloorplanSVG(state) {
   }
 
   // --- podestavby + přístroje na desce (dvě vrstvy dle §12.1) ------------------
-  function drawRow(rowItems) {
+  // mirrorX se předává dál do drawDeviceTopView (posun podle deviceAlign,
+  // ZADANI-ZAROVNANI-PRISTROJE.md §6) — musí být STEJNÁ hodnota, jakou pro
+  // tutéž stranu dostal layoutRow výš (false pro A, true pro B).
+  function drawRow(rowItems, mirrorX) {
     rowItems.forEach((item) => {
       const x = drawX(item.xCenter - item.widthMM / 2);
       const y = drawZ(item.zTop);
@@ -1207,7 +1247,7 @@ export function buildFloorplanSVG(state) {
 
       // vrstva 2 — schematický půdorys přístroje na desce (příp. dělení
       // podestavby zásuvek GN 1/1 na 2/3 pásy)
-      drawDeviceTopView(parts, item, drawX, drawZ, strokeThin);
+      drawDeviceTopView(parts, item, drawX, drawZ, strokeThin, mirrorX);
       if (item.seg.type === DRAWERS_TYPE) {
         drawDrawersTopView(parts, item, drawX, drawZ, strokeThin);
       }
@@ -1235,8 +1275,8 @@ export function buildFloorplanSVG(state) {
       );
     });
   }
-  drawRow(itemsA);
-  if (isIsland) drawRow(itemsB);
+  drawRow(itemsA, false);
+  if (isIsland) drawRow(itemsB, true);
 
   if (items.length === 0) {
     parts.push(

@@ -1892,12 +1892,16 @@ export function buildMonoBlock({
 
     group.add(sideBGroup);
 
-    // --- KOMBINOVANÉ DÍLY: deska, oba nosy, límec left/right, boční kryty
-    // na X-koncích — VŠECHNY přes CELOU kombinovanou hloubku (§6/§9 zadání,
-    // "od čela k čelu", ne po stranách zvlášť). Staví se přímo v hlavní
-    // (nerotované) skupině — herA[0].leftEndType/rightEndType JSOU už typy
-    // PROHOZENÉ pro world x=0/x=lengthMM hranu (stejná konvence, jakou
-    // mono-block.js používá pro herdblokA — viz jeho komentář u mirrorX).
+    // --- KOMBINOVANÉ DÍLY: deska, oba nosy a límec left/right jdou VŽDY
+    // přes CELOU kombinovanou hloubku (§6/§9 zadání, "od čela k čelu", ne
+    // po stranách zvlášť) — na rozdíl od nich boční kryty na X-koncích
+    // (níž) mají hloubku ODVOZENOU od toho, která řada (A/B) k danému
+    // konci opravdu dosahuje (vada 2. 9. 2026: kryt visel v prázdnu tam,
+    // kde k jeho konci žádná řada nesahá — viz komentář u výpočtu níž).
+    // Staví se přímo v hlavní (nerotované) skupině — herA[0].leftEndType/
+    // rightEndType JSOU už typy PROHOZENÉ pro world x=0/x=lengthMM hranu
+    // (stejná konvence, jakou mono-block.js používá pro herdblokA — viz
+    // jeho komentář u mirrorX).
     if (herA.length > 0) {
       const deskSpec = herA[0];
       const combinedLeftType = deskSpec.leftEndType;   // world x=0 hrana
@@ -1954,13 +1958,23 @@ export function buildMonoBlock({
         if (wall) combinedGroup.add(wall);
       });
 
-      // --- boční kryty na X-koncích, JEDNA deska přes CELOU kombinovanou
-      // hloubku (z 0..totalDepthMM, "od čela k čelu") — TLOUŠŤKA (THICK/THIN)
-      // se odvozuje ze STEJNÉHO pravidla jako u single (computeSideCovers),
-      // jen aplikovaného na SJEDNOCENÍ obou řad podestaveb: je-li kterákoli
-      // z nich (A nebo B) na daném konci zapřená přímo o hranu bloku, kryt
-      // je THICK (pokud tam zrovna není zkosený konec, pak THIN — stejná
-      // výjimka jako u single), jinak THIN.
+      // --- boční kryty na X-koncích. TLOUŠŤKA (THICK/THIN) se odvozuje ze
+      // STEJNÉHO pravidla jako u single (computeSideCovers), jen aplikovaného
+      // na SJEDNOCENÍ obou řad podestaveb: je-li kterákoli z nich (A nebo B)
+      // na daném konci zapřená přímo o hranu bloku, kryt je THICK (pokud tam
+      // zrovna není zkosený konec, pak THIN — stejná výjimka jako u single),
+      // jinak THIN. Tohle zůstává beze změny.
+      //
+      // HLOUBKA (fromZMM/toZMM) krytu ale NESMÍ automaticky sahat přes
+      // CELOU kombinovanou hloubku — kryt na daném konci zakrývá jen tu
+      // řadu, která k němu skutečně dosahuje (vada 2. 9. 2026: doloženo
+      // screenshotem, blok 3200×1700, řada A world 50–1650, řada B world
+      // 2350–3150 — levý kryt visel v prázdnu na polovině patřící B, pravý
+      // na polovině patřící A, protože se stavěl vždy celý bez ohledu na
+      // to, kam která řada sahá). Proto se "flush" test dělá ZVLÁŠŤ pro
+      // worldPodA a worldPodB (ne jen na jejich sjednocení) a podle toho,
+      // která řada (nebo obě, nebo žádná) k danému konci dosahuje, se
+      // určí Z-rozsah — případně se kryt vůbec nepostaví.
       const worldPodA = podA.map((p) => ({ xMM: p.xMM, widthMM: p.widthMM }));
       // podestavbyB jsou v LOKÁLNÍCH (nezrcadlených) souřadnicích strany B —
       // pro zjištění, jestli leží na kraji bloku, se přepočtou na WORLD X
@@ -1968,25 +1982,51 @@ export function buildMonoBlock({
       // widthMM) = lengthMM−xMM−widthMM, odvozeno v JSDoc výš) — i když se
       // samotné meshe B staví BEZ mirrorX (o to se postará rotace).
       const worldPodB = podestavbyB.map((p) => ({ xMM: lengthMM - p.xMM - p.widthMM, widthMM: p.widthMM }));
-      const allWorldPod = [...worldPodA, ...worldPodB];
+
+      // depthAResolvedMM: stejný fallback řetězec jako u totalDepthMM výš
+      // (depthAMM parametr, jinak hloubka prvního úseku herA) — dělí
+      // totalDepthMM na "pásmo řady A" (z 0..depthAResolvedMM) a "pásmo
+      // řady B" (z depthAResolvedMM..totalDepthMM), viz JSDoc u
+      // buildCollarEdgeWall výš (world z = depthAMM je spára mezi A a B).
+      const depthAResolvedMM = Number(depthAMM) || (herA[0] && herA[0].depthMM) || 0;
 
       const leftEdgeX = sideInsetMM(combinedLeftType);
       const rightEdgeX = lengthMM - sideInsetMM(combinedRightType);
-      const leftFlush = allWorldPod.some((p) => Math.abs(p.xMM - leftEdgeX) <= SIDE_ADJACENCY_TOL_MM);
-      const rightFlush = allWorldPod.some((p) => Math.abs((p.xMM + p.widthMM) - rightEdgeX) <= SIDE_ADJACENCY_TOL_MM);
+      const leftReachA = worldPodA.some((p) => Math.abs(p.xMM - leftEdgeX) <= SIDE_ADJACENCY_TOL_MM);
+      const leftReachB = worldPodB.some((p) => Math.abs(p.xMM - leftEdgeX) <= SIDE_ADJACENCY_TOL_MM);
+      const rightReachA = worldPodA.some((p) => Math.abs((p.xMM + p.widthMM) - rightEdgeX) <= SIDE_ADJACENCY_TOL_MM);
+      const rightReachB = worldPodB.some((p) => Math.abs((p.xMM + p.widthMM) - rightEdgeX) <= SIDE_ADJACENCY_TOL_MM);
+      const leftFlush = leftReachA || leftReachB;
+      const rightFlush = rightReachA || rightReachB;
       const leftThickness = leftFlush && combinedLeftType !== END_TYPES.VERTICAL_PLATE_CHAMFER
         ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
       const rightThickness = rightFlush && combinedRightType !== END_TYPES.VERTICAL_PLATE_CHAMFER
         ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
 
-      if (allWorldPod.length > 0) {
+      // Levý konec: obě řady → celá hloubka; jen A → pásmo A; jen B →
+      // pásmo B; ani jedna → kryt nemá co zakrývat, nestaví se.
+      if (leftReachA || leftReachB) {
         const coverLeft = buildSideCover({
-          thicknessMM: leftThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: leftEdgeX - leftThickness, plinthHeightMM,
+          thicknessMM: leftThickness,
+          heightMM: bodyHeightMM,
+          fromZMM: leftReachB && !leftReachA ? depthAResolvedMM : 0,
+          toZMM: leftReachA && !leftReachB ? depthAResolvedMM : totalDepthMM,
+          xMM: leftEdgeX - leftThickness,
+          plinthHeightMM,
         });
         coverLeft.name = 'bocni-kryt-x-konec';
         group.add(coverLeft);
+      }
+      // Pravý konec: stejná úvaha, nezávisle na levém (viz vada — u
+      // ostrova ze zadání dosahovala vlevo jen A a vpravo jen B).
+      if (rightReachA || rightReachB) {
         const coverRight = buildSideCover({
-          thicknessMM: rightThickness, heightMM: bodyHeightMM, fromZMM: 0, toZMM: totalDepthMM, xMM: rightEdgeX, plinthHeightMM,
+          thicknessMM: rightThickness,
+          heightMM: bodyHeightMM,
+          fromZMM: rightReachB && !rightReachA ? depthAResolvedMM : 0,
+          toZMM: rightReachA && !rightReachB ? depthAResolvedMM : totalDepthMM,
+          xMM: rightEdgeX,
+          plinthHeightMM,
         });
         coverRight.name = 'bocni-kryt-x-konec';
         group.add(coverRight);

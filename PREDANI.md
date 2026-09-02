@@ -233,6 +233,37 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 26. Kombinovaný kryt ostrova visel v prázdnu — VADA
+
+**HOTOVO 2. 9. 2026.** Zadavatel po opravě úkolu 25: „U ostrova v MONO tam
+mám ten panel v prázdnu pořád." Doložil screenshotem.
+
+**Byla to NEÚPLNÁ oprava úkolu 25.** Ten spravil kryty odvozené od skříněk
+(`computeSideCovers`), jenže ostrov staví na X-koncích ještě JEDEN kryt
+druhou cestou — v `buildMonoBlock()`, větev `if (isIsland)`, blok „boční
+kryty na X-koncích". Ten se stavěl na OBOU koncích přes CELOU hloubku
+(`z 0..totalDepthMM`) pod jedinou podmínkou `allWorldPod.length > 0`, tedy
+kdykoli existovala aspoň jedna skříňka kdekoli v bloku. Vůbec se neptal,
+jestli k danému konci nějaká řada dosahuje.
+
+**Ponaučení pro příště: opravu měřit v OBOU variantách.** Úkol 25 jsem
+ověřoval jen na `single` a vada v `island` proto prošla.
+
+Naměřeno před opravou (blok 3200 × 1700, řada A world 50–1650, řada B world
+2350–3150): kryty `x 0–50 z 0–1700` a `x 3150–3200 z 0–1700` — vlevo dosahuje
+jen A, vpravo jen B, takže druhá polovina obou visela v prázdnu.
+
+Opraveno: každý konec se posuzuje NEZÁVISLE a zvlášť pro každou řadu —
+dosahují obě → kryt přes celou hloubku (dnešní chování), jen A → `z 0..depthA`,
+jen B → `z depthA..total`, ani jedna → kryt se nepostaví. Tloušťka (THICK/THIN
+vč. výjimky u zkoseného konce) se dál odvozuje ze sjednocení obou řad, ta se
+nemění.
+
+Ověřeno měřením ve třech sestavách: případ zadavatele → `x 0–50 z 0–850`
+a `x 3150–3200 z 850–1700`; obě řady od kraje ke kraji → obojí `z 0–1700`;
+obě řady uprostřed → žádný kryt. Varianta u zdi s převisem dál dává jen
+`x 0–50` a kontrolní čísla MONO sedí.
+
 ## 24. Zarovnání přístroje v segmentu (SEGMENT) — POŽADAVEK
 
 **HOTOVO 2. 9. 2026.** Zadavatel: „pokud je tam jeden přístroj, mít možnost

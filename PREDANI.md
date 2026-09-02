@@ -233,6 +233,36 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 22. U ostrova odjel pruh parametrů pod okraj obrazovky — VADA
+
+**HOTOVO 2. 9. 2026.** Zadavatel: „když zvolím ostrovní variantu, specifikace
+a mazání prvků odjede dole mimo obrazovku."
+
+**Příčina (změřená, nehledej ji znovu):** u ostrova přibývá nad dráhami řádek
+`.mono-side-switch` (přepínač Strana A / Strana B, **35 px** i s odsazením),
+ale výška pásu byla pevná pro obě varianty (`#assembly-strip.strip-mono`,
+268 px). `.mono-strip-body` má `overflow: hidden`, takže se přebytek nedal
+ani vyrolovat — pruh parametrů i s košem se prostě uřízl. Naměřeno před
+opravou: pruh sahal na **712–731 px** při spodní hraně pásu 720 px, obsah
+přetékal o 11 px, koš nebyl vidět a pruh byl navíc smrštěný na 19 px místo
+přirozených 47.
+
+**Druhá, skrytá část příčiny:** `.assembly-strip` má `max-height: 45 %`.
+Samotné zvýšení `height`/`flex-basis` na 308 px se proto na okně 720 px
+ořezalo zpět na 301 px a pole pruhu přetékalo dál — už jen o 1 px, což je
+přesně ten druh zbytku, který se okem nenajde. Strop se musel zvednout taky.
+
+Opraveno v `css/style.css` jediným pravidlem
+`#assembly-strip.strip-mono:has(.mono-side-switch)` (308 px + `max-height:
+48 %`). **Používá `:has()`, takže se pás zvedne jen tehdy, když přepínač
+stran opravdu existuje** — žádný příznak v JS, žádná další magická konstanta
+a varianta u zdi ani SEGMENT se nemění vůbec. Skutečná výška je
+`min(308 px, 48 %)`, takže na malém okně se pás chová jako dřív.
+
+Ověřeno měřením po opravě: ostrov Herdblok i Podestavby → strip 308 px,
+ořez 0, pruh v přirozené výšce 47 px, koš i všechna pole uvnitř okna
+(710 a 719 ≤ 720). Varianta u zdi → strip zpět na 268 px, ořez 0.
+
 ## 21. Půdorys s popisky neumí MONO — VADA + PŘESTAVBA
 
 **HOTOVO 1. 9. 2026.** Implementováno podle `ZADANI-PUDORYS-MONO.md`

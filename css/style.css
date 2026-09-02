@@ -3754,3 +3754,29 @@ html.cat-overlay-open body {
   flex-basis: 268px;
   height: 268px;
 }
+
+/* VADA (nahlásil zadavatel 2. 9. 2026): „když zvolím ostrovní variantu,
+   specifikace a mazání prvků odjede dole mimo obrazovku."
+
+   Příčina je změřená: u ostrova přibývá nad dráhami řádek .mono-side-switch
+   (přepínač Strana A / Strana B, 35 px i s odsazením), ale výška pásu výš je
+   pevná pro obě varianty. .mono-strip-body má overflow: hidden, takže se
+   přebytek nedá vyrolovat — pruh parametrů i s košem se prostě uřízne.
+   Naměřeno: pruh sahal na 712–731 px při spodní hraně pásu 720 px, obsah
+   přetékal o 11 px a koš nebyl vidět vůbec.
+
+   Řeší se PŘIROZENĚ výškou podle skutečného obsahu, ne dalším magickým
+   číslem: :has() zvedne pás jen tehdy, když přepínač stran opravdu existuje.
+   U varianty u zdi se tedy nemění nic (tam se nic neořezávalo, ověřeno).
+   Hodnota = 268 + 40, tedy o něco víc než výška přepínače, aby se pruh
+   parametrů nemusel smršťovat (u ostrova byl stlačený na 19 px). */
+#assembly-strip.strip-mono:has(.mono-side-switch) {
+  flex-basis: 308px;
+  height: 308px;
+  /* .assembly-strip má max-height: 45 %, což na okně 720 px ořezalo pás zpět
+     na 301 px a pruh parametrů přetékal o 1 px. Strop se proto zvedá JEN
+     tady — sdílené pravidlo pro SEGMENT i pro MONO u zdi zůstává na 45 %.
+     Výška výš se tím nezvětší, jen se přestane ořezávat: skutečná výška je
+     min(308 px, 48 %), takže na malém okně se pás dál chová jako dřív. */
+  max-height: 48%;
+}

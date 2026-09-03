@@ -520,6 +520,9 @@ const DICTS = {
     'report.basinSize': 'Basin size: {w} × {d} × {h} mm',
     'report.armSpecLine': 'Type {type}, height {height} mm, reach {reach} mm from axis, rotation ±{angle}°',
     'report.faucetSpecLine': 'Type {type}, height {height} mm above worktop, spout reach {reach} mm, body Ø{bodyD} mm, mounting flange Ø{flangeD} mm, arm tube Ø{tubeD} mm, elbow-lever control',
+    // ZADANI-SLOUCENI-ETAPA2.md §3.1 — sloučená podestavba v soupisu dílů
+    'report.baseMerged': 'Merged base cabinet {range}: {w} × {d} × {h} mm',
+    'report.baseShared': 'Base cabinet shared with position {pos}',
 
     'device.gas_stove': 'Gas stove',
     'device.electric_stove': 'Ceramic hob',
@@ -1046,6 +1049,9 @@ const DICTS = {
     'report.basinSize': 'Beckenmaß: {w} × {d} × {h} mm',
     'report.armSpecLine': 'Typ {type}, Höhe {height} mm, Reichweite {reach} mm von der Achse, drehbar ±{angle}°',
     'report.faucetSpecLine': 'Typ {type}, Höhe {height} mm über der Arbeitsplatte, Auslaufreichweite {reach} mm, Körper Ø{bodyD} mm, Befestigungsflansch Ø{flangeD} mm, Armrohr Ø{tubeD} mm, Bedienung über Ellenbogenhebel',
+    // ZADANI-SLOUCENI-ETAPA2.md §3.1 — sloučená podestavba v soupisu dílů
+    'report.baseMerged': 'Zusammengeführter Unterbau {range}: {w} × {d} × {h} mm',
+    'report.baseShared': 'Unterbau gemeinsam mit Position {pos}',
 
     'device.gas_stove': 'Gasherd',
     'device.electric_stove': 'Ceranfeld',
@@ -1573,6 +1579,9 @@ const DICTS = {
     'report.basinSize': 'Wymiar zbiornika: {w} × {d} × {h} mm',
     'report.armSpecLine': 'Typ {type}, wysokość {height} mm, zasięg {reach} mm od osi, obrót ±{angle}°',
     'report.faucetSpecLine': 'Typ {type}, wysokość {height} mm nad blatem, zasięg wylewki {reach} mm, korpus Ø{bodyD} mm, kołnierz montażowy Ø{flangeD} mm, rurka ramienia Ø{tubeD} mm, sterowanie dźwignią łokciową',
+    // ZADANI-SLOUCENI-ETAPA2.md §3.1 — połączona szafka podblatowa w zestawieniu elementów
+    'report.baseMerged': 'Połączona szafka podblatowa {range}: {w} × {d} × {h} mm',
+    'report.baseShared': 'Szafka podblatowa wspólna z pozycją {pos}',
 
     'device.gas_stove': 'Kuchenka gazowa',
     'device.electric_stove': 'Płyta ceramiczna',
@@ -2103,6 +2112,9 @@ const DICTS = {
     'report.basinSize': 'Rozměr vany: {w} × {d} × {h} mm',
     'report.armSpecLine': 'Typ {type}, výška {height} mm, dosah {reach} mm od osy, otočné ±{angle}°',
     'report.faucetSpecLine': 'Typ {type}, výška {height} mm nad deskou, dosah výtoku {reach} mm, tělo Ø{bodyD} mm, montážní příruba Ø{flangeD} mm, trubka ramene Ø{tubeD} mm, ovládání loketní pákou',
+    // ZADANI-SLOUCENI-ETAPA2.md §3.1 — sloučená podestavba v soupisu dílů
+    'report.baseMerged': 'Sloučená podestavba {range}: {w} × {d} × {h} mm',
+    'report.baseShared': 'Podestavba společná s pozicí {pos}',
 
     'device.gas_stove': 'Sporák plynový',
     'device.electric_stove': 'Sklokeramika',
@@ -2632,6 +2644,9 @@ const DICTS = {
     'report.basinSize': 'Rozmer vane: {w} × {d} × {h} mm',
     'report.armSpecLine': 'Typ {type}, výška {height} mm, dosah {reach} mm od osi, otočné ±{angle}°',
     'report.faucetSpecLine': 'Typ {type}, výška {height} mm nad doskou, dosah výtoku {reach} mm, telo Ø{bodyD} mm, montážna príruba Ø{flangeD} mm, rúrka ramena Ø{tubeD} mm, ovládanie lakťovou pákou',
+    // ZADANI-SLOUCENI-ETAPA2.md §3.1 — zlúčená podstavba v súpise dielov
+    'report.baseMerged': 'Zlúčená podstavba {range}: {w} × {d} × {h} mm',
+    'report.baseShared': 'Podstavba spoločná s pozíciou {pos}',
 
     'device.gas_stove': 'Plynový sporák',
     'device.electric_stove': 'Sklokeramická platňa',

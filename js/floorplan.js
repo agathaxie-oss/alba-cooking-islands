@@ -99,6 +99,40 @@ function layoutRow(segments, usableWidthMM, prefix, mirrorX) {
     items.push({ seg, label: `${prefix}${idx + 1}`, xCenter, widthMM });
     cursor += widthMM;
   });
+
+  // ZADANI-SLOUCENI-ETAPA2.md §1 — skupiny sloučených podestaveb. Skupina je
+  // souvislý běh položek, kde druhá a další mají seg.mergeWithPrev === true;
+  // `segments` je pole VEJDOUCÍCH segmentů (fittingA/fittingB), stejné jako
+  // to, nad kterým skupiny počítá 3D (block.js buildSideSegments) — index 0
+  // v něm má díky normalizaci (main.js normalizeMergeFlags) i díky tomu, že
+  // fitting je vždy PREFIX původního pole, vždy mergeWithPrev === false, takže
+  // stačí jeden lineární průchod bez zvláštního ošetření kraje. `group`
+  // dostane i nesloučená položka (size: 1) — agent R (report.js) tak má
+  // jedinou větev na test: item.group.size > 1.
+  let groupStart = 0;
+  for (let i = 1; i <= items.length; i++) {
+    if (i === items.length || !items[i].seg.mergeWithPrev) {
+      const members = items.slice(groupStart, i);
+      // xCenter skupiny NEODVOZUJEME součtem šířek zleva, ale z krajních hran
+      // členů — na straně B je xCenter zrcadlený (mirrorX), takže „první v
+      // poli" leží v kresbě vpravo. Tenhle vzorec platí pro obě strany beze
+      // změny (bez větvení podle mirrorX).
+      const lo = Math.min(...members.map((m) => m.xCenter - m.widthMM / 2));
+      const hi = Math.max(...members.map((m) => m.xCenter + m.widthMM / 2));
+      const groupInfo = {
+        size: members.length,
+        widthMM: members.reduce((sum, m) => sum + m.widthMM, 0),
+        xCenter: (lo + hi) / 2,
+        firstLabel: members[0].label,
+        lastLabel: members[members.length - 1].label,
+      };
+      members.forEach((m, idx) => {
+        m.group = { ...groupInfo, index: idx, first: idx === 0 };
+      });
+      groupStart = i;
+    }
+  }
+
   return items;
 }
 
@@ -1239,11 +1273,19 @@ export function buildFloorplanSVG(state) {
       const w = item.widthMM;
       const h = item.plinthDepthMM;
 
-      // vrstva 1 — obrys podestavby (plná čára)
-      parts.push(
-        `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" ` +
-        `fill="#f7f7f7" stroke="#000" stroke-width="${strokeThin}" />`
-      );
+      // vrstva 1 — obrys podestavby (plná čára). ZADANI-SLOUCENI-ETAPA2.md
+      // §2.1 — sloučená skupina má JEDEN obrys (dělicí čáry uvnitř zmizí),
+      // takže se kreslí jen pro prvního člena skupiny, a to v rozměrech
+      // SKUPINY (item.group.xCenter/widthMM), ne položky. y/height zůstávají
+      // beze změny — hloubka podestavby je v celé řadě jednotná.
+      if (item.group.first) {
+        const groupX = drawX(item.group.xCenter - item.group.widthMM / 2);
+        const groupW = item.group.widthMM;
+        parts.push(
+          `<rect x="${groupX.toFixed(1)}" y="${y.toFixed(1)}" width="${groupW.toFixed(1)}" height="${h.toFixed(1)}" ` +
+          `fill="#f7f7f7" stroke="#000" stroke-width="${strokeThin}" />`
+        );
+      }
 
       // vrstva 2 — schematický půdorys přístroje na desce (příp. dělení
       // podestavby zásuvek GN 1/1 na 2/3 pásy)
@@ -1311,7 +1353,14 @@ export function buildFloorplanSVG(state) {
   // "slabé" provedení (strokeThin/fontChain/šedý text) — viz §ZMĚNA 3 zadání.
   function widthChainDimension(rowItems, yLineTopSide) {
     if (!rowItems.length) return;
-    const sorted = [...rowItems].sort((a, b) => a.xCenter - b.xCenter);
+    // ZADANI-SLOUCENI-ETAPA2.md §2.2 — kóta měří PODESTAVBY, ne pozice: hned
+    // na začátku si z rowItems sesbereme jeden záznam na skupinu (z prvního
+    // člena, item.group.first) a zbytek funkce nechá pracovat nad touhle
+    // hrubší jednotkou úplně beze změny (řazení, bounds, značky i texty).
+    const rowGroups = rowItems
+      .filter((it) => it.group.first)
+      .map((it) => ({ xCenter: it.group.xCenter, widthMM: it.group.widthMM }));
+    const sorted = [...rowGroups].sort((a, b) => a.xCenter - b.xCenter);
     const yEdge = yLineTopSide ? drawZ(-OVERHANG_MM) : drawZ(totalDepthMM + OVERHANG_MM);
     const yLine = yLineTopSide ? yEdge - chainBandH + U * 1.5 : yEdge + chainBandH - U * 1.5;
     const tick = U * 1.3;

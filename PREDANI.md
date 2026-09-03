@@ -233,9 +233,9 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
-## 27. Sloučení podestaveb (SEGMENT) — POŽADAVEK, etapa 1 HOTOVA
+## 27. Sloučení podestaveb (SEGMENT) — POŽADAVEK, HOTOVO
 
-**Etapa 1 HOTOVA 2. 9. 2026, etapa 2 ZBÝVÁ.** Zadavatel: „těch více přístrojů
+**HOTOVO — etapa 1 dne 2. 9. 2026, etapa 2 dne 3. 9. 2026.** Zadavatel: „těch více přístrojů
 by se dalo udělat tak, že bychom tam dali možnost *sloučit přístroje* a
 v rámci projektu by se to počítalo pořád stejně, jen by se sloučily
 podestavby — opticky ve 3D a ve finálním výpisu." Závazné zadání je
@@ -274,9 +274,42 @@ prohození sousedů i smazání prostředního člena skupinu ROZDĚLÍ (nepohlt
 první segment volbu nenabízí, kapacita řady beze změny (1600/3160),
 MONO beze změny, čistá konzole.
 
-**Etapa 2 ZBÝVÁ:** půdorys (`js/floorplan.js`) a soupis dílů (`js/report.js`)
-sloučení zatím NEZNAJÍ — kreslí a vypisují každou podestavbu zvlášť. To je
-ta část zadavatelova požadavku „a ve finálním výpisu".
+**Etapa 2 HOTOVA 3. 9. 2026** podle `ZADANI-SLOUCENI-ETAPA2.md`. Zadavatel
+rozhodl nad mockupem `mockup-slouceni-vypis.html`:
+
+- **Půdorys — varianta B.** Sloučená skupina má JEDEN obrys (dělicí čáry
+  uvnitř zmizí) a řetězcová kóta měří PODESTAVBY, ne pozice. Zadavatel
+  vědomě přijal, že šířky jednotlivých pozic z kresby zmizí — varianta A
+  (druhá řada kót jako u MONO) byla nabídnuta a nezvolena.
+- **Soupis — buňky se NESLUČUJÍ**, žádný `rowspan`. První člen skupiny nese
+  skutečný rozměr celé sestavy, další jen odkaz na jeho pozici.
+- **Sloupec „Rozměr" zůstává** záborem segmentu v bloku.
+
+**Skupiny počítá VÝHRADNĚ `computeLayout`/`layoutRow` ve `floorplan.js`**,
+`report.js` je jen čte přes pole `item.group` (`size`/`index`/`first`/
+`firstLabel`/`lastLabel`/`widthMM`/`xCenter`). Je to stejný princip jako
+`computeMonoDocModel` u MONO: kdyby si kresba a soupis počítaly skupiny
+každý po svém, dřív nebo později se rozejdou. `group` dostane i nesloučená
+položka (`size: 1`), takže `report.js` má jediný test `group.size > 1`.
+
+**`xCenter` skupiny se odvozuje z KRAJNÍCH HRAN členů**, ne součtem šířek
+zleva — na straně B je `xCenter` zrcadlený (`mirrorX`), takže „první v poli"
+leží v kresbě vpravo. Vzorec `(min(x−w/2) + max(x+w/2))/2` platí pro obě
+strany bez větvení.
+
+Ověřeno měřením přímo nad `computeLayout`/`buildFloorplanSVG`:
+- jednostranný, A1+A2+A3 sloučené (400+800+400): obrysy `x 995 š 1600`
+  a `x 2595 š 400`, kóta `1600 / 400`;
+- tytéž segmenty NESLOUČENÉ: `995/400, 1395/800, 2195/400, 2595/400`, kóta
+  `400 / 800 / 400 / 400` — tedy přesně dnešní stav, žádná regrese;
+- ostrov, strana B sloučená B1+B2 (600+400): členové zabírají 580–1580,
+  skupinový obrys `x 3443 š 1000` = `drawX(580)` na milimetr, kóta strany B
+  `400 / 1000` ve správném pořadí zleva doprava.
+
+V aplikaci: soupis dává `A1 → Sloučená podestavba A1–A3: 1600 × 800 × 900 mm
+· S dvířky · Police: ne · Panel: ne`, `A2`/`A3 → Podestavba společná
+s pozicí A1`, `A4` beze změny. Oba klíče se rozsvítí ve všech 5 jazycích.
+MONO půdorys i dokument beze změny, čistá konzole.
 
 ## 26. Kombinovaný kryt ostrova visel v prázdnu — VADA
 

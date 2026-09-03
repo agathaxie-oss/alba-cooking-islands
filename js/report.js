@@ -297,19 +297,38 @@ function buildMaterialSection() {
 }
 
 // --- 6. Soupis dílů (HTML tabulka — NE SVG texty, viz zadání) -------------------
-function buildBaseCellText(item) {
+// ZADANI-SLOUCENI-ETAPA2.md §3 — sloučenou skupinu spočítal floorplan.js
+// (computeLayout/layoutRow), sem chodí hotové item.group. Buňky se dál
+// NESLUČUJÍ (žádný rowspan) — u prvního člena skupiny se jen před dnešní
+// popisný text předřadí věta se skutečným rozměrem CELÉ sestavy, u dalších
+// členů se popisný text nahradí odkazem na první pozici.
+function buildBaseCellText(item, heightMM) {
   const seg = item.seg;
-  if (seg.type === DRAWERS_TYPE) {
-    return [
-      t('floorplan.drawersLine', { n: getSegmentDrawerCount(seg) }),
-      t('floorplan.panelLine', { value: hasPanelFlag(seg) ? t('common.yes') : t('common.no') }),
-    ].join(' · ');
+  const descriptive = seg.type === DRAWERS_TYPE
+    ? [
+        t('floorplan.drawersLine', { n: getSegmentDrawerCount(seg) }),
+        t('floorplan.panelLine', { value: hasPanelFlag(seg) ? t('common.yes') : t('common.no') }),
+      ].join(' · ')
+    : [
+        t(`bodyStyle.${getSegmentBodyStyle(seg)}`),
+        t('floorplan.shelfLine', { value: hasShelfFlag(seg) ? t('common.yes') : t('common.no') }),
+        t('floorplan.panelLine', { value: hasPanelFlag(seg) ? t('common.yes') : t('common.no') }),
+      ].join(' · ');
+
+  const group = item.group;
+  if (!group || group.size <= 1) return descriptive; // nesloučeno — beze změny
+
+  if (!group.first) {
+    return t('report.baseShared', { pos: group.firstLabel }); // odkaz, nic dalšího
   }
-  return [
-    t(`bodyStyle.${getSegmentBodyStyle(seg)}`),
-    t('floorplan.shelfLine', { value: hasShelfFlag(seg) ? t('common.yes') : t('common.no') }),
-    t('floorplan.panelLine', { value: hasPanelFlag(seg) ? t('common.yes') : t('common.no') }),
-  ].join(' · ');
+  const range = `${group.firstLabel}–${group.lastLabel}`; // en dash, ne pomlčka
+  const merged = t('report.baseMerged', {
+    range,
+    w: Math.round(group.widthMM),
+    d: Math.round(item.plinthDepthMM),
+    h: Math.round(heightMM), // stejné zaokrouhlení jako sloupec „Rozměr"
+  });
+  return `${merged} · ${descriptive}`;
 }
 
 function buildTechDataCellText(def) {
@@ -351,7 +370,7 @@ function buildPartsTable(items, heightMM) {
       getSegmentLabel(seg),
       (def && def.catalogCode) || '—',
       `${Math.round(item.widthMM)} × ${Math.round(item.plinthDepthMM)} × ${Math.round(heightMM)} mm`,
-      buildBaseCellText(item),
+      buildBaseCellText(item, heightMM),
       getSegmentFinish(seg),
       buildTechDataCellText(def),
     ];

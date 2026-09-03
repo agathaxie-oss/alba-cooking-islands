@@ -5,7 +5,7 @@
   "supplierCode": "FTLRD-88ET",
   "origin": "IT",
   "type": "griddle",
-  "minCutoutDepthMM": 900,
+  "minCutoutDepthMM": 800,
   "name": {
     "en": "Griddle combined · 800",
     "de": "Grillplatte kombiniert · 800",
@@ -30,8 +30,8 @@
   "widthMM": 800,
   "minWidthMM": 800,
   "widthAdjustable": false,
-  "depthMM": 900,
-  "minDepthMM": 900,
+  "depthMM": 800,
+  "minDepthMM": 800,
   "topFeature": {
     "type": "grill",
     "cookAreaWidthMM": 680,
@@ -45,5 +45,5 @@
   "gasKW": null,
   "cardImage": "img/pristroje/al-gr15-800-e-card.webp",
   "topImage": "img/pristroje/al-gr15-800-e-top.svg",
-  "geometryNotes": "minCutoutDepthMM 900 odvozeno z net depth 800 mm / kód FTLRD-88ET (řada 900). Grilovací plocha 680×760 mm; kombinace vlevo rýhovaná / vpravo hladká (fotka card). topFeature grill — ke schválení #4."
+  "geometryNotes": "minCutoutDepthMM 800 dle čisté hloubky řady 900 (net depth 800 mm) a katalogového popisu 800×800×220 mm; 900 je označení řady, ne rozměr. Grilovací plocha 680×760 mm; kombinace vlevo rýhovaná / vpravo hladká (fotka card). topFeature grill — ke schválení #4."
 }

@@ -233,6 +233,44 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 30. Grilovací deska měla hloubku 900 místo 800 — VADA DAT
+
+**HOTOVO 3. 9. 2026.** Zadavatel: „Grilovačku dej 800x800." Navazuje na nález
+z úkolu 28.
+
+**Číslo 900 není hloubka, je to jméno dodavatelské ŘADY.** Popis téže položky
+`al-gr15-800-e` ve všech pěti jazycích už dnes uváděl „rozměry 800 × 800 ×
+220 mm" a konstrukce „Řada 900 (čistá hloubka 800 mm)" — hloubková pole jim
+odporovala. Potvrzovalo to i původní `geometryNotes`: „minCutoutDepthMM 900
+odvozeno z net depth 800 mm".
+
+Opraveno v `katalog/polozky/al-gr15-800-e.json` (`depthMM`, `minDepthMM`,
+`minCutoutDepthMM` → 800) a v `katalog/manifest.json` (`minCutoutDepthMM` →
+800). Šířka, grilovací plocha 680×760 ani texty se neměnily.
+`factoryVersion` se VĚDOMĚ nezvyšoval — aplikace není nasazená.
+
+**Pozor při ověřování:** katalog se taže přes `fetch` a prohlíeč si ho kašuje.
+Dokud se nezvedne `factoryVersion` (což je záměrně cache-bust, viz
+catalog-browser.js), vrátí `getCatalog()` po změně JSONu pořád STARÁ čísla.
+Nejdřív `fetch(..., {cache:'reload'})` na manifest i položku, pak teprve reload
+— jinak se člověk honií za neexistující vadou. (Stejná past jako u modulů
+v ČÁSTI A2, jen přes jiný mechanismus.)
+
+Ověřeno měřením v půdorysu MONO: obdélník přístroje `y=−45 h=270` (900 mm)
+→ `y=−15 h=240` (800 mm).
+
+**Zbylých 50 mm přesahu NENÍ vada.** `frontOffsetMM` (odstup přístroje od
+předního líce desky) má výchozích 100 mm a je uživatelsky editovatelný
+(mono-ui.js). V bloku hloubky 850 tedy `100 + 800 > 850`. Změřeno: při hloubce
+bloku 900 nepřesáhá NIC. MONO stále nemá automatické dorovnání hloubky ani
+varování (SEGMENT to umí přes `computeSideDepth`/`minDepthMM`) — zůstává
+otevřené.
+
+**STEJNOU VADU MAJÍ DALŠÍ TŘI POLOŽKY** — taky „řada 900", taky hloubka 900,
+taky vlastní popis říkající 800: `al-cer14-800-e`, `al-pg11-400-g`,
+`al-pg28-800-g`. Zadavatel je nepožadoval, takže zůstávají beze změny a čekají
+na jeho rozhodnutí.
+
 ## 29. Přeplněný segment nelže vybrat, tedy ani smazat — VADA
 
 **HOTOVO 3. 9. 2026.** Zadavatel: „U Segmentu, když přidám přístroj který
@@ -297,8 +335,8 @@ Po opravě MONO: poloměry `27,3`/`21,6`, gril `204×228`, fritéza `48×130`.
 `al-gr15-800-e` má katalogovou hloubku **900 mm**, ale MONO blok se pod ní
 NEZVĚTŠÍ (SEGMENT to umí přes `computeSideDepth`/`minDepthMM`). V bloku
 hloubky 850 s předsazením 100 mm tak přístroj přesáhá 150 mm za zadní hranu
-a v půdorysu z něj vyčnívá. Kresba to zobrazuje VĚRNĚ — je to vada modelu
-MONO, ne kresby. Čeká na rozhodnutí zadavatele.
+a v půdorysu z něj vyčnívá. Kresba to zobrazuje VĚRNĚ — je to vada dat, ne kresby.
+**VYŘEŠENO úkolem 30** (hloubka opravena na 800 mm).
 
 ## 27. Sloučení podestaveb (SEGMENT) — POŽADAVEK, HOTOVO
 

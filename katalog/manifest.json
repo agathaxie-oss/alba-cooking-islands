@@ -85,7 +85,7 @@
     {
       "id": "al-gr15-800-e",
       "type": "griddle",
-      "minCutoutDepthMM": 900,
+      "minCutoutDepthMM": 800,
       "publicCode": "AL-GR15-800-E",
       "name": {
         "en": "Griddle combined · 800",

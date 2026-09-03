@@ -272,6 +272,16 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin, mirrorX = fals
   const d = item.plinthDepthMM;
   const zTop = item.zTop;
 
+  // Funkce je SDÍLENÁ dvěma volajícími s ROZDÍLNÝM měřítkem kresby:
+  // buildFloorplanSVG (SEGMENT, drawX/drawZ) posílá měřítko 1:1 → kx=+1,
+  // kz=+1. buildMonoFloorplanSVG (MONO, X/Y) posílá měřítko 0,30 mm→jednotka
+  // kresby → kx=+0,30, a navíc má OTOČENOU osu Z (Y(z) = (TOT−z)·0,30 KLESÁ
+  // s rostoucím z, viz §2 bod 8 tamtéž) → kz vyjde ZÁPORNÉ, −0,30. Nesmí se
+  // tedy předpokládat měřítko 1 — odvozuje se přímo z předaných mapování
+  // (jsou afinní, konkrétní vzorkovací krok 1000 mm na výsledku nezáleží).
+  const kx = (drawX(1000) - drawX(0)) / 1000;
+  const kz = (drawZ(zTop + 1000) - drawZ(zTop)) / 1000;
+
   // ZADANI-ZAROVNANI-PRISTROJE.md §6 — posun přístroje v buňce podle
   // segment.deviceAlign (doplňuje main.js/sanitizeSegment, chybějící pole →
   // 'center' = dnešní chování). rozdilMM je 0 mimo topFixed (tam w ===
@@ -319,8 +329,34 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin, mirrorX = fals
   const rect = (x, y, rw, rh, extra = '') =>
     parts.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${rw.toFixed(1)}" height="${rh.toFixed(1)}" stroke="#000" stroke-width="${sw}" ${extra} />`);
 
+  // Níž se rozměry (r, vatW, cookD, sq, …) počítají v MILIMETRECH — stejně
+  // jako dřív — a na jednotky kresby se převádí AŽ TADY, přes lx/lz/rr.
+  // (clamp()/Math.min() volání srovnávající s w/d — u grillu i sinku —
+  // ZŮSTÁVAJÍ v mm schválně, protože w/d jsou taky mm; nepřevádět dřív.)
+  // lx/lz jsou délky podél jedné osy (lz je vždy kladná — MONO má záporné
+  // kz, délka nesmí vyjít záporná). rr je JEDNO číslo pro poloměr/čtverec,
+  // aby zůstal kruhem/čtvercem i kdyby se kx a kz co do velikosti někdy
+  // lišily (u obou dnešních volajících |kx|===|kz|, Math.min je jen pojistka).
+  const lx = (mmVal) => mmVal * kx;
+  const lz = (mmVal) => mmVal * Math.abs(kz);
+  const rr = (mmVal) => mmVal * Math.min(Math.abs(kx), Math.abs(kz));
+  // Rohy obdélníku zadaného v mm vůči středu přístroje (osa X) a ve zlomcích
+  // hloubky (osa Z) — spočítá OBA rohy přes px/pz a vezme Math.min/max,
+  // NIKDY pozice+velikost: u MONO je kz záporné, takže by "pozice+velikost"
+  // dala obdélník do OPAČNÉ hloubky (přesně tahle chyba byla naměřená na
+  // grilu — gy záporné, obdélník úplně nad blokem, mimo obrys).
+  const cornersMM = (x0MM, x1MM, z0Frac, z1Frac) => {
+    const xa = px(x0MM), xb = px(x1MM);
+    const za = pz(z0Frac), zb = pz(z1Frac);
+    return { x: Math.min(xa, xb), y: Math.min(za, zb), w: Math.abs(xb - xa), h: Math.abs(zb - za) };
+  };
+  const rectMM = (x0MM, x1MM, z0Frac, z1Frac, extra = '') => {
+    const c = cornersMM(x0MM, x1MM, z0Frac, z1Frac);
+    rect(c.x, c.y, c.w, c.h, extra);
+  };
+
   if (type === 'burners4' || type === 'burners2') {
-    const r = Math.min(w, d) * (type === 'burners2' ? 0.18 : 0.13);
+    const r = rr(Math.min(w, d) * (type === 'burners2' ? 0.18 : 0.13));
     const layout = type === 'burners2'
       ? [[0, 0.32], [0, 0.68]]
       : [[-0.25, 0.32], [0.25, 0.32], [-0.25, 0.68], [0.25, 0.68]];
@@ -335,22 +371,25 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin, mirrorX = fals
       }
     });
   } else if (type === 'ceramic4') {
-    rect(px(-w * 0.46), pz(0.05), w * 0.92, d * 0.9, 'fill="none"');
-    const r = Math.min(w, d) * 0.11;
+    rectMM(-w * 0.46, w * 0.46, 0.05, 0.95, 'fill="none"');
+    const r = rr(Math.min(w, d) * 0.11);
     [[-0.25, 0.32], [0.25, 0.32], [-0.25, 0.68], [0.25, 0.68]].forEach(([fx, fz]) => {
       circle(px(fx * w), pz(fz), r, 'fill="none"');
     });
   } else if (type === 'induction') {
-    rect(px(-w * 0.46), pz(0.05), w * 0.92, d * 0.9, 'fill="none"');
-    const sq = Math.min(w * 0.72, d * 0.72);
-    rect(px(-sq / 2), pz(0.5) - sq / 2, sq, sq, 'fill="none"');
+    rectMM(-w * 0.46, w * 0.46, 0.05, 0.95, 'fill="none"');
+    const sq = rr(Math.min(w * 0.72, d * 0.72));
+    rect(px(0) - sq / 2, pz(0.5) - sq / 2, sq, sq, 'fill="none"');
     circle(px(0), pz(0.5), sq * 0.32, 'fill="none"');
   } else if (type === 'fryer2') {
-    const vatW = w * 0.4;
-    const vatD = d * 0.62;
+    const vatWmm = w * 0.4;
+    const vatDmm = d * 0.62;
+    const vatW = lx(vatWmm);
+    const vatD = lz(vatDmm);
     [-0.24, 0.24].forEach((fx) => {
       const x = px(fx * w) - vatW / 2;
-      const y = pz(0.19);
+      // kz může být záporné (MONO) — bezpečný (horní) roh je min ze dvou pz()
+      const y = Math.min(pz(0.19), pz(0.81));
       rect(x, y, vatW, vatD, 'fill="none"');
       // naznačený drátěný košík
       line(x + vatW * 0.15, y + vatD * 0.15, x + vatW * 0.85, y + vatD * 0.15);
@@ -359,10 +398,12 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin, mirrorX = fals
     });
   } else if (type === 'fryer1') {
     // jedna vana, vycentrovaná — vizuálně shodné s fryer2, jen bez druhé vany
-    const vatW = w * 0.4;
-    const vatD = d * 0.62;
+    const vatWmm = w * 0.4;
+    const vatDmm = d * 0.62;
+    const vatW = lx(vatWmm);
+    const vatD = lz(vatDmm);
     const x = px(0) - vatW / 2;
-    const y = pz(0.19);
+    const y = Math.min(pz(0.19), pz(0.81));
     rect(x, y, vatW, vatD, 'fill="none"');
     // naznačený drátěný košík
     line(x + vatW * 0.15, y + vatD * 0.15, x + vatW * 0.85, y + vatD * 0.15);
@@ -376,38 +417,48 @@ function drawDeviceTopView(parts, item, drawX, drawZ, strokeThin, mirrorX = fals
     const cookDmm = Number(def?.topFeature?.cookAreaDepthMM) > 0
       ? Number(def.topFeature.cookAreaDepthMM)
       : d * 0.8;
+    // srovnání s w/d (obojí mm) zůstává v mm — na jednotky kresby se
+    // převádí až při kreslení, ne tady (cookD/2 tady NENÍ konstantní
+    // zlomek d, na rozdíl od fryer/multipan/bainmarie výš, proto dělíme)
     const cookW = Math.min(cookWmm, w - 20);
     const cookD = Math.min(cookDmm, d - 20);
-    const gx = px(-cookW / 2);
-    const gy = pz(0.5) - cookD / 2;
-    rect(gx, gy, cookW, cookD, 'fill="none"');
+    const cookDHalfFrac = cookD / (2 * d);
+    const c = cornersMM(-cookW / 2, cookW / 2, 0.5 - cookDHalfFrac, 0.5 + cookDHalfFrac);
+    rect(c.x, c.y, c.w, c.h, 'fill="none"');
     // levá polovina rýhovaná (žebra předozadně), pravá hladká
     const ribs = 6;
     for (let i = 1; i <= ribs; i++) {
-      const rx = gx + (cookW * 0.5 * i) / (ribs + 1);
-      line(rx, gy + cookD * 0.06, rx, gy + cookD * 0.94);
+      const rx = c.x + (c.w * 0.5 * i) / (ribs + 1);
+      line(rx, c.y + c.h * 0.06, rx, c.y + c.h * 0.94);
     }
-    rect(px(-cookW * 0.14), gy + cookD * 0.02, cookW * 0.28, cookD * 0.08, 'fill="none"'); // sběr tuku
+    // sběr tuku — malý obdélník u horního okraje varné plochy, vystředěný
+    // na ose grilu (X počítáno přes px, ne přičtením mm k jednotkám kresby)
+    const fatXa = px(-cookW * 0.14);
+    const fatXb = px(cookW * 0.14);
+    rect(Math.min(fatXa, fatXb), c.y + c.h * 0.02, Math.abs(fatXb - fatXa), c.h * 0.08, 'fill="none"');
   } else if (type === 'bainmarie') {
-    rect(px(-w * 0.4), pz(0.15), w * 0.8, d * 0.7, 'fill="none"');
+    const c = cornersMM(-w * 0.4, w * 0.4, 0.15, 0.85);
+    rect(c.x, c.y, c.w, c.h, 'fill="none"');
     line(px(-w * 0.3), pz(0.5), px(w * 0.3), pz(0.5));
   } else if (type === 'multipan') {
-    rect(px(-w * 0.44), pz(0.12), w * 0.88, d * 0.62, 'fill="none"');
-    circle(px(w * 0.36), pz(0.2), Math.min(w, d) * 0.05, 'fill="none"');
+    const c = cornersMM(-w * 0.44, w * 0.44, 0.12, 0.74);
+    rect(c.x, c.y, c.w, c.h, 'fill="none"');
+    circle(px(w * 0.36), pz(0.2), rr(Math.min(w, d) * 0.05), 'fill="none"');
   } else if (type === 'sink') {
     const vatWmm = clamp(Number(item.seg.vatWidthMM) || SINK_VAT_WIDTH_DEFAULT, 200, w - 20);
     const vatDmm = clamp(Number(item.seg.vatDepthMM) || SINK_VAT_DEPTH_DEFAULT, 200, d - 20);
     const vatCenterFrac = 0.42;
-    const x = px(-vatWmm / 2);
-    rect(x, pz(vatCenterFrac) - vatDmm / 2, vatWmm, vatDmm, 'fill="none"'); // vana vystředěná mírně vzadu
+    const vatHalfFrac = (vatDmm / 2) / d;
+    const c = cornersMM(-vatWmm / 2, vatWmm / 2, vatCenterFrac - vatHalfFrac, vatCenterFrac + vatHalfFrac);
+    rect(c.x, c.y, c.w, c.h, 'fill="none"'); // vana vystředěná mírně vzadu
 
     // baterie s loketní pákou — vystředěná na ose vany, posunutá dozadu za ni
     // (odpovídá 3D umístění v modules.js/buildSinkTop)
-    const vatBackFrac = vatCenterFrac + (vatDmm / 2) / d;
+    const vatBackFrac = vatCenterFrac + vatHalfFrac;
     const faucetFrac = Math.min(vatBackFrac + 60 / d, 0.94);
     const faucetX = px(0);
     const faucetY = pz(faucetFrac);
-    circle(faucetX, faucetY, Math.min(w, d) * 0.035, 'fill="#000"');
+    circle(faucetX, faucetY, rr(Math.min(w, d) * 0.035), 'fill="#000"');
     // výtok míří dopředu nad vanu (dosah 245 mm); loketní páka je nad ním ve
     // stejné svislé rovině, v půdorysu se tedy promítá do téže čáry
     line(faucetX, faucetY, faucetX, pz(vatCenterFrac));

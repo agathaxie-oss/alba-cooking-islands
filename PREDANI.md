@@ -233,6 +233,43 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 28. Znacky pristroju v pudorysu MONO byly 3,33x vetsi — VADA
+
+**HOTOVO 3. 9. 2026.** Zadavatel: „Takhle vypadá aktuální půdorys … vůbec to
+nedává smysl a je to mess, jako by ty značky přístrojů byly nějak roztаžené."
+Doložil screenshotem MONO / u zdi.
+
+**Záměna jednotek ve sdílené funkci.** `drawDeviceTopView()` kreslí symboly pro
+OBA produkty. STŘEDY posílala přes `drawX`/`drawZ` (správně), ale VELIKOSTI
+(poloměry hořáků, šířky van, varná plocha grilu) počítala v milimetrech
+a zapisovala je do SVG rovnou jako délky v jednotkách kresby. U SEGMENTu to
+procházelo, protože jeho `drawX`/`drawZ` mají měřítko 1. MONO má vlastní
+měřítko `S = 0,30` a navíc OTOČENOU osu Z (`Y(z) = (TOT−z)·0,30`).
+
+Naměřeno před opravou (blok 3200×850, viewBox 1130×660): hořák `r = 91`
+(místo 27,3) při správné rozteči 120 jednotek → kolečka o poloměru 303 mm se
+překrývala; gril `680×760` na `y = −290`, tedy úplně nad blokem mimo obrys;
+fritéza `160×434` místo `48×130`.
+
+Opraveno tak, že funkce **ctí mapování, které dostane**, místo aby
+předpokládala měřítko 1: `kx`/`kz` se odvodí přímo z předaných `drawX`/`drawZ`
+a všechny délky jdou přes `lx`/`lz`/`rr`. Obdélníky se skládají z OBOU rohů
+přes `px`/`pz` a `Math.min`/`max` (`cornersMM`), nikdy jako `pozice+velikost`
+— při záporném `kz` by je to hodilo do opačné hloubky.
+
+**Přejímka byla A/B proti kopii původního souboru:** SEGMENT musí vyjít ZNAK
+PO ZNAKU stejně (u něj je `kx = kz = 1`, takže `lx`/`lz`/`rr` jsou identita).
+Ověřeno na sedmi typech přístrojů (burners4/burners2/ceramic4/grill/fryer1/
+fryer2/induction) ve variantě u zdi i ostrov — `true`/`true`, nulový rozdíl.
+Po opravě MONO: poloměry `27,3`/`21,6`, gril `204×228`, fritéza `48×130`.
+
+**NALEZENO PŘI MĚŘENÍ, NEOPRAVENO — samostatná věc:** grilovací deska
+`al-gr15-800-e` má katalogovou hloubku **900 mm**, ale MONO blok se pod ní
+NEZVĚTŠÍ (SEGMENT to umí přes `computeSideDepth`/`minDepthMM`). V bloku
+hloubky 850 s předsazením 100 mm tak přístroj přesáhá 150 mm za zadní hranu
+a v půdorysu z něj vyčnívá. Kresba to zobrazuje VĚRNĚ — je to vada modelu
+MONO, ne kresby. Čeká na rozhodnutí zadavatele.
+
 ## 27. Sloučení podestaveb (SEGMENT) — POŽADAVEK, HOTOVO
 
 **HOTOVO — etapa 1 dne 2. 9. 2026, etapa 2 dne 3. 9. 2026.** Zadavatel: „těch více přístrojů

@@ -233,6 +233,36 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 29. Přeplněný segment nelže vybrat, tedy ani smazat — VADA
+
+**HOTOVO 3. 9. 2026.** Zadavatel: „U Segmentu, když přidám přístroj který
+přesáhuje varný blok, tak nejde v liště dole označit a tedy ani vymazat."
+Uživatel se z toho stavu neměl jak dostat — koš sedí v pruhu parametrů
+VYBRANÉHO segmentu, takže když nejde vybrat, nejde ani smazat.
+
+**Funkce, která jen kreslila zvýraznění, mimochodem vlastnila výběr.**
+`updateSelectionHighlight()` v `js/main.js` hledala segment v `selectable` —
+a to je seznam toho, co se SKUTEČNĚ postavilo ve 3D (`buildSideSegments`
+staví jen vejdoucí, viz `computeCapacity`). Přeplněný segment mesh nemá,
+takže `find` vrátil `undefined` a funkce provedla `state.selectedId = null`.
+Sled: klik → `onSelectSegment` nastaví id → `updateSelectionHighlight` ho hned
+zruší → `ui.render` vykreslí pruh bez detailu a bez koše.
+
+Opraveno odstraněním jediného řádku: když mesh není, funkce jen schoá odznak
+a skončí — `state.selectedId` nechá být. Všechna ostatní místa, která výběr
+ruší, to dělají VÝSLOVNĚ a zůstávají beze změny (`applyConfig`,
+`onRemoveSegment`, přepínání v `onSelectSegment`, nový projekt, klik do 3D).
+
+**Ponaučení: kreslicí funkce nemá vlastnit stav.** Zrušení výběru bylo
+vedíeší účinek funkce, jejíž jméno slibuje jen překreslení rámečku.
+
+Ověřeno měřením (blok 3200, využito 3200/3160): přeplněný segment se teď
+označí (`selected: true`), otevře se pruh parametrů i s košem a smazání
+projde (kapacita zpět na 2800/3160, žádná přeplněná karta nezbyla). Regrese:
+vejdoucí segment se dál označuje včetně odznaku „Selected: …", druhý klik
+označení ruší u obou druhů karet. Odznak u přeplněného segmentu zůstává
+schovaný záměrně — ve 3D není co zvýraznit.
+
 ## 28. Znacky pristroju v pudorysu MONO byly 3,33x vetsi — VADA
 
 **HOTOVO 3. 9. 2026.** Zadavatel: „Takhle vypadá aktuální půdorys … vůbec to

@@ -652,7 +652,8 @@ function updateSelectionHighlight() {
 
   const entry = selectable.find((s) => s.id === state.selectedId);
   if (!entry) {
-    state.selectedId = null;
+    // Přeplněný segment se ve 3D nestaví (nemá mesh), ale musí zůstat
+    // vybraný — tahle funkce jen kreslí rámeček, výběr nevlastní.
     badgeEl.hidden = true;
     return;
   }

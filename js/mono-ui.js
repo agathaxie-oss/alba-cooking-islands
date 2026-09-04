@@ -608,14 +608,27 @@ export function createMonoStrip({
         leftPct: pct(layout.missingFromMM, lengthMM),
         widthPct: pct(layout.missingMM, lengthMM),
       });
-      const fillBtn = makeButtonLike('span', 'mono-btn-warn', (ev) => {
-        ev.stopPropagation();
-        // side je 'A' u 'single' (currentSide se tak počítá v renderAll) —
-        // viz §5 ZADANI-MONO-OSTROV.md, onMonoFillPodestavby(side).
-        callbacks.onMonoFillPodestavby?.(currentSide);
-      });
-      fillBtn.textContent = tt('mono.fillBtn');
-      missing.appendChild(fillBtn);
+      // Zadavatel 4. 9. 2026: „Doplnění zakázat" pod 100 mm (main.js:
+      // MONO_CABINET_WIDTH_MIN_MM — natvrdo i tady, moduly na sobě záměrně
+      // nezávisí, stejná konvence jako u frontOffsetMM a meze šířky v
+      // buildPodestavbyParamBar níž; při změně přepsat na OBOU místech
+      // zároveň). Skutečná pojistka je v main.js (onMonoFillPodestavby) —
+      // tohle jen tlačítko schová, ať uživatel neklikne na něco, co selže.
+      if (layout.missingMM >= 100) {
+        const fillBtn = makeButtonLike('span', 'mono-btn-warn', (ev) => {
+          ev.stopPropagation();
+          // side je 'A' u 'single' (currentSide se tak počítá v renderAll) —
+          // viz §5 ZADANI-MONO-OSTROV.md, onMonoFillPodestavby(side).
+          callbacks.onMonoFillPodestavby?.(currentSide);
+        });
+        fillBtn.textContent = tt('mono.fillBtn');
+        missing.appendChild(fillBtn);
+      } else {
+        // Zbytek je pod minimem — tlačítko by beztak selhalo (main.js
+        // pojistka), takže místo něj krátká poznámka proč doplnit nejde.
+        const note = makeEl('span', 'mono-tile-note', tt('mono.fillTooSmall', { mm: 100 }));
+        missing.appendChild(note);
+      }
       scale.appendChild(missing);
     }
 

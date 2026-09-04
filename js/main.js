@@ -1896,7 +1896,12 @@ const ui = setupUI({
     // nedopočítává se tu.
     const s = side === 'B' ? 'B' : 'A';
     const layout = computeMonoLayout(state, s);
-    if (layout.missingMM <= 0) return;
+    // Zadavatel 4. 9. 2026: „Doplnění zakázat" pod MONO_CABINET_WIDTH_MIN_MM —
+    // skříňka pod minimem neexistuje a zvětšit ji na minimum by přetékalo
+    // do sousedních prvků, které Doplnit nesmí posouvat. Tohle je POJISTKA
+    // v modelu (rozhraní tlačítko schová, viz mono-ui.js), handler se na
+    // schování nesmí spoléhat.
+    if (layout.missingMM < MONO_CABINET_WIDTH_MIN_MM) return;
     getMonoList('podestavby', s).push(sanitizeMonoCabinet({ kind: 'cabinet', widthMM: layout.missingMM }));
     rebuildBlock();
   },

@@ -3536,6 +3536,21 @@ html.cat-overlay-open body {
   border-radius: 3px;
 }
 
+/* Zadavatel 4. 9. 2026: tlačítko Doplnit se pod minimem (main.js:
+   MONO_CABINET_WIDTH_MIN_MM) nahrazuje poznámkou, PROČ doplnit nejde —
+   sedí na stejné šrafuře .mono-tile-missing jako .mono-tile-name výše,
+   takže padá do STEJNÉ pasti (úkol 7.2): bez neprůhledné "cedulky" by text
+   splýval s pruhy. Cedulka je tedy záměrně TATÁŽ jako u .mono-tile-name;
+   odlišení je jen typografické (menší, netučné, tlumenější barva). */
+.mono-tile-note {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
 .mono-btn-warn {
   padding: 2px 9px;
   font-size: 10px;

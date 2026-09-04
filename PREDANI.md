@@ -266,10 +266,22 @@ bloku 900 nepřesáhá NIC. MONO stále nemá automatické dorovnání hloubky a
 varování (SEGMENT to umí přes `computeSideDepth`/`minDepthMM`) — zůstává
 otevřené.
 
-**STEJNOU VADU MAJÍ DALŠÍ TŘI POLOŽKY** — taky „řada 900", taky hloubka 900,
-taky vlastní popis říkající 800: `al-cer14-800-e`, `al-pg11-400-g`,
-`al-pg28-800-g`. Zadavatel je nepožadoval, takže zůstávají beze změny a čekají
-na jeho rozhodnutí.
+**TÁŽ VADA U DALŠÍCH TŘÍ POLOŽEK — OPRAVENO TÉŽ 3. 9. 2026** na pokyn
+zadavatele („oprav i další výrobky"): `al-cer14-800-e` (PCCD-88ET),
+`al-pg11-400-g` (PCD-84G) a `al-pg28-800-g` (PCD-88G) — stejně jako
+u grilovací desky šly `depthMM`, `minDepthMM` i `minCutoutDepthMM` na 800
+a přepsala se první věta `geometryNotes`. Šířky, `topFeature`, `zones`,
+příkony ani vícejazyčné texty se neměnily.
+
+**Kontrolní stav po opravě (změřeno):** všech deset položek katalogu má
+`minCutoutDepthMM == depthMM == minDepthMM`, žádné hloubkové pole už nemá
+hodnotu 900 a manifest sedí s položkovými soubory. Čtyři položky řady 900
+mají 800, zbylých šest 700. `factoryVersion` zůstává 1.
+
+Důsledek změřený přes `computeSideDepth` (28 kW sporák, mezera 50 mm):
+požadovaných 850 → `effectiveDepthMM 850`, `reasons: []` (blok se už
+NEZVĚTŠUJE); požadovaných 800 → doroste na 850 a pojmenuje viníka. Před
+opravou by 850 nestačilo (900 + 50 = 950).
 
 ## 29. Přeplněný segment nelže vybrat, tedy ani smazat — VADA
 

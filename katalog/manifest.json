@@ -37,7 +37,7 @@
     {
       "id": "al-pg11-400-g",
       "type": "gas_range",
-      "minCutoutDepthMM": 900,
+      "minCutoutDepthMM": 800,
       "publicCode": "AL-PG11-400-G",
       "name": {
         "en": "Gas range 11 kW · 400",
@@ -53,7 +53,7 @@
     {
       "id": "al-pg28-800-g",
       "type": "gas_range",
-      "minCutoutDepthMM": 900,
+      "minCutoutDepthMM": 800,
       "publicCode": "AL-PG28-800-G",
       "name": {
         "en": "Gas range 28 kW · 800",
@@ -69,7 +69,7 @@
     {
       "id": "al-cer14-800-e",
       "type": "ceramic",
-      "minCutoutDepthMM": 900,
+      "minCutoutDepthMM": 800,
       "publicCode": "AL-CER14-800-E",
       "name": {
         "en": "Ceramic 4 zones · 800",

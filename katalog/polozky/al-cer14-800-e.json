@@ -5,7 +5,7 @@
   "supplierCode": "PCCD-88ET",
   "origin": "IT",
   "type": "ceramic",
-  "minCutoutDepthMM": 900,
+  "minCutoutDepthMM": 800,
   "name": {
     "en": "Ceramic 4 zones · 800",
     "de": "Ceranfeld 4 Zonen · 800",
@@ -30,8 +30,8 @@
   "widthMM": 800,
   "minWidthMM": 800,
   "widthAdjustable": false,
-  "depthMM": 900,
-  "minDepthMM": 900,
+  "depthMM": 800,
+  "minDepthMM": 800,
   "topFeature": {
     "type": "ceramic4",
     "glassWidthMM": 750,
@@ -53,5 +53,5 @@
   ],
   "cardImage": "img/pristroje/al-cer14-800-e-card.webp",
   "topImage": "img/pristroje/al-cer14-800-e-top.svg",
-  "geometryNotes": "minCutoutDepthMM 900 odvozeno z net depth 800 mm / kód PCCD-88ET (řada 900). topFeature ceramic4 — sklo 750×770 (RM/katalog), 4× duální zóny Ø220/Ø140 (odhad z fotky card — RM neuvádí Ø), středy ve čtvrtinách skla FL/FR/BL/BR. zones[] = 4 × 3.4 kW. Ke schválení #5."
+  "geometryNotes": "minCutoutDepthMM 800 dle čisté hloubky řady 900 (net depth 800 mm) / kód PCCD-88ET; 900 je označení řady, ne rozměr. topFeature ceramic4 — sklo 750×770 (RM/katalog), 4× duální zóny Ø220/Ø140 (odhad z fotky card — RM neuvádí Ø), středy ve čtvrtinách skla FL/FR/BL/BR. zones[] = 4 × 3.4 kW. Ke schválení #5."
 }

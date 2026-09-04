@@ -5,7 +5,7 @@
   "supplierCode": "PCD-88G",
   "origin": "IT",
   "type": "gas_range",
-  "minCutoutDepthMM": 900,
+  "minCutoutDepthMM": 800,
   "name": {
     "en": "Gas range 28 kW · 800",
     "de": "Gasherd 28 kW · 800",
@@ -30,8 +30,8 @@
   "widthMM": 800,
   "minWidthMM": 800,
   "widthAdjustable": false,
-  "depthMM": 900,
-  "minDepthMM": 900,
+  "depthMM": 800,
+  "minDepthMM": 800,
   "topFeature": { "type": "burners4" },
   "topFixed": true,
   "controls": { "type": "knob", "count": 4 },
@@ -47,5 +47,5 @@
   ],
   "cardImage": "img/pristroje/al-pg28-800-g-card.webp",
   "topImage": "img/pristroje/al-pg28-800-g-top.svg",
-  "geometryNotes": "minCutoutDepthMM 900 (net depth 800 / PCD-88G řada 900). topFeature burners4 — absolutní mřížky 390×360 mm (RM, 2×2). Ke schválení #2 viz ZADANI-GEOMETRIE-RM.md. zones[] = RM zóny 1–4 (10 / 7 / 7 / 4 kW). Pozice: RM neuvádí půdorys zón → mapováno na resolveCastIronBurnerLayout(columns=2): FL, BL, FR, BR (front = menší Z / čelo)."
+  "geometryNotes": "minCutoutDepthMM 800 dle čisté hloubky řady 900 (net depth 800 mm) / kód PCD-88G; 900 je označení řady, ne rozměr. topFeature burners4 — absolutní mřížky 390×360 mm (RM, 2×2). Ke schválení #2 viz ZADANI-GEOMETRIE-RM.md. zones[] = RM zóny 1–4 (10 / 7 / 7 / 4 kW). Pozice: RM neuvádí půdorys zón → mapováno na resolveCastIronBurnerLayout(columns=2): FL, BL, FR, BR (front = menší Z / čelo)."
 }

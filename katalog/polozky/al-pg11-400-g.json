@@ -5,7 +5,7 @@
   "supplierCode": "PCD-84G",
   "origin": "IT",
   "type": "gas_range",
-  "minCutoutDepthMM": 900,
+  "minCutoutDepthMM": 800,
   "name": {
     "en": "Gas range 11 kW · 400",
     "de": "Gasherd 11 kW · 400",
@@ -30,8 +30,8 @@
   "widthMM": 400,
   "minWidthMM": 400,
   "widthAdjustable": false,
-  "depthMM": 900,
-  "minDepthMM": 900,
+  "depthMM": 800,
+  "minDepthMM": 800,
   "topFeature": { "type": "burners2" },
   "topFixed": true,
   "controls": { "type": "knob", "count": 2 },
@@ -45,5 +45,5 @@
   ],
   "cardImage": "img/pristroje/al-pg11-400-g-card.webp",
   "topImage": "img/pristroje/al-pg11-400-g-top.svg",
-  "geometryNotes": "minCutoutDepthMM 900 (net depth 800 / PCD-84G řada 900). topFeature burners2 — mřížka 390×360 mm (RM); ke schválení #1 viz ZADANI-GEOMETRIE-RM.md. zones[] = RM zóny 1–2 (7 / 4 kW). Pozice: RM neuvádí půdorys → mapováno na resolveCastIronBurnerLayout(columns=1): front, back (front = menší Z / čelo)."
+  "geometryNotes": "minCutoutDepthMM 800 dle čisté hloubky řady 900 (net depth 800 mm) / kód PCD-84G; 900 je označení řady, ne rozměr. topFeature burners2 — mřížka 390×360 mm (RM); ke schválení #1 viz ZADANI-GEOMETRIE-RM.md. zones[] = RM zóny 1–2 (7 / 4 kW). Pozice: RM neuvádí půdorys → mapováno na resolveCastIronBurnerLayout(columns=1): front, back (front = menší Z / čelo)."
 }

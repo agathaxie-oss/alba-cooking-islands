@@ -233,6 +233,37 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 32. Výchozí odstup přístroje od přední hrany 70 mm (MONO) — POKYN
+
+**HOTOVO 3. 9. 2026.** Zadavatel: „Dávejme přístroje 70 mm od přední hrany
+jako základ." Týká se `frontOffsetMM` u položek herdbloku ALBA MONO —
+odstupu přístroje od předního líce pracovní desky.
+
+Změnila se **jen výchozí hodnota** 100 → 70 mm. Pole zůstává uživatelsky
+editovatelné, minimum 50 mm se nemění. Starší projekt má `frontOffsetMM`
+uložený u položky, takže se načte se svou vlastní hodnotou — nová výchozí
+platí jen pro NOVĚ přidané položky. Verze formátu se nemění.
+
+Hodnota žije na Čtyřech místech (`MONO_ITEM_FRONT_OFFSET_DEFAULT_MM`
+v `main.js`, dvakrát natřvrdo v `mono-block.js` pro stranu A i B,
+a v `mono-ui.js`) plus dvakrát v `HODNOTY-MONO.md`
+(`pristrojOdPredniHranyStandard`). Moduly na sobě záměrně nezávisí, takže
+sdílená konstanta se NEZAVÁDĚČLA — všechna místa na sebe odkazují
+komentářem. **Při další změně je nutné upravit všechna** (zvlášť oba
+výskyty v `mono-block.js` — kdyby zůstal jeden na staré hodnotě, strany
+A a B by se rozešly a hledalo by se to špatně).
+
+Ověřeno měřením v půdorysu (blok 3200×850, přepočteno ze SVG zpět na mm):
+sporák 22 kW zabírá `z 70–770`, grilovací deska `z 70–870`. Čistá konzole.
+
+**ZBÝVÁ — grilovací deska stále přesáhá o 20 mm.** Je 800 mm hluboká,
+takže `70 + 800 = 870 > 850`. Snížení odstupu ze 100 na 70 přesah zmenšilo
+z 50 na 20 mm, ale neodstranilo. MONO pořád nemá automatické dorovnání
+hloubky ani varování (SEGMENT to umí přes `computeSideDepth`/`minDepthMM`) —
+viz též úkol 30. Čeká na rozhodnutí zadavatele: buď blok hlouběji než
+870 mm, nebo u té položky menší odstup, nebo dopočítávat hloubku jako
+u SEGMENTu.
+
 ## 31. Ikonka záložky prohlížeče (favicon) — POŽADAVEK
 
 **HOTOVO 3. 9. 2026.** Zadavatel: „Chybí mi tam ikonka v prohlížeči, když to

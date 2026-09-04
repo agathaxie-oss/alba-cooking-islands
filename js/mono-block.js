@@ -419,10 +419,14 @@ export function buildMonoScene(state) {
     // Z: build*Top staví lokálně od z=0 (PŘEDNÍ hrana přístroje) do
     // z=depthM (zadní hrana) — změřeno stejně (např. buildElectricStoveTop
     // dává desku na z=depthM/2, tj. střed intervalu 0..depthM). Odstup od
-    // přední hrany DESKY (item.frontOffsetMM, výchozí 100 mm) se proto
+    // přední hrany DESKY (item.frontOffsetMM, výchozí 70 mm) se proto
     // promítne přímo do posunu celé podskupiny v ose Z — zrcadlením osy X
     // se Z nemění (viz POZOR v zadání).
-    const frontOffsetMM = item.frontOffsetMM ?? 100;
+    // Výchozí 70 mm je TATÁŽ hodnota jako MONO_ITEM_FRONT_OFFSET_DEFAULT_MM
+    // v main.js (HODNOTY-MONO.md — pristrojOdPredniHranyStandard) — moduly
+    // na sobě záměrně nezávisí, takže se natvrdo drží tady i u strany B
+    // níže; při změně přepsat na obou místech zároveň.
+    const frontOffsetMM = item.frontOffsetMM ?? 70;
 
     const deviceGroup = new THREE.Group();
     deviceGroup.name = `pristroj-${item.type}`;
@@ -476,7 +480,9 @@ export function buildMonoScene(state) {
       // očekává.
       const mirroredLeftMM = mirrorX(xMM, lengthMM, widthMM);
       const centerXM = mm(mirroredLeftMM + widthMM / 2);
-      const frontOffsetMM = item.frontOffsetMM ?? 100;
+      // Výchozí 70 mm — stejná hodnota jako u strany A výš / main.js
+      // MONO_ITEM_FRONT_OFFSET_DEFAULT_MM, viz komentář tam.
+      const frontOffsetMM = item.frontOffsetMM ?? 70;
       const deviceGroup = new THREE.Group();
       deviceGroup.name = `pristroj-${item.type}`;
       deviceGroup.position.set(centerXM, 0, mm(frontOffsetMM));

@@ -708,7 +708,10 @@ export function createMonoStrip({
     // viz hlavička modulu).
     fields.appendChild(paramField(tt('field.width'), paramDisplay(tt('catalog.widthExact', { mm: Math.round(widthMM) }))));
     fields.appendChild(paramField(tt('mono.field.frontOffset'), paramNumberInput(
-      item.frontOffsetMM != null ? item.frontOffsetMM : 100,
+      // Výchozí 70 mm — TATÁŽ hodnota jako MONO_ITEM_FRONT_OFFSET_DEFAULT_MM
+      // v main.js (HODNOTY-MONO.md — pristrojOdPredniHranyStandard); moduly
+      // na sobě záměrně nezávisí, při změně přepsat i tam.
+      item.frontOffsetMM != null ? item.frontOffsetMM : 70,
       {
         min: 0,
         fieldKey: `herdblok:${item.id}:frontOffsetMM`,

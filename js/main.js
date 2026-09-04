@@ -193,7 +193,7 @@ const CONFIG_VERSION = 6;
 // neposunul (viz applyConfig níže).
 
 const MONO_SURFACE_WIDTH_DEFAULT_MM = 400;      // §4 zadání — „rozumná výchozí šířka"
-const MONO_ITEM_FRONT_OFFSET_DEFAULT_MM = 100;  // HODNOTY-MONO.md — pristrojOdPredniHranyStandard
+const MONO_ITEM_FRONT_OFFSET_DEFAULT_MM = 70;   // HODNOTY-MONO.md — pristrojOdPredniHranyStandard
 const MONO_ITEM_GUARD_DEFAULT_MM = 50;          // HODNOTY-MONO.md — pristrojOchrannePoleMin
 const MONO_PANEL_ITEM_HEIGHT_DEFAULT_MM = 100;  // §1 zadání — MonoPanelItem.heightMM výchozí
 // Bez zadané horní meze pro bodyStyle skříňky — volím 'closed' jako výchozí

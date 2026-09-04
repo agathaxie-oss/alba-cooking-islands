@@ -408,10 +408,35 @@ export function setupUI(callbacks) {
     iconSpan.innerHTML = paletteIconHTML(key, def);
     btn.appendChild(iconSpan);
 
+    const textSpan = document.createElement('span');
+    textSpan.className = 'palette-text';
+    btn.appendChild(textSpan);
+
+    // U katalogových položek obsahuje `name` na konci duplicitní šířku
+    // („Sporák plynový 22 kW · 800"), stejnou hodnotu už ukazuje odznak
+    // šířky vpravo — proto se v zobrazeném názvu ukrajuje. Tooltip (btn.title
+    // výše) ale pořád staví z PŮVODNÍHO `name`, ať je v něm plný katalogový
+    // název. Hledání (norm/query, viz volající) filtruje taky podle
+    // původního `name` — zkrácení je čistě kosmetické, jen pro vykreslení.
+    const shortName = name.replace(/\s*·\s*\d+\s*$/, '');
+
     const nameSpan = document.createElement('span');
     nameSpan.className = 'palette-name';
-    nameSpan.textContent = name;
-    btn.appendChild(nameSpan);
+    nameSpan.textContent = shortName;
+    textSpan.appendChild(nameSpan);
+
+    // Technický řádek (palivo + hloubka) jen u katalogových položek (`def`
+    // není null) — speciály (volná plocha, skříňka, mezera, zásuvky, GN…)
+    // zůstávají jednořádkové. Když by depthMM chybělo/nebylo kladné číslo,
+    // radši se nevykreslí vůbec, než aby ukázal „hloubka NaN mm".
+    if (def && Number(def.depthMM) > 0) {
+      const jeGas = Number(def.gasKW) > 0;
+      const spec = t(jeGas ? 'palette.specGas' : 'palette.specElectric', { mm: Math.round(def.depthMM) });
+      const specSpan = document.createElement('span');
+      specSpan.className = 'palette-spec';
+      specSpan.textContent = spec;
+      textSpan.appendChild(specSpan);
+    }
 
     const widthSpan = document.createElement('span');
     widthSpan.className = 'palette-width';

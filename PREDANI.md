@@ -233,6 +233,50 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 34. V paletě přístrojů nebylo poznát, co vybírám — VADA
+
+**HOTOVO 4. 9. 2026.** Zadavatel: „Není zřejmé jaký přístroj mám vybrat.
+Vypadají všechny stejně." Doložil obrázkem čtyř shodně vypadajících řádků.
+
+**Ellipsis ukusovala právě rozlišovač.** Sidebar má 240 px, na název z bývalo
+po odečtení ikony, mezer a odznaku šířky jen ~120 px, ale české názvy
+potřebují 123–191 px. `.palette-name` měl `white-space: nowrap` s ellipsis,
+takže se ořízl KONEC — a tam je právě „22 kW". Řádek navíc dvakrát říkal
+šířku: název končí „· 800" a odznak vpravo uvádí „800 mm".
+
+Zadavatel si z předložených variant vybral dvouřádkovou s technickým
+řádkem a dodal, že tam chce i **hloubku přístroje** (ne potřebnou hloubku
+bloku — výslovně dotázáno a rozhodnuto).
+
+Řádek palety má teď: název bez duplicitní šířky (ta se uřízne AŽ při
+vykreslení, katalog zůstává nedotčený), pod ním technický řádek
+`palivo · hloubka X mm`, vpravo dál odznak šířky. Palivo se pozná podle
+`gasKW > 0` — ověřeno na celém katalogu, každá položka má právě jedno
+z `gasKW`/`powerKW`.
+
+**Technický řádek jen u katalogových položek** — speciály (volná plocha,
+skříňka, mezera, zásuvky, GN, vlastní modul) posílají do `paletteRow`
+`def === null` a zůstávají jednořádkové.
+
+**Bez počtů s podstatnými jmény.** V textech schválně není „4 hořáky" ani
+„2 zóny" — čeština i polština by potřebovaly tři tvary a jednou nás to
+v tomhle projektu už stálo chybu (viz „počet zón {n}"). Jediné číslo
+v klíčích je `{mm}`.
+
+**Název se zalamuje do DVOU řádků** (`-webkit-line-clamp: 2`). Jeden nestačil:
+na název zbývá u katalogové položky 166 px (odznak šířky si ubere své)
+a slovenské „Grilovacia doska kombinovaná" potřebuje 168 — přetékalo
+o 2 px. Ubrat dva pixely by vydrželo do prvního delšího názvu nebo dalšího
+jazyka; zalomení platí pro všechny.
+
+Ověřeno měřením ve VŠECH PĚTI jazycích: nic se neořezává (`scrollWidth`
+ani `scrollHeight` nikde nepřeteče). Výška řádku 46 px u katalogových
+položek, 36 px u speciálů. Čistá konzole.
+
+**Vedlejší zisk:** `Sporák plynový 13 kW · 400` a `11 kW · 400` jsou oba
+dvouhořákové 400mm sporáky se SHODNOU ikonou — žádná ikona je odlišit
+nemůže. Liší se příkonem a hloubkou (700 vs 800 mm) a teď je obojí vidět.
+
 ## 33. Šířka volné plochy v herdbloku nejde upravit (MONO) — VADA
 
 **HOTOVO 4. 9. 2026.** Zadavatel: „V MONO nejde upravit šířka pracovní

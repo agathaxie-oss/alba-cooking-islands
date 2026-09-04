@@ -132,6 +132,8 @@ const DICTS = {
     'palette.specialDrawers': 'GN 1/1 drawer module',
     'palette.specialSink': 'Sink',
     'palette.specialCustom': 'Custom module…',
+    'palette.specGas': 'gas · depth {mm} mm',
+    'palette.specElectric': 'electric · depth {mm} mm',
 
     'side.segments': 'Segments',
     'side.sideA': 'Side A',
@@ -665,6 +667,8 @@ const DICTS = {
     'palette.specialDrawers': 'GN-1/1-Schubladenmodul',
     'palette.specialSink': 'Spüle',
     'palette.specialCustom': 'Eigenes Modul…',
+    'palette.specGas': 'Gas · Tiefe {mm} mm',
+    'palette.specElectric': 'Elektro · Tiefe {mm} mm',
 
     'side.segments': 'Segmente',
     'side.sideA': 'Seite A',
@@ -1195,6 +1199,8 @@ const DICTS = {
     'palette.specialDrawers': 'Moduł szuflad GN 1/1',
     'palette.specialSink': 'Zlewozmywak',
     'palette.specialCustom': 'Moduł własny…',
+    'palette.specGas': 'gaz · głębokość {mm} mm',
+    'palette.specElectric': 'prąd · głębokość {mm} mm',
 
     'side.segments': 'Segmenty',
     'side.sideA': 'Strona A',
@@ -1728,6 +1734,8 @@ const DICTS = {
     'palette.specialDrawers': 'Zásuvkový modul GN 1/1',
     'palette.specialSink': 'Dřez',
     'palette.specialCustom': 'Vlastní modul…',
+    'palette.specGas': 'plyn · hloubka {mm} mm',
+    'palette.specElectric': 'elektro · hloubka {mm} mm',
 
     'side.segments': 'Segmenty',
     'side.sideA': 'Strana A',
@@ -2260,6 +2268,8 @@ const DICTS = {
     'palette.specialDrawers': 'Zásuvkový modul GN 1/1',
     'palette.specialSink': 'Drez',
     'palette.specialCustom': 'Vlastný modul…',
+    'palette.specGas': 'plyn · hĺbka {mm} mm',
+    'palette.specElectric': 'elektro · hĺbka {mm} mm',
 
     'side.segments': 'Segmenty',
     'side.sideA': 'Strana A',

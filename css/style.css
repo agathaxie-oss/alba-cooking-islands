@@ -654,7 +654,7 @@ body {
   width: 100%;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 8px;
   padding: 6px 8px;
   text-align: left;
@@ -689,6 +689,7 @@ body {
   justify-content: center;
   width: 22px;
   height: 22px;
+  margin-top: 1px;
   color: var(--text-muted);
 }
 
@@ -710,17 +711,43 @@ body {
   color: var(--accent-dark);
 }
 
-/* KLÍČOVÉ pro budoucí panel 200 px — dlouhá jména se musí zkrátit,
-   ne rozbít mřížku */
-.palette-name {
+/* nese název + technický řádek (palivo/hloubka) pod sebou — sloupec
+   mřížky .palette-item zůstává tříslupcový (22px | 1fr | auto), tenhle
+   prvek je JEDEN grid item prostředního sloupce */
+.palette-text {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* KLÍČOVÉ pro budoucí panel 200 px — dlouhá jména nesmí rozbít mřížku.
+   Zalomí se proto až do DVOU řádků a teprve pak se zkrátí. Jeden řádek
+   nestačí: na název zbývá jen ~166 px (odznak šířky si ubírá své) a
+   slovenské „Grilovacia doska kombinovaná" potřebuje 168 — přetékalo
+   o 2 px. Ubrat ty dva pixely by vydrželo do prvního delšího názvu nebo
+   dalšího jazyka, kdežto zalomení platí pro všechny. */
+.palette-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* technický řádek (palivo · hloubka) — jen u katalogových položek,
+   viz paletteRow() v ui.js */
+.palette-spec {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .palette-width {
   flex-shrink: 0;
+  margin-top: 1px;
   font-size: 11px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;

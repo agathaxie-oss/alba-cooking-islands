@@ -233,6 +233,36 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 35. Výchozí hloubka bloku MONO 900 mm — POKYN
+
+**HOTOVO 4. 9. 2026.** Zadavatel: „Dejme výchozí blok MONO 900." Tím se
+zavírá přesah, který zůstával otevřený po úkolech 30 a 32.
+
+Nový projekt **ALBA MONO** začíná s hloubkou 900 mm místo 850.
+**SEGMENT zůstává na 850.** Obě pole `depthAMM` i `depthBMM` dostanou tutéž
+hodnotu — je to hloubka JEDNÉ řady: u varianty u zdi je hloubka bloku přímo
+`depthAMM`, u ostrova se strany sčítají (`totalDepthMM = isIsland ?
+depthAMM + depthBMM : depthAMM`). Nová sestava tedy začíná jako 900 u zdi,
+resp. 900 + 900 u ostrova.
+
+**Počet, který za tím stojí:** přístroje řady 900 jsou 800 mm hluboké
+a stojí 70 mm od předního líce desky, tedy 870 mm. Při 850 přesáhaly za
+zadní hranu o 20 mm. Hodnoty jsou v `main.js` pojmenované
+(`MONO_BLOCK_DEPTH_DEFAULT_MM` / `SEGMENT_BLOCK_DEPTH_DEFAULT_MM`)
+s komentářem proč — ať to příště nikdo nesrovná zpátky v domnění,
+že je to překlep.
+
+**Nedotčeno záměrně:** počáteční `state.dimensions` (stav před volbou
+produktu — úvodní obrazovka volbu vynutí a `onNewProject` hodnotu přepíše),
+fallback `|| 850` v `applyConfig` (jiná situace — soubor bez pole),
+a `HODNOTY-MONO.md`, kde `hloubkaHerdbloku: 850` patří ke konkrétnímu
+naměřenému příkladu („pro zkosenou vlnu", délka 2490 mm) a kód ho vůbec
+nečte — ověřeno greppem.
+
+Ověřeno měřením: nový MONO projekt má v panelu hloubku `900`, nový SEGMENT
+`850`. Grilovací deska v MONO zabírá `z 70–870`, tedy UVNITŘ bloku — přesah
+zmizel. Čistá konzole.
+
 ## 34. V paletě přístrojů nebylo poznát, co vybírám — VADA
 
 **HOTOVO 4. 9. 2026.** Zadavatel: „Není zřejmé jaký přístroj mám vybrat.
@@ -333,7 +363,8 @@ A a B by se rozešly a hledalo by se to špatně).
 Ověřeno měřením v půdorysu (blok 3200×850, přepočteno ze SVG zpět na mm):
 sporák 22 kW zabírá `z 70–770`, grilovací deska `z 70–870`. Čistá konzole.
 
-**ZBÝVÁ — grilovací deska stále přesáhá o 20 mm.** Je 800 mm hluboká,
+**VYŘEŠENO úkolem 35** (výchozí blok MONO 900 mm). Původní zápis:
+grilovací deska přesáhala o 20 mm.** Je 800 mm hluboká,
 takže `70 + 800 = 870 > 850`. Snížení odstupu ze 100 na 70 přesah zmenšilo
 z 50 na 20 mm, ale neodstranilo. MONO pořád nemá automatické dorovnání
 hloubky ani varování (SEGMENT to umí přes `computeSideDepth`/`minDepthMM`) —

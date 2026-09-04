@@ -192,6 +192,13 @@ const CONFIG_VERSION = 6;
 // zůstal nesanitizovaný (tichá ztráta dat) A nextId by se za jeho položky
 // neposunul (viz applyConfig níže).
 
+// Zadavatel 4. 9. 2026 („Dejme výchozí blok MONO 900"): přístroje řady 900
+// (viz úkoly 30/32 v PREDANI.md) jsou 800 mm hluboké a stojí 70 mm od
+// předního líce desky (MONO_ITEM_FRONT_OFFSET_DEFAULT_MM níže) — potřebují
+// tedy blok hluboký aspoň 870 mm. Při dřívějších 850 mm přesahovaly za
+// zadní hranu. SEGMENTu se to netýká, zůstává na původních 850.
+const MONO_BLOCK_DEPTH_DEFAULT_MM = 900;
+const SEGMENT_BLOCK_DEPTH_DEFAULT_MM = 850;
 const MONO_SURFACE_WIDTH_DEFAULT_MM = 400;      // §4 zadání — „rozumná výchozí šířka"
 const MONO_ITEM_FRONT_OFFSET_DEFAULT_MM = 70;   // HODNOTY-MONO.md — pristrojOdPredniHranyStandard
 const MONO_ITEM_GUARD_DEFAULT_MM = 50;          // HODNOTY-MONO.md — pristrojOchrannePoleMin
@@ -1985,7 +1992,10 @@ const ui = setupUI({
     // ÚKOL 13 (ZADANI-SOKL.md) — „Nový projekt" (OBA produkty) začíná
     // s výchozím soklem; heightMM se z něj rovnou dopočítá (computeWorkHeightMM).
     state.plinth = defaultBlockPlinth();
-    state.dimensions = { lengthMM: 3200, depthAMM: 850, depthBMM: 850, heightMM: computeWorkHeightMM(state.plinth) };
+    // Hloubka bloku podle typu produktu — viz MONO_BLOCK_DEPTH_DEFAULT_MM /
+    // SEGMENT_BLOCK_DEPTH_DEFAULT_MM výše (zadavatel 4. 9. 2026).
+    const blockDepthMM = type === 'mono' ? MONO_BLOCK_DEPTH_DEFAULT_MM : SEGMENT_BLOCK_DEPTH_DEFAULT_MM;
+    state.dimensions = { lengthMM: 3200, depthAMM: blockDepthMM, depthBMM: blockDepthMM, heightMM: computeWorkHeightMM(state.plinth) };
     state.segmentsA = createDefaultSegmentsA();
     state.segmentsB = [];
     state.arms = [];

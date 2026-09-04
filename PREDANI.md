@@ -233,6 +233,48 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 36. Minimální šířka skříňky podestavby 100 mm — POKYN
+
+**HOTOVO 4. 9. 2026.** Zadavatel na můj zápis, že nulová šířka projde
+u volné plochy i u podestaveb: „U volné plochy ano, u podestaveb dejme
+minimum 100 mm."
+
+| položka | spodní mez |
+|---|---|
+| volná plocha (herdblok, `type:'surface'`) | žádná — nula smí projít |
+| **skříňka** (podestavby, `kind:'cabinet'`) | **100 mm** |
+| mezera (podestavby, `kind:'gap'`) | žádná |
+| zásuvky / GN | šířka je pevná (400/600), needituje se |
+
+**Mezera zůstává bez meze** toutéž úvahou jako volná plocha: minimum dává
+smysl u dílu, který se skutečně vyrábí, ne u úmyslně vynechaného místa
+v řadě. Zadavatel mluvil o „podestavbách" — tohle je mé čtení, ohlášené
+mu při předání.
+
+**MEZ PATŘÍ DO MODELU, NE DO PRUHU PARAMETRŮ.** `paramNumberInput`
+(`mono-ui.js`) nastavuje `input.min`, ale to je JEN HTML atribut — jeho
+`change` handler odešle libovolné konečné číslo
+(`if (Number.isFinite(n)) onCommit(n)`), takže ruční zápis mez obejde.
+Skutečná pojistka je proto v `onMonoUpdate` (`main.js`), kde se `widthMM`
+u `cabinet` zvedne na `MONO_CABINET_WIDTH_MIN_MM`. `patch` volajícího se
+NEMUTUJE (pracuje se s kopií). `input.min` je nastavený také, ale už jen
+jako nápověda pro šipky a kolečko myši.
+
+Ověřeno měřením přímo v aplikaci: do skříňky zapsáno **20** → dlaždice
+ukazuje **100 mm** (`min` atribut `100`); mezera přijala **0**; pracovní
+plocha v herdbloku přijala **0** (`min` atribut `0`). Čistá konzole.
+
+**ZBÝVÁ — tlačítko „Doplnit" mez obchází.** `onMonoFillPodestavby` vytváří
+skříňku o šířce `missingMM` přímo přes `sanitizeMonoCabinet`, tedy MIMO
+`onMonoUpdate` — když v řadě chybí míně než 100 mm, vznikne užší skříňka.
+Zvýšit ji na 100 nejde bez přetečení řady, takže je to rozhodnutí
+zadavatele (buď povolit výjimku, nebo doplnÄ›ní pod 100 mm zakázat).
+Neměnil jsem to.
+
+Stejně tak `sanitizeMonoCabinet` při NAČTENÍ souboru mez neuplatňuje —
+starší soubor s užší skříňkou se načte tak, jak je, a mez se projeví až
+při editaci. Vědomé rozhodnutí, ne opomenutí.
+
 ## 35. Výchozí hloubka bloku MONO 900 mm — POKYN
 
 **HOTOVO 4. 9. 2026.** Zadavatel: „Dejme výchozí blok MONO 900." Tím se
@@ -335,10 +377,8 @@ volná plocha se přepočte na 1650 mm (3100 použitelných − 650 − 800 spor
 Čistá konzole.
 
 **Poznámka k `min: 0`:** převzato z konvence podestaveb, aby se obě vrstvy
-chovaly stejně. `onMonoUpdate` je ale `Object.assign` BEZ sanitizace, takže
-nulová šířka projde — to platí u podestaveb už dnes, není to novinka téhle
-opravy. Kdyby to začalo vačit, patří společná spodní mez do `onMonoUpdate`,
-ne do pruhu.
+chovaly stejně. **VYŘEŠENO úkolem 36** — zadavatel rozhodl, že volná plocha
+zůstává bez meze a skříňka dostane 100 mm.
 
 ## 32. Výchozí odstup přístroje od přední hrany 70 mm (MONO) — POKYN
 

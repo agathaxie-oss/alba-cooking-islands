@@ -203,6 +203,11 @@ const MONO_SURFACE_WIDTH_DEFAULT_MM = 400;      // §4 zadání — „rozumná 
 const MONO_ITEM_FRONT_OFFSET_DEFAULT_MM = 70;   // HODNOTY-MONO.md — pristrojOdPredniHranyStandard
 const MONO_ITEM_GUARD_DEFAULT_MM = 50;          // HODNOTY-MONO.md — pristrojOchrannePoleMin
 const MONO_PANEL_ITEM_HEIGHT_DEFAULT_MM = 100;  // §1 zadání — MonoPanelItem.heightMM výchozí
+// Zadavatel 4. 9. 2026 („U volné plochy ano, u podestaveb dejme minimum
+// 100 mm."): nejmenší vyráběná šířka skříňky podestavby (kind:'cabinet').
+// Volné plochy (herdblok, type:'surface') a mezery (podestavby, kind:'gap')
+// se NETÝKÁ — to jsou jen výplně, ne vyráběné díly.
+const MONO_CABINET_WIDTH_MIN_MM = 100;
 // Bez zadané horní meze pro bodyStyle skříňky — volím 'closed' jako výchozí
 // (první v povoleném výčtu, stejná konvence jako sanitizeBodyStyle výše,
 // kde neznámá hodnota taky spadne na allowed[0]).
@@ -1859,7 +1864,18 @@ const ui = setupUI({
     // onEditCustom, než ho sem main.js dostane.
     const item = findMonoItem(layer, id, side);
     if (!item || !patch || typeof patch !== 'object') return;
-    Object.assign(item, patch);
+    // Zadavatel 4. 9. 2026: skříňka podestavby (kind:'cabinet') nesmí jít
+    // pod MONO_CABINET_WIDTH_MIN_MM. Mez patří SEM, ne do paramNumberInput
+    // (mono-ui.js) — input.min je jen nápověda prohlížeče pro šipky/kolečko,
+    // ruční zápis čísla do pole ji obejde (viz change handler tamtéž), takže
+    // skutečná pojistka musí sedět v modelu. Volná plocha (herdblok) a
+    // mezera (kind:'gap') se NETÝKAJÍ — §4 zadání, jsou to jen výplně.
+    // Kopie patch, aby se nemutoval objekt volajícího.
+    const safePatch = { ...patch };
+    if (layer === 'podestavby' && item.kind === 'cabinet' && safePatch.widthMM !== undefined) {
+      safePatch.widthMM = Math.max(MONO_CABINET_WIDTH_MIN_MM, Math.round(Number(safePatch.widthMM) || 0));
+    }
+    Object.assign(item, safePatch);
     rebuildBlock();
   },
   onMonoMove(layer, id, dir, side = 'A') {

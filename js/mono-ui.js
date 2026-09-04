@@ -765,9 +765,16 @@ export function createMonoStrip({
       bar.appendChild(makeEl('span', 'mono-param-title', podestavbaItemLabel(item)));
 
       const fields = makeEl('div', 'mono-param-fields');
+      // Zadavatel 4. 9. 2026: skříňka (cabinet) má minimum 100 mm, mezera
+      // (gap) zůstává bez meze — je to jen výplň, ne vyráběný díl. 100 je
+      // natvrdo, NE import z main.js (MONO_CABINET_WIDTH_MIN_MM) — moduly na
+      // sobě záměrně nezávisí, stejná konvence jako u frontOffsetMM výše
+      // (buildHerdblokParamBar); při změně přepsat na OBOU místech zároveň.
+      // Skutečná pojistka je stejně v main.js (onMonoUpdate) — tohle je jen
+      // nápověda prohlížeče pro šipky/kolečko myši u čísleníku.
       fields.appendChild(paramField(tt('field.width'), widthEditable
         ? paramNumberInput(Math.round(widthMM), {
-          min: 0,
+          min: isCabinet ? 100 : 0,
           fieldKey: `podestavby:${item.id}:widthMM`,
           onCommit: (n) => callbacks.onMonoUpdate?.('podestavby', item.id, { widthMM: n }, currentSide),
         })

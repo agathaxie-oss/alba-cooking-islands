@@ -242,13 +242,16 @@ firemních barvách?" Projekt do té doby žádnou ikonku neměl.
 Přidán `favicon.svg` v kořeni a jeden `<link rel="icon">` v `index.html`.
 Žádná knihovna, žádný build.
 
-**Zvolena varianta B** — bílá izometrická krychle na plné dlaždici
-`#0083C6` (Pantone 7461 C). Důvod je čitelnost v 16 px: plná dlaždice drží
-tvar a vypadá stejně na světlé i tmavé liště. Varianta s průhledným pozadím
-(tři odstíny modré jako tři stěny) nechala tmavou stěnu splynout s tmavou
-lištou; čistě obrysová krychle se v 16 px rozpadla — linky spadly pod jeden
-pixel. Obě odmítnuté varianty zůstávají v `mockup-favicon.html`, kdyby se
-zadavatel rozhodl přehodit; je to záměna jednoho souboru.
+**Zvolena varianta C** — obrysová izometrická krychle ve `#0083C6`
+(Pantone 7461 C), bez výplně. Zadavatel ji vybral 3. 9. 2026 po prohlédnutí
+všech tří; je blíž technickému výkresu, kterým se aplikace zabývá.
+
+**Oprava mého dřívějšího tvrzení:** psal jsem, že se obrysová varianta v 16 px
+rozpadá, protože linky spadnou pod jeden pixel. **To bylo přehnané** — tah
+2 jednotky ve `viewBox` 32 dá v 16 px přesně 1 pixel, na HiDPI dva. Co se
+opravdu mačká, je vnitřní Y uprostřed, kde se sbíhají tři hrany. Zkontrolováno
+na skutečném rastru z `.ico`: v 16 px je krychle pořád rozpoznatelná.
+Nevybrané varianty zůstávají v `mockup-favicon.html`.
 
 **Pozor při případné změně:** tři stěny se liší jen KRYTÍM bílé
 (1 / 0,82 / 0,62), ne vlastní barvou — ikonka tedy nese jediný firemní
@@ -258,10 +261,26 @@ Ověřeno: `<link rel="icon" type="image/svg+xml" href="favicon.svg">` je
 v hlavičce, soubor se servíruje se stavem 200 a MIME `image/svg+xml`,
 a vykreslení v 64 / 32 / 16 px i v simulované tmavé liště sedí.
 
-**ZBÝVÁ — čeká na zadavatele:** SVG ikonku umí Chrome, Edge i Firefox,
-**Safari ji IGNORUJE** a spadne zpátky na výchozí list papíru. Kdyby na
-Safari mělo záležet, přibude vedle ní `favicon.ico` (32 px) — jeden soubor
-navíc a žádná další údržba.
+**Safari — VYŘEŠENO.** Zadavatel potvrdil, že mu na Safari záleží. Safari
+SVG favicony ignoruje, takže vedle `favicon.svg` stojí i `favicon.ico`
+(vrstvy 16/32/48/64, formát BMP, ~31 kB). Pořadí `<link>` v `index.html` je
+záměrné: prohlíeč si vezme POSLEDNÍ formát, kterému rozumí, takže moderní
+skončí u SVG a Safari u `.ico`.
+
+**`.ico` se needituje ručně** — generuje ho `tools/gen-favicon-ico.py` z téže
+geometrie. Kdo mění tvar nebo tah, musí ho změnit na OBOU stranách (v SVG
+i ve skriptu) a skript pustit znovu, jinak se obě podoby rozejdou.
+
+**Dvě pasti, na které jsem narazil:**
+- `append_images` u formátu ICO v Pillow NEFUNGUJE — zapsala se jen první
+  vrstva (soubor měl 666 B a jediný záznam 16×16). Správně se podá JEDEN
+  obrázek ve vysokém rozlišení a vrstvy se nechají odvodit přes `sizes`.
+- Pillow ukládá vrstvy jako PNG-v-ICO; kvůli Safari se vynucuje
+  `bitmap_format='bmp'`, což je klasický zápis, který přečte úпlně každý.
+
+Ověřeno: `favicon.svg` i `favicon.ico` se servírují se stavem 200
+(`image/svg+xml`, `image/x-icon`), `.ico` obsahuje čtyři BMP vrstvy
+16/32/48/64 a raster v 16 px je rozpoznatelný.
 
 ## 30. Grilovací deska měla hloubku 900 místo 800 — VADA DAT
 

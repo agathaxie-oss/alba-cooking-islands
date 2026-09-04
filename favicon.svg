@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Ikonka záložky prohlížeče — izometrická krychle ve firemní modré ALBA
-       (#0083C6, Pantone 7461 C). Plná dlaždice je záměr: v 16 px drží tvar
-       a vypadá stejně na světlé i tmavé liště prohlížeče, kdežto průhledné
-       pozadí by nechalo tmavou stěnu splynout s tmavou lištou.
-       Tři stěny se liší jen krytím bílé, takže ikonka nese jedinou barvu. -->
-  <rect width="32" height="32" rx="7" fill="#0083C6"/>
-  <polygon points="16,7 25,12.2 16,17.4 7,12.2" fill="#ffffff"/>
-  <polygon points="7,12.2 16,17.4 16,26.5 7,21.3" fill="#ffffff" opacity=".62"/>
-  <polygon points="25,12.2 16,17.4 16,26.5 25,21.3" fill="#ffffff" opacity=".82"/>
+  <!-- Ikonka záložky prohlížeče — obrysová izometrická krychle ve firemní
+       modré ALBA (#0083C6, Pantone 7461 C). Variantu vybral zadavatel
+       3. 9. 2026; blíž technickému výkresu než plná dlaždice.
+       Tah 2 jednotky ve viewBox 32 dá v 16 px přesně 1 pixel (na HiDPI dva).
+       Kdo ho bude měnit: měň ho ZÁROVEŇ tady i v tools/gen-favicon-ico.py,
+       jinak se SVG a .ico rozejdou. -->
+  <g fill="none" stroke="#0083C6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="16,4 27,10 27,22 16,28 5,22 5,10"/>
+    <path d="M5,10 L16,16 L27,10 M16,16 L16,28"/>
+  </g>
 </svg>

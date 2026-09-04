@@ -4,9 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Stainless Steel Cooking Block Configurator</title>
-  <!-- Ikonka záložky (favicon.svg v kořeni). SVG ikonku umí Chrome, Edge
-       i Firefox; Safari ji ignoruje a ukáže výchozí list papíru — kdyby na
-       něm mělo záležet, přibude vedle ní favicon.ico. -->
+  <!-- Ikonka záložky. Dvě podoby TÉŽE kresby: SVG pro Chrome/Edge/Firefox
+       (ostré v každé velikosti) a .ico pro Safari, které SVG favicony
+       ignoruje. Pořadí je záměrné — prohlížeč si vezme poslední formát,
+       kterému rozumí, takže moderní skončí u SVG a Safari u .ico (to si
+       ho stejně tahá z kořene samo). .ico se NEEDITUJE ručně, generuje ho
+       tools/gen-favicon-ico.py z téže geometrie. -->
+  <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48 64x64" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="css/style.css" />
   <script type="importmap">

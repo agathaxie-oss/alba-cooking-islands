@@ -703,10 +703,18 @@ export function createMonoStrip({
     bar.appendChild(makeEl('span', 'mono-param-title', isSurface ? tt('mono.item.surface') : resolveDeviceName(item.type)));
 
     const fields = makeEl('div', 'mono-param-fields');
-    // Šířka je jen zobrazená, ne editovatelná — stejně jako v mockupu (šířku
-    // katalogového přístroje odsud beztak nejde ověřit proti def.widthAdjustable,
-    // viz hlavička modulu).
-    fields.appendChild(paramField(tt('field.width'), paramDisplay(tt('catalog.widthExact', { mm: Math.round(widthMM) }))));
+    // Katalogový přístroj má šířku danou katalogem (a def.widthAdjustable
+    // odsud beztak nejde ověřit, viz hlavička modulu) — jen zobrazená.
+    // Volná plocha je výplň a šířka je u ní jediný rozměr, který dává
+    // smysl nastavovat — proto editovatelná, stejný vzorec jako u
+    // podestaveb (buildPodestavbyParamBar níže).
+    fields.appendChild(paramField(tt('field.width'), isSurface
+      ? paramNumberInput(Math.round(widthMM), {
+        min: 0,
+        fieldKey: `herdblok:${item.id}:widthMM`,
+        onCommit: (n) => callbacks.onMonoUpdate?.('herdblok', item.id, { widthMM: n }, currentSide),
+      })
+      : paramDisplay(tt('catalog.widthExact', { mm: Math.round(widthMM) }))));
     fields.appendChild(paramField(tt('mono.field.frontOffset'), paramNumberInput(
       // Výchozí 70 mm — TATÁŽ hodnota jako MONO_ITEM_FRONT_OFFSET_DEFAULT_MM
       // v main.js (HODNOTY-MONO.md — pristrojOdPredniHranyStandard); moduly

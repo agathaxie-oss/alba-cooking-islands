@@ -233,6 +233,39 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 33. Šířka volné plochy v herdbloku nejde upravit (MONO) — VADA
+
+**HOTOVO 4. 9. 2026.** Zadavatel: „V MONO nejde upravit šířka pracovní
+plochy vložené v herdbloku."
+
+**Pravidlo se vztahovalo na všechny položky, i když platilo jen pro jednu
+skupinu.** `buildHerdblokParamBar` v `js/mono-ui.js` vykreslovala šířku VŽDY
+jako pouhý text, s odůvodněním, že šířku KATALOGOVÉHO PŘÍSTROJE odsud nejde
+ověřit proti `def.widthAdjustable`. To je správná úvaha — ale volná plocha
+(`type === 'surface'`) katalogový přístroj není. Je to výplň, u které je
+šířka jediný rozměr, který dává smysl nastavovat, a uživatel k ní neměl
+žádnou cestu.
+
+Datový model i handler to uměly už předtím — `sanitizeMonoDevice` `widthMM`
+u `surface` ukládá i načítá a `onMonoUpdate` je obecný `Object.assign`.
+Chybělo výhradně vstupní pole v rozhraní, takže oprava je v JEDINÉM souboru
+a formát projektu se nemění.
+
+Opraveno stejným vzorcem, jaký už v témže souboru používá vrstva podestaveb
+(`buildPodestavbyParamBar`) — `paramNumberInput` s `fieldKey`
+`herdblok:<id>:widthMM`. Katalogový přístroj má šířku dál jen zobrazenou.
+
+Ověřeno měřením: u volné plochy má pole šířky vstupní číselník, u sporáku
+22 kW zůstává text `800 mm`. Změna 400 → 650 projde až do modelu: zbytková
+volná plocha se přepočte na 1650 mm (3100 použitelných − 650 − 800 sporák).
+Čistá konzole.
+
+**Poznámka k `min: 0`:** převzato z konvence podestaveb, aby se obě vrstvy
+chovaly stejně. `onMonoUpdate` je ale `Object.assign` BEZ sanitizace, takže
+nulová šířka projde — to platí u podestaveb už dnes, není to novinka téhle
+opravy. Kdyby to začalo vačit, patří společná spodní mez do `onMonoUpdate`,
+ne do pruhu.
+
 ## 32. Výchozí odstup přístroje od přední hrany 70 mm (MONO) — POKYN
 
 **HOTOVO 3. 9. 2026.** Zadavatel: „Dávejme přístroje 70 mm od přední hrany

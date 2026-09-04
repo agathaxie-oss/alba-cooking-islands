@@ -233,6 +233,40 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 37. Doplnění řady podestaveb pod 100 mm zakázáno — POKYN
+
+**HOTOVO 4. 9. 2026.** Zadavatel: „Doplnění zakázat.“ Navazuje na úkol 36 —
+tlačítko „Doplnit“ jako jediné obcházelo minimální šířku skříňky, protože
+`onMonoFillPodestavby` vytváří skříňku přímo přes `sanitizeMonoCabinet`,
+tedy MIMO `onMonoUpdate`, kde mez sedí.
+
+Chybí-li v řadě méně než `MONO_CABINET_WIDTH_MIN_MM`, **doplnit nejde**
+a řada zůstává nedoplněná. Zvětšit takovou skříňku na minimum by
+přetékalo do sousedních prvků, které Doplnit nesmí posouvat.
+
+Dvě vrstvy obrany, obojí záměrně:
+- **model** — `onMonoFillPodestavby` se ukončí při
+  `missingMM < MONO_CABINET_WIDTH_MIN_MM` (podmínka pohltí i původní
+  `<= 0`, protože 0 < 100);
+- **rozhraní** — tlačítko se pod minimem VŮBEC NEVYKRESLÍ a na jeho místě
+  je poznámka `mono.fillTooSmall` („skříňka má min. 100 mm“, 5 jazyků).
+  Bez ní by uživatel viděl zmizelé tlačítko a nepochopil proč.
+  Handler se na schování tlačítka NESMÍ spoléhat.
+
+**Past, která se tím skoro zopakovala (úkol 7.2):** dlaždice „chybí N mm“
+má šrafovaný podklad a text na něm bez neprůhledné „cedulky“ splývá
+s pruhy. Nová `.mono-tile-note` proto dostala tutéž cedulku
+(`background: var(--bg-panel)`) jako `.mono-tile-name`, liší se jen
+typograficky (11 px, normální řez, `--text-muted`). Ověřeno pohledem na
+zvětšené dlaždici — oba řádky jsou plně čitelné.
+
+Ověřeno měřením přímo v aplikaci:
+- chybí 1300 mm → tlačítko je, poznámka ne;
+- chybí 50 mm → tlačítko NENÍ, poznámka „skříňka má min. 100 mm“;
+- chybí přesně 100 mm → tlačítko je a kliknutí vytvoří skříňku 100 mm,
+  řada je kompletní (mez je tedy VČETNĚ).
+Čistá konzole.
+
 ## 36. Minimální šířka skříňky podestavby 100 mm — POKYN
 
 **HOTOVO 4. 9. 2026.** Zadavatel na můj zápis, že nulová šířka projde
@@ -264,12 +298,8 @@ Ověřeno měřením přímo v aplikaci: do skříňky zapsáno **20** → dlaž
 ukazuje **100 mm** (`min` atribut `100`); mezera přijala **0**; pracovní
 plocha v herdbloku přijala **0** (`min` atribut `0`). Čistá konzole.
 
-**ZBÝVÁ — tlačítko „Doplnit" mez obchází.** `onMonoFillPodestavby` vytváří
-skříňku o šířce `missingMM` přímo přes `sanitizeMonoCabinet`, tedy MIMO
-`onMonoUpdate` — když v řadě chybí míně než 100 mm, vznikne užší skříňka.
-Zvýšit ji na 100 nejde bez přetečení řady, takže je to rozhodnutí
-zadavatele (buď povolit výjimku, nebo doplnÄ›ní pod 100 mm zakázat).
-Neměnil jsem to.
+**Tlačítko „Doplnit“ mez obcházelo — VYŘEŠENO úkolem 37** (zadavatel:
+„Doplnění zakázat“).
 
 Stejně tak `sanitizeMonoCabinet` při NAČTENÍ souboru mez neuplatňuje —
 starší soubor s užší skříňkou se načte tak, jak je, a mez se projeví až

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Mockup — ikonka v prohlížeči (favicon)</title>
+<style>
+  :root{ --accent:#0083C6; --accent-dark:#00639A; --accent-darker:#004E78;
+         --border:#d5dde4; --muted:#6b7783; }
+  *{box-sizing:border-box}
+  body{margin:0;background:#f4f6f8;color:#111820;
+       font:14px/1.55 "Segoe UI",system-ui,sans-serif;padding:26px}
+  .wrap{max-width:1020px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  h2{font-size:16px;margin:0 0 3px;color:var(--accent)}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .card{background:#fff;border:1px solid var(--border);border-radius:8px;
+        padding:18px 20px;margin-bottom:18px}
+  .why{color:var(--muted);font-size:13px;margin:2px 0 14px}
+  .plus{color:#2b7a3d}.minus{color:#a3462f}
+
+  /* velikosti vedle sebe */
+  .sizes{display:flex;align-items:flex-end;gap:22px;margin:14px 0 4px}
+  .size{text-align:center}
+  .size .lbl{font-size:11px;color:var(--muted);margin-top:6px}
+  .size svg{display:block}
+  .px16{width:16px;height:16px}
+  .px32{width:32px;height:32px}
+  .px64{width:64px;height:64px}
+
+  /* simulovaná lišta záložek — světlá i tmavá, favicon se hodnotí v obojím */
+  .tabs{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+  .tabbar{border-radius:8px;padding:8px 8px 0;flex:1;min-width:330px}
+  .tabbar.light{background:#dee3e9}
+  .tabbar.dark{background:#202429}
+  .tabbar .cap{font-size:11px;padding:0 4px 6px;color:var(--muted)}
+  .tabbar.dark .cap{color:#9aa4ae}
+  .tab{display:flex;align-items:center;gap:7px;padding:7px 12px;
+       border-radius:7px 7px 0 0;font-size:12px;max-width:220px}
+  .tabbar.light .tab{background:#f6f8fa;color:#20262d}
+  .tabbar.dark .tab{background:#2f343a;color:#e7ebef}
+  .tab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tab svg{flex:0 0 16px;width:16px;height:16px}
+
+  .note{background:#f0f7fc;border:1px solid #cfe6f5;border-radius:6px;
+        padding:10px 12px;font-size:13px;color:#274456}
+  code{background:#eef1f4;padding:1px 5px;border-radius:3px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Ikonka v prohlížeči</h1>
+<p class="sub">Dnes v projektu žádná není, proto záložka ukazuje výchozí list papíru.
+Tři varianty modré krychličky ve firemních barvách. Hodnotí se hlavně sloupec
+<b>16 px</b> — v té velikosti ji uvidíte na záložce nejčastěji.</p>
+
+<!-- ============ definice tvarů, ať se neopakují ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- izometrická krychle, viewBox 0 0 32 32 -->
+    <g id="cube-faces">
+      <polygon points="16,4 27,10 16,16 5,10"/>   <!-- horní -->
+      <polygon points="5,10 16,16 16,28 5,22"/>   <!-- levá -->
+      <polygon points="27,10 16,16 16,28 27,22"/> <!-- pravá -->
+    </g>
+  </defs>
+</svg>
+
+<!-- ============ VARIANTA A ============ -->
+<div class="card">
+<h2>Varianta A — plná krychle, tři odstíny firemní modré, průhledné pozadí</h2>
+<p class="why"><span class="plus">Pro:</span> nejčistší, tvar je hned čitelný a tři stěny
+přesně vyčerpají firemní paletu (<code>#0083C6</code> / <code>#00639A</code> /
+<code>#004E78</code>).
+&nbsp;<span class="minus">Proti:</span> průhledné pozadí znamená, že na tmavé liště
+splyne spodní tmavá stěna s pozadím — viz tmavý pruh níž.</p>
+
+<div class="sizes">
+  <div class="size">
+    <svg class="px64" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="16,4 27,10 16,16 5,10" fill="#0083C6"/>
+      <polygon points="5,10 16,16 16,28 5,22" fill="#004E78"/>
+      <polygon points="27,10 16,16 16,28 27,22" fill="#00639A"/>
+    </svg><div class="lbl">64 px</div>
+  </div>
+  <div class="size">
+    <svg class="px32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="16,4 27,10 16,16 5,10" fill="#0083C6"/>
+      <polygon points="5,10 16,16 16,28 5,22" fill="#004E78"/>
+      <polygon points="27,10 16,16 16,28 27,22" fill="#00639A"/>
+    </svg><div class="lbl">32 px</div>
+  </div>
+  <div class="size">
+    <svg class="px16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="16,4 27,10 16,16 5,10" fill="#0083C6"/>
+      <polygon points="5,10 16,16 16,28 5,22" fill="#004E78"/>
+      <polygon points="27,10 16,16 16,28 27,22" fill="#00639A"/>
+    </svg><div class="lbl">16 px</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tabbar light"><div class="cap">světlý prohlížeč</div>
+    <div class="tab">
+      <svg viewBox="0 0 32 32"><polygon points="16,4 27,10 16,16 5,10" fill="#0083C6"/><polygon points="5,10 16,16 16,28 5,22" fill="#004E78"/><polygon points="27,10 16,16 16,28 27,22" fill="#00639A"/></svg>
+      <span>Konfigurátor varných bloků</span>
+    </div>
+  </div>
+  <div class="tabbar dark"><div class="cap">tmavý prohlížeč</div>
+    <div class="tab">
+      <svg viewBox="0 0 32 32"><polygon points="16,4 27,10 16,16 5,10" fill="#0083C6"/><polygon points="5,10 16,16 16,28 5,22" fill="#004E78"/><polygon points="27,10 16,16 16,28 27,22" fill="#00639A"/></svg>
+      <span>Konfigurátor varných bloků</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ VARIANTA B ============ -->
+<div class="card">
+<h2>Varianta B — bílá krychle na plné modré dlaždici <span style="color:#6b7783;font-weight:400">(doporučeno)</span></h2>
+<p class="why"><span class="plus">Pro:</span> plná dlaždice drží tvar i v 16 px a vypadá
+stejně na světlé i tmavé liště — nemá s čím splynout. Stejné řešení používá
+většina aplikací právě proto.
+&nbsp;<span class="minus">Proti:</span> krychle je jen bílá silueta, firemní modrá
+nese dlaždice, ne samotný tvar.</p>
+
+<div class="sizes">
+  <div class="size">
+    <svg class="px64" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="7" fill="#0083C6"/>
+      <polygon points="16,7 25,12.2 16,17.4 7,12.2" fill="#ffffff"/>
+      <polygon points="7,12.2 16,17.4 16,26.5 7,21.3" fill="#ffffff" opacity=".62"/>
+      <polygon points="25,12.2 16,17.4 16,26.5 25,21.3" fill="#ffffff" opacity=".82"/>
+    </svg><div class="lbl">64 px</div>
+  </div>
+  <div class="size">
+    <svg class="px32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="7" fill="#0083C6"/>
+      <polygon points="16,7 25,12.2 16,17.4 7,12.2" fill="#ffffff"/>
+      <polygon points="7,12.2 16,17.4 16,26.5 7,21.3" fill="#ffffff" opacity=".62"/>
+      <polygon points="25,12.2 16,17.4 16,26.5 25,21.3" fill="#ffffff" opacity=".82"/>
+    </svg><div class="lbl">32 px</div>
+  </div>
+  <div class="size">
+    <svg class="px16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="7" fill="#0083C6"/>
+      <polygon points="16,7 25,12.2 16,17.4 7,12.2" fill="#ffffff"/>
+      <polygon points="7,12.2 16,17.4 16,26.5 7,21.3" fill="#ffffff" opacity=".62"/>
+      <polygon points="25,12.2 16,17.4 16,26.5 25,21.3" fill="#ffffff" opacity=".82"/>
+    </svg><div class="lbl">16 px</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tabbar light"><div class="cap">světlý prohlížeč</div>
+    <div class="tab">
+      <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#0083C6"/><polygon points="16,7 25,12.2 16,17.4 7,12.2" fill="#fff"/><polygon points="7,12.2 16,17.4 16,26.5 7,21.3" fill="#fff" opacity=".62"/><polygon points="25,12.2 16,17.4 16,26.5 25,21.3" fill="#fff" opacity=".82"/></svg>
+      <span>Konfigurátor varných bloků</span>
+    </div>
+  </div>
+  <div class="tabbar dark"><div class="cap">tmavý prohlížeč</div>
+    <div class="tab">
+      <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#0083C6"/><polygon points="16,7 25,12.2 16,17.4 7,12.2" fill="#fff"/><polygon points="7,12.2 16,17.4 16,26.5 7,21.3" fill="#fff" opacity=".62"/><polygon points="25,12.2 16,17.4 16,26.5 25,21.3" fill="#fff" opacity=".82"/></svg>
+      <span>Konfigurátor varných bloků</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ VARIANTA C ============ -->
+<div class="card">
+<h2>Varianta C — obrysová krychle, jen linky</h2>
+<p class="why"><span class="plus">Pro:</span> nejlehčí, nejblíž technickému výkresu,
+kterým se aplikace zabývá.
+&nbsp;<span class="minus">Proti:</span> <b>v 16 px se rozpadá</b> — linky jsou pod
+hranicí jednoho pixelu a krychle splyne v šedou skvrnu. Je to tu hlavně pro
+srovnání, aby bylo vidět, proč plné plochy vyhrávají.</p>
+
+<div class="sizes">
+  <div class="size">
+    <svg class="px64" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#0083C6" stroke-width="2" stroke-linejoin="round">
+      <polygon points="16,4 27,10 27,22 16,28 5,22 5,10"/>
+      <path d="M5,10 L16,16 L27,10 M16,16 L16,28"/>
+    </svg><div class="lbl">64 px</div>
+  </div>
+  <div class="size">
+    <svg class="px32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#0083C6" stroke-width="2" stroke-linejoin="round">
+      <polygon points="16,4 27,10 27,22 16,28 5,22 5,10"/>
+      <path d="M5,10 L16,16 L27,10 M16,16 L16,28"/>
+    </svg><div class="lbl">32 px</div>
+  </div>
+  <div class="size">
+    <svg class="px16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#0083C6" stroke-width="2" stroke-linejoin="round">
+      <polygon points="16,4 27,10 27,22 16,28 5,22 5,10"/>
+      <path d="M5,10 L16,16 L27,10 M16,16 L16,28"/>
+    </svg><div class="lbl">16 px</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tabbar light"><div class="cap">světlý prohlížeč</div>
+    <div class="tab">
+      <svg viewBox="0 0 32 32" fill="none" stroke="#0083C6" stroke-width="2" stroke-linejoin="round"><polygon points="16,4 27,10 27,22 16,28 5,22 5,10"/><path d="M5,10 L16,16 L27,10 M16,16 L16,28"/></svg>
+      <span>Konfigurátor varných bloků</span>
+    </div>
+  </div>
+  <div class="tabbar dark"><div class="cap">tmavý prohlížeč</div>
+    <div class="tab">
+      <svg viewBox="0 0 32 32" fill="none" stroke="#0083C6" stroke-width="2" stroke-linejoin="round"><polygon points="16,4 27,10 27,22 16,28 5,22 5,10"/><path d="M5,10 L16,16 L27,10 M16,16 L16,28"/></svg>
+      <span>Konfigurátor varných bloků</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="card">
+<h2>Jak se to zavede</h2>
+<p class="why" style="margin-bottom:10px">Ikonka bude <code>favicon.svg</code> v kořeni
+projektu a jeden řádek <code>&lt;link rel="icon"&gt;</code> v <code>index.html</code>.
+Žádná knihovna, žádný build.</p>
+<div class="note">
+<b>Jedna věc k rozhodnutí navíc:</b> SVG ikonku umí Chrome, Edge i Firefox.
+<b>Safari ji ignoruje</b> a spadne zpátky na výchozí list papíru. Pokud vám na
+Safari záleží, přidám vedle ní i <code>favicon.ico</code> (32 px), což je jeden
+soubor navíc a žádná další údržba. Řekněte, jestli ho chcete.
+</div>
+</div>
+
+</div>
+</body>
+</html>

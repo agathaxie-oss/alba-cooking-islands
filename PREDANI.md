@@ -233,6 +233,36 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 31. Ikonka záložky prohlížeče (favicon) — POŽADAVEK
+
+**HOTOVO 3. 9. 2026.** Zadavatel: „Chybí mi tam ikonka v prohlížeči, když to
+mám otevřené jako záložku. Co tam udělat třeba modrou krychličku ve
+firemních barvách?" Projekt do té doby žádnou ikonku neměl.
+
+Přidán `favicon.svg` v kořeni a jeden `<link rel="icon">` v `index.html`.
+Žádná knihovna, žádný build.
+
+**Zvolena varianta B** — bílá izometrická krychle na plné dlaždici
+`#0083C6` (Pantone 7461 C). Důvod je čitelnost v 16 px: plná dlaždice drží
+tvar a vypadá stejně na světlé i tmavé liště. Varianta s průhledným pozadím
+(tři odstíny modré jako tři stěny) nechala tmavou stěnu splynout s tmavou
+lištou; čistě obrysová krychle se v 16 px rozpadla — linky spadly pod jeden
+pixel. Obě odmítnuté varianty zůstávají v `mockup-favicon.html`, kdyby se
+zadavatel rozhodl přehodit; je to záměna jednoho souboru.
+
+**Pozor při případné změně:** tři stěny se liší jen KRYTÍM bílé
+(1 / 0,82 / 0,62), ne vlastní barvou — ikonka tedy nese jediný firemní
+odstín a při změně brand barvy stačí přepsat jedno číslo.
+
+Ověřeno: `<link rel="icon" type="image/svg+xml" href="favicon.svg">` je
+v hlavičce, soubor se servíruje se stavem 200 a MIME `image/svg+xml`,
+a vykreslení v 64 / 32 / 16 px i v simulované tmavé liště sedí.
+
+**ZBÝVÁ — čeká na zadavatele:** SVG ikonku umí Chrome, Edge i Firefox,
+**Safari ji IGNORUJE** a spadne zpátky na výchozí list papíru. Kdyby na
+Safari mělo záležet, přibude vedle ní `favicon.ico` (32 px) — jeden soubor
+navíc a žádná další údržba.
+
 ## 30. Grilovací deska měla hloubku 900 místo 800 — VADA DAT
 
 **HOTOVO 3. 9. 2026.** Zadavatel: „Grilovačku dej 800x800." Navazuje na nález

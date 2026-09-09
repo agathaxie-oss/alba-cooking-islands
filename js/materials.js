@@ -68,14 +68,22 @@ export function createPanelMaterial() {
   return _panel;
 }
 
-/** Grafitový sokl (podstavba) segmentů. */
+/**
+ * Nerezový sokl (podstavba) segmentů a horní lišty skříněk — vizuálně
+ * shodné s `createStainlessMaterial()` (zadavatel 9. 9. 2026: sokl a horní
+ * lišty jsou nerezové, ne černé). Vlastní instance se stejnými parametry
+ * místo pouhého delegování na `createStainlessMaterial()` — zachovává
+ * si vlastní `name` ('sokl') pro ladění a měření v prohlížeči a nechává
+ * otevřenou možnost sokl v budoucnu materiálově odlišit, aniž by se
+ * sahalo na sdílený nerez korpusů.
+ */
 export function createPlinthMaterial() {
   if (!_plinth) {
     _plinth = new THREE.MeshStandardMaterial({
-      color: 0x33363b,
-      metalness: 0.6,
-      roughness: 0.55,
-      envMapIntensity: 0.6,
+      color: 0xd8dcdf,
+      metalness: 0.9,
+      roughness: 0.28,
+      envMapIntensity: ENV_MAP_INTENSITY,
       name: 'sokl',
     });
   }

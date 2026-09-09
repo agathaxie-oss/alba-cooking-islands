@@ -1322,34 +1322,58 @@ export function buildSideCover({
 // ale VLASTNOSTÍ CELÉHO BLOKU (ZADANI-SOKL.md, 31. 8. 2026) — NE ale po
 // celém půdorysném obvodu bloku (to byla VADA, nahlášená 1. 9. 2026: sokl
 // běžel i tam, kde žádná skříňka není). Oprava: sokl se staví JEN pod
-// SOUVISLÝMI ÚSEKY skříněk jedné řady — sousedící skříňky (tolerance
+// SOUVISLÝMI ÚSEKY skříněk — sousedící skříňky (tolerance
 // SIDE_ADJACENCY_TOL_MM, stejná konstanta jako u bočních krytů výš) tvoří
-// jeden úsek se společným soklem, mezera úsek rozdělí. U ostrova se tím
-// sokl NEKRESLÍ pod mezerou mezi zády obou řad (na rozdíl od dřívějšího
-// stavu) — každá řada má svůj vlastní sokl, viz volání v buildMonoBlock.
+// jeden úsek se společným soklem, mezera úsek rozdělí.
+//
+// U `single` je vstupem `cabinets` řada A samotná (beze změny). U `island`
+// zadavatel 9. 9. 2026 rozhodl OPAČNĚ, než jak to tu dřív bylo: „sokl stran
+// A a B by se měl z boku propojit, ta mezera je nepraktická." Dřív se tu
+// (viz volání v buildMonoBlock) volalo DVAKRÁT — jednou pro řadu A, jednou
+// pro řadu B uvnitř otočené sideBGroup — takže mezi zády obou řad zůstala
+// mezera (změřeno 500 mm u bloku 3200×900+900) a na koncích měla každá
+// řada vlastní krátkou bočnici. Teď buildMonoBlock() volá tuhle funkci pro
+// `island` JEDNOU, s `cabinets` = SJEDNOCENÍM skříněk obou řad (převedených
+// do světových X — viz komentář u volání), takže souvislé úseky (a tím i
+// sokl) překlenou i mezeru mezi řadami. Z-rozsah pro tenhle sjednocený
+// případ dostává funkce EXPLICITNĚ přes `zMinMM`/`zMaxMM` (celá hloubka
+// bloku, ne hloubka jedné řady) — bez nich (volání pro `single`) se chová
+// přesně jako dřív.
 const PLINTH_WALL_THICKNESS_MM = 20; // v zadání není dané číslo tloušťky
 // plechu — 20 mm konzistentně s ostatními plechovými díly (WALL_MM výš).
 
 /**
  * @param {object} p
  * @param {Array<{xMM:number, widthMM:number, depthMM?:number}>} p.cabinets
- *   skříňky JEDNÉ ŘADY (podestavby), pro které se sokl staví — funkce si z
- *   nich sama odvodí souvislé úseky (viz komentář sekce výš). Souřadnice
- *   stejné jako u podestavby/buildPodestavba: `xMM` je levý kraj skříňky po
- *   délce bloku, z-rozsah skříňky je DESK_OVERHANG_FRONT_MM až
- *   DESK_OVERHANG_FRONT_MM + depthMM (líc podestavby, viz hlavička souboru).
- *   Chybějící `depthMM` u skříňky spadne na PODESTAVBA_DEPTH_MM.
+ *   skříňky, pro které se sokl staví — u `single` řada A samotná, u
+ *   `island` SJEDNOCENÍ (world X) skříněk obou řad, viz komentář sekce
+ *   výš. Funkce si z nich sama odvodí souvislé úseky. Souřadnice stejné
+ *   jako u podestavby/buildPodestavba: `xMM` je levý kraj skříňky po délce
+ *   bloku (world), z-rozsah skříňky je DESK_OVERHANG_FRONT_MM až
+ *   DESK_OVERHANG_FRONT_MM + depthMM (líc podestavby, viz hlavička souboru)
+ *   — pokud se ovšem nepřepíše `zMinMM`/`zMaxMM` níž. Chybějící `depthMM`
+ *   u skříňky spadne na PODESTAVBA_DEPTH_MM.
  * @param {number} p.heightMM  výška soklové zóny (plinth.heightMM)
  * @param {string} p.plinthType  jedna ze 4 hodnot PLINTH_TYPES (modules.js)
  * @param {boolean} [p.hasBack=true]  false u varianty `single` PRO
  *   `legs_plinth` (zadní strana u zdi se nekryje) — `construction` má VŽDY
- *   všechny 4 strany bez ohledu na variantu (viz volání v buildMonoBlock).
- *   Aplikuje se STEJNĚ na KAŽDÝ úsek zvlášť (jedna řada může mít víc úseků).
- * @returns {THREE.Group|null}  JEDNA skupina se všemi úseky dané řady, nebo
- *   null pro `building`/`legs`, nebo když `cabinets` je prázdné (řada bez
- *   jediné skříňky — nic se nekreslí, viz zadání).
+ *   všechny 4 strany bez ohledu na variantu, u `island` mají obě VŽDY
+ *   všechny 4 (viz volání v buildMonoBlock). Aplikuje se STEJNĚ na KAŽDÝ
+ *   úsek zvlášť (víc souvislých úseků je možné).
+ * @param {number} [p.zMinMM]
+ * @param {number} [p.zMaxMM]  Oba dohromady: EXPLICITNÍ Z-rozsah soklu (už
+ *   PO odečtení PLINTH_INSET_MM, tedy přímo hodnoty, které by se jinak
+ *   dopočítaly z depthMM úseku — viz tělo funkce), STEJNÝ pro VŠECHNY
+ *   úseky. Používá `island` (zadání 9. 9. 2026, §1): sokl jde přes CELOU
+ *   hloubku bloku bez ohledu na to, kam který úsek sahá, takže nejde po
+ *   úsecích odvozovat z depthMM jako u `single`. Když se nepředá (volání
+ *   pro `single`), Z-rozsah se odvodí PŘESNĚ jako dřív, per úsek.
+ * @returns {THREE.Group|null}  JEDNA skupina se všemi úseky, nebo null pro
+ *   `building`/`legs`, nebo když `cabinets` je prázdné (nic k podepření).
  */
-export function buildBlockPlinth({ cabinets, heightMM, plinthType, hasBack = true }) {
+export function buildBlockPlinth({
+  cabinets, heightMM, plinthType, hasBack = true, zMinMM, zMaxMM,
+}) {
   if (plinthType !== 'construction' && plinthType !== 'legs_plinth') return null;
   if (!cabinets || cabinets.length === 0) return null; // řada bez skříňky — nic k podepření
 
@@ -1357,17 +1381,28 @@ export function buildBlockPlinth({ cabinets, heightMM, plinthType, hasBack = tru
   const heightM = mm(heightMM);
   const t = PLINTH_WALL_THICKNESS_MM;
 
-  // --- souvislé úseky: sousedící skříňky (tolerance SIDE_ADJACENCY_TOL_MM,
-  // ne přesná rovnost floatů) se spojí do jednoho úseku, mezera (gap, resp.
-  // libovolná díra mezi xMM/xMM+widthMM sousedů) úsek rozdělí. Hloubka úseku
-  // je MAX z depthMM skříněk, které do něj patří (jinak PODESTAVBA_DEPTH_MM)
-  // — sokl tak podepře i tu nejhlubší skříňku úseku.
+  // --- souvislé úseky: sousedící NEBO PŘEKRÝVAJÍCÍ SE skříňky (tolerance
+  // SIDE_ADJACENCY_TOL_MM, ne přesná rovnost floatů) se spojí do jednoho
+  // úseku, mezera (gap, resp. libovolná díra mezi xMM/xMM+widthMM sousedů)
+  // úsek rozdělí. Hloubka úseku je MAX z depthMM skříněk, které do něj patří
+  // (jinak PODESTAVBA_DEPTH_MM) — sokl tak podepře i tu nejhlubší skříňku
+  // úseku (irelevantní, když volající přepíše Z-rozsah přes zMinMM/zMaxMM).
+  //
+  // Test „další skříňka NAVAZUJE" je `c.xMM <= last.endXMM + TOL`, ne jen
+  // `Math.abs(c.xMM − last.endXMM) <= TOL` (rovnost obou krajů) — u řady
+  // JEDNÉ strany (single, nebo dřívější volání po řadách) na sobě skříňky
+  // nikdy nepřekrývají, takže je to ekvivalentní. U `island` (zadání
+  // 9. 9. 2026, §1) ale `cabinets` je SJEDNOCENÍ skříněk OBOU řad (world X)
+  // a ty se navzájem v X mohou překrývat (každá řada má nezávislý layout) —
+  // `c.xMM < last.endXMM − TOL` je pak běžné a MUSÍ se sloučit do stejného
+  // úseku, ne založit druhý, zbytečně se překrývající. Pro řadu bez
+  // překryvu (single) dává širší test STEJNÝ výsledek jako dřív.
   const sorted = [...cabinets].sort((a, b) => a.xMM - b.xMM);
   const runs = [];
   sorted.forEach((c) => {
     const cDepthMM = c.depthMM || PODESTAVBA_DEPTH_MM;
     const last = runs[runs.length - 1];
-    if (last && Math.abs(c.xMM - last.endXMM) <= SIDE_ADJACENCY_TOL_MM) {
+    if (last && c.xMM <= last.endXMM + SIDE_ADJACENCY_TOL_MM) {
       last.endXMM = Math.max(last.endXMM, c.xMM + c.widthMM);
       last.depthMM = Math.max(last.depthMM, cDepthMM);
     } else {
@@ -1382,11 +1417,13 @@ export function buildBlockPlinth({ cabinets, heightMM, plinthType, hasBack = tru
     // uskočení PLINTH_INSET_MM ze všech stran, měřené od LÍCŮ SKŘÍNĚK
     // tohoto úseku (ne od obrysu bloku) — v ose Z jsou líce skříňky
     // DESK_OVERHANG_FRONT_MM (přední) a DESK_OVERHANG_FRONT_MM + depthMM
-    // (zadní), viz JSDoc výš.
+    // (zadní), viz JSDoc výš. `zMinMM`/`zMaxMM` (island, §1 zadání
+    // 9. 9. 2026) tenhle odvozený rozsah PŘEPÍŠÍ stejnou hodnotou pro
+    // všechny úseky — sokl jde přes celou hloubku bloku, ne po řadách.
     const xMin = run.startXMM + PLINTH_INSET_MM;
     const xMax = run.endXMM - PLINTH_INSET_MM;
-    const zMin = DESK_OVERHANG_FRONT_MM + PLINTH_INSET_MM;
-    const zMax = DESK_OVERHANG_FRONT_MM + run.depthMM - PLINTH_INSET_MM;
+    const zMin = zMinMM !== undefined ? zMinMM : DESK_OVERHANG_FRONT_MM + PLINTH_INSET_MM;
+    const zMax = zMaxMM !== undefined ? zMaxMM : DESK_OVERHANG_FRONT_MM + run.depthMM - PLINTH_INSET_MM;
     const innerLengthMM = Math.max(xMax - xMin, 1);
     const innerDepthMM = Math.max(zMax - zMin, 1);
 
@@ -1878,26 +1915,19 @@ export function buildMonoBlock({
     });
     sideBGroup.add(sideCoversBGroup);
 
-    // --- SOKL STRANY B — vlastní, ze svého pole podestaveb (podestavbyB),
-    // postavený UVNITŘ TÉHLE (otočené) podskupiny — NE v hlavní skupině —
-    // aby se zrcadlil/otočil SPOLU se stranou B (stejný důvod jako u
-    // podestavbyBGroup/herdblokBGroup výš). Řady A a B mají nezávislé
-    // skříňky, takže se sokly nespojují — souvislost mezi poslední skříňkou
-    // A a první skříňkou B (přes spáru obou řad) se tu neřeší, každá řada má
-    // svůj sokl samostatně.
-    const blockPlinthB = buildBlockPlinth({
-      cabinets: podestavbyB, heightMM: plinthHeightMM, plinthType, hasBack: plinthHasBack,
-    });
-    if (blockPlinthB) sideBGroup.add(blockPlinthB);
+    // --- SOKL: NENÍ tady. Do 9. 9. 2026 se tu stavěl vlastní sokl strany B
+    // (ze svého pole podestaveb), zvlášť od soklu strany A — mezi zády obou
+    // řad tak zůstávala mezera (zadavatel: „ta mezera je nepraktická").
+    // Sokl se teď staví JEDNOU, sjednocený přes obě řady a přes celou
+    // hloubku bloku, dole u `blockPlinthA` v hlavní (nerotované) skupině —
+    // viz komentář tam a hlavičku buildBlockPlinth.
 
     group.add(sideBGroup);
 
     // --- KOMBINOVANÉ DÍLY: deska, oba nosy a límec left/right jdou VŽDY
     // přes CELOU kombinovanou hloubku (§6/§9 zadání, "od čela k čelu", ne
-    // po stranách zvlášť) — na rozdíl od nich boční kryty na X-koncích
-    // (níž) mají hloubku ODVOZENOU od toho, která řada (A/B) k danému
-    // konci opravdu dosahuje (vada 2. 9. 2026: kryt visel v prázdnu tam,
-    // kde k jeho konci žádná řada nesahá — viz komentář u výpočtu níž).
+    // po stranách zvlášť) — stejně jako (od 9. 9. 2026, viz komentář u
+    // výpočtu níž) boční kryty na X-koncích.
     // Staví se přímo v hlavní (nerotované) skupině — herA[0].leftEndType/
     // rightEndType JSOU už typy PROHOZENÉ pro world x=0/x=lengthMM hranu
     // (stejná konvence, jakou mono-block.js používá pro herdblokA — viz
@@ -1965,16 +1995,24 @@ export function buildMonoBlock({
       // zrovna není zkosený konec, pak THIN — stejná výjimka jako u single),
       // jinak THIN. Tohle zůstává beze změny.
       //
-      // HLOUBKA (fromZMM/toZMM) krytu ale NESMÍ automaticky sahat přes
-      // CELOU kombinovanou hloubku — kryt na daném konci zakrývá jen tu
-      // řadu, která k němu skutečně dosahuje (vada 2. 9. 2026: doloženo
-      // screenshotem, blok 3200×1700, řada A world 50–1650, řada B world
-      // 2350–3150 — levý kryt visel v prázdnu na polovině patřící B, pravý
-      // na polovině patřící A, protože se stavěl vždy celý bez ohledu na
-      // to, kam která řada sahá). Proto se "flush" test dělá ZVLÁŠŤ pro
-      // worldPodA a worldPodB (ne jen na jejich sjednocení) a podle toho,
-      // která řada (nebo obě, nebo žádná) k danému konci dosahuje, se
-      // určí Z-rozsah — případně se kryt vůbec nepostaví.
+      // HLOUBKA (fromZMM/toZMM): do 9. 9. 2026 kryt na daném konci zakrýval
+      // jen tu řadu, která k němu skutečně dosahuje (vada 2. 9. 2026,
+      // úkol 26 v PREDANI.md: doloženo screenshotem, blok 3200×1700, řada A
+      // world 50–1650, řada B world 2350–3150 — levý kryt visel v prázdnu
+      // na polovině patřící B, pravý na polovině patřící A, protože se
+      // předtím stavěl vždy celý bez ohledu na to, kam která řada sahá; oprava
+      // v úkolu 26 ho proto rozdělila na pásma podle dosahu řad A/B).
+      // Zadavatel 9. 9. 2026 rozhodl OPAČNĚ: „u pravého okraje se nesjednotí
+      // boční kryt — zůstává tam mezera mezi stranami." Dělení na pásma
+      // (úkol 26) se tímhle VĚDOMĚ RUŠÍ — kryt je zase JEDEN přes CELOU
+      // kombinovanou hloubku (fromZMM 0, toZMM totalDepthMM), pokud k
+      // danému konci dosahuje ALESPOŇ JEDNA řada. Není to ale prostý návrat
+      // k chybě z 2. 9. 2026 — ta stavěla kryt na obou koncích, jakmile
+      // existovala JEDNA skříňka KDEKOLI v bloku (`allWorldPod.length > 0`);
+      // tady zůstává gate `leftReachA || leftReachB` (resp. right*) VÁZANÝ
+      // NA DANÝ KONEC — nedosahuje-li k němu ani jedna řada, kryt se dál
+      // nestaví (beze změny). PŘÍŠTĚ TOHLE NEOTÁČET ZPĚT jako regresi na
+      // úkol 26 — je to záměr, ne přehlédnutí.
       const worldPodA = podA.map((p) => ({ xMM: p.xMM, widthMM: p.widthMM }));
       // podestavbyB jsou v LOKÁLNÍCH (nezrcadlených) souřadnicích strany B —
       // pro zjištění, jestli leží na kraji bloku, se přepočtou na WORLD X
@@ -1982,13 +2020,6 @@ export function buildMonoBlock({
       // widthMM) = lengthMM−xMM−widthMM, odvozeno v JSDoc výš) — i když se
       // samotné meshe B staví BEZ mirrorX (o to se postará rotace).
       const worldPodB = podestavbyB.map((p) => ({ xMM: lengthMM - p.xMM - p.widthMM, widthMM: p.widthMM }));
-
-      // depthAResolvedMM: stejný fallback řetězec jako u totalDepthMM výš
-      // (depthAMM parametr, jinak hloubka prvního úseku herA) — dělí
-      // totalDepthMM na "pásmo řady A" (z 0..depthAResolvedMM) a "pásmo
-      // řady B" (z depthAResolvedMM..totalDepthMM), viz JSDoc u
-      // buildCollarEdgeWall výš (world z = depthAMM je spára mezi A a B).
-      const depthAResolvedMM = Number(depthAMM) || (herA[0] && herA[0].depthMM) || 0;
 
       const leftEdgeX = sideInsetMM(combinedLeftType);
       const rightEdgeX = lengthMM - sideInsetMM(combinedRightType);
@@ -2003,28 +2034,28 @@ export function buildMonoBlock({
       const rightThickness = rightFlush && combinedRightType !== END_TYPES.VERTICAL_PLATE_CHAMFER
         ? SIDE_COVER_THICK_MM : SIDE_COVER_THIN_MM;
 
-      // Levý konec: obě řady → celá hloubka; jen A → pásmo A; jen B →
-      // pásmo B; ani jedna → kryt nemá co zakrývat, nestaví se.
+      // Levý konec: dosahuje-li ALESPOŇ JEDNA řada, JEDEN kryt přes CELOU
+      // kombinovanou hloubku (viz komentář výš, zadání 9. 9. 2026); ani
+      // jedna → kryt nemá co zakrývat, nestaví se (beze změny).
       if (leftReachA || leftReachB) {
         const coverLeft = buildSideCover({
           thicknessMM: leftThickness,
           heightMM: bodyHeightMM,
-          fromZMM: leftReachB && !leftReachA ? depthAResolvedMM : 0,
-          toZMM: leftReachA && !leftReachB ? depthAResolvedMM : totalDepthMM,
+          fromZMM: 0,
+          toZMM: totalDepthMM,
           xMM: leftEdgeX - leftThickness,
           plinthHeightMM,
         });
         coverLeft.name = 'bocni-kryt-x-konec';
         group.add(coverLeft);
       }
-      // Pravý konec: stejná úvaha, nezávisle na levém (viz vada — u
-      // ostrova ze zadání dosahovala vlevo jen A a vpravo jen B).
+      // Pravý konec: stejná úvaha, nezávisle na levém.
       if (rightReachA || rightReachB) {
         const coverRight = buildSideCover({
           thicknessMM: rightThickness,
           heightMM: bodyHeightMM,
-          fromZMM: rightReachB && !rightReachA ? depthAResolvedMM : 0,
-          toZMM: rightReachA && !rightReachB ? depthAResolvedMM : totalDepthMM,
+          fromZMM: 0,
+          toZMM: totalDepthMM,
           xMM: rightEdgeX,
           plinthHeightMM,
         });
@@ -2035,20 +2066,46 @@ export function buildMonoBlock({
   }
 
   // ============================================================================
-  // SOKL STRANY A — rám (construction) / zástěna (legs_plinth)
+  // SOKL — rám (construction) / zástěna (legs_plinth)
   // ============================================================================
   // Nožičky se staví PER SKŘÍŇKA výš (buildPodestavba). Rám i zástěna jsou
   // vlastností CELÉHO BLOKU (ZADANI-SOKL.md), ale OPRAVA „sokl jen pod
   // skříňkami" (1. 9. 2026) je nekreslí po celém půdorysném obvodu — jen
-  // pod souvislými úseky skříněk strany A (viz buildBlockPlinth výš). Sokl
-  // strany B (jen `island`) se staví ZVLÁŠŤ, UVNITŘ otočené podskupiny
-  // strany B (viz výš) — ne tady, aby se zrcadlil spolu s ní. `construction`
-  // má VŠECHNY strany VŽDY (i u `single`); `legs_plinth` u `single`
-  // vynechává zadní stranu (u zdi), u `island` má taky všechny čtyři —
-  // `plinthHasBack` je spočtené výš, sdílené s soklem strany B.
-  const blockPlinthA = buildBlockPlinth({
-    cabinets: podA, heightMM: plinthHeightMM, plinthType, hasBack: plinthHasBack,
-  });
+  // pod souvislými úseky skříněk (viz buildBlockPlinth výš). Staví se VŽDY
+  // v hlavní (nerotované) skupině — i díly patřící "straně B" (u `island`),
+  // protože sjednocené skříňky jsou tu už ve světových X (viz níž).
+  //
+  // U `single` je to úsek řady A samotné — beze změny (`buildBlockPlinth`
+  // se volá bez `zMinMM`/`zMaxMM`, Z-rozsah si odvodí sama z depthMM).
+  // U `island` zadavatel 9. 9. 2026 rozhodl sokl stran A a B PROPOJIT
+  // („ta mezera je nepraktická") — dřív se sokl stavěl DVAKRÁT (řada A
+  // tady, řada B ZVLÁŠŤ uvnitř otočené sideBGroup), takže mezi zády obou
+  // řad zůstávala mezera. Teď JEDNOU, ze SJEDNOCENÍ skříněk obou řad
+  // (worldPodA/worldPodB, převedené do světových X stejným vzorcem jako
+  // worldPodB u bočních krytů na X-koncích výš — podestavbyB jsou v
+  // LOKÁLNÍCH souřadnicích strany B) a přes CELOU hloubku bloku
+  // (zMinMM/zMaxMM), ne po řadách — viz JSDoc buildBlockPlinth.
+  //
+  // `construction` má VŠECHNY strany VŽDY (i u `single`); `legs_plinth` u
+  // `single` vynechává zadní stranu (u zdi), u `island` má taky všechny
+  // čtyři — `plinthHasBack` je spočtené výš.
+  let blockPlinthA;
+  if (isIsland) {
+    const worldPodA = podA.map((p) => ({ xMM: p.xMM, widthMM: p.widthMM }));
+    const worldPodB = podestavbyB.map((p) => ({ xMM: lengthMM - p.xMM - p.widthMM, widthMM: p.widthMM }));
+    blockPlinthA = buildBlockPlinth({
+      cabinets: [...worldPodA, ...worldPodB],
+      heightMM: plinthHeightMM,
+      plinthType,
+      hasBack: plinthHasBack,
+      zMinMM: DESK_OVERHANG_FRONT_MM + PLINTH_INSET_MM,
+      zMaxMM: totalDepthMM - DESK_OVERHANG_FRONT_MM - PLINTH_INSET_MM,
+    });
+  } else {
+    blockPlinthA = buildBlockPlinth({
+      cabinets: podA, heightMM: plinthHeightMM, plinthType, hasBack: plinthHasBack,
+    });
+  }
   if (blockPlinthA) group.add(blockPlinthA);
 
   const support = [

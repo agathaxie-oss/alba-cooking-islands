@@ -233,6 +233,71 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 38. Ostrov MONO — spojený sokl, jeden kryt konce, nerezové díly
+
+**HOTOVO 9. 9. 2026.** Tři požadavky zadavatele k ostrovu MONO, doložené
+screenshoty.
+
+### 38.1 Sokl stran A a B se propojil z boku
+„U varianty MONO Ostrov by se měl sokl stran A a B z boku propojit.
+Ta mezera je nepraktická."
+
+`buildBlockPlinth()` se u ostrova volala DVAKRÁT (A v hlavní skupině,
+B uvnitř otočené `sideBGroup`), každé volání udělalo uzavřený rámeček jen
+přes hloubku SVÉ řady. Změřeno před opravou (3200, hloubky 900+900): sokl A
+`z 80–650`, sokl B `z 1150–1720` — díra **500 mm** a na končích dvě krátké
+bočnice.
+
+Nově se u ostrova staví **JEDNOU** přes celou hloubku. `buildBlockPlinth()`
+přibrala nepovinné `zMinMM`/`zMaxMM`; bez nich se chová přesně jako dřív,
+takže `single` zůstává beze změny.
+
+**Pravidlo „sokl jen pod skříňkami" (úkol 19) PLATÍ DÁL** — souvislé úseky
+se počítají ze SJEDNOCENÍ skříňek obou řad ve SVĚTOVÝCH X. Změřeno na
+sestavě s mezerou v obou řadách: tři samostatné úseky `x 100–800`,
+`1000–2200`, `2400–3100`, každý přes `z 80–1720`; pod mezerami nic.
+
+### 38.2 Boční kryt na konci je jeden přes celou hloubku
+„U pravého okraje se nesjednotí boční kryt — zůstává tam mezera mezi
+stranami."
+
+Změřeno: když byla řada A kratší, levý kryt vyšel `z 900–1800` a přes
+pásmo A zůstala díra. Nově: dosahuje-li ke konci ASPOň JEDNA řada, kryt jde
+přes celou hloubku (`0..totalDepthMM`). Nedosahuje-li žádná, nestaví se —
+to zůstává.
+
+**TOHLE VĚDOMĚ RUŠÍ DĚLENÍ NA PÁSMA Z ÚKOLU 26.** Zadavatel si ho 2. 9. 2026
+výslovně vyžádal („panel v prázdnu") a 9. 9. 2026 rozhodl opačně. Není to
+regrese — při příští změně se ptát, ne „opravovat" zpět.
+
+### 38.3 Sokl a horní lišty skříňek jsou nerezové
+„Sokl a horní lišty skříňek jsou nerezové, ne černé."
+
+`createPlinthMaterial()` vracela tmavou `0x33363b`. Teď má shodné parametry
+s `createStainlessMaterial()`, ale zůstává samostatnou instancí
+(vlastní `name: 'sokl'` pro měření a možnost budoucího odlišení).
+
+**Týká se OBOU PRODUKTŮ** — materiál používá i SEGMENT (`block.js`,
+`modules.js`) a nožičky `legs`/`legs_plinth`. Je to týž fyzický díl
+z nerezu, takže sjednocení dává smysl; kdyby měl SEGMENT zůstat tmavý,
+je to jedno číslo zpátky.
+
+### Slepá ulička, kterou stojí za to zaznamenat
+
+Nejdřív jsem diagnostikoval, že ostrov má PROHOZENÉ typy konců
+(`combinedLeftType = deskSpec.leftEndType`, kde `mono-block.js` už typy
+prohodil). Nechal jsem to „opravit" — a měření ukázalo, že se poté kryty
+NESTAVÍ VŮBEC. **Prohození je SPRÁVNĚ:** celý ostrov (deska, vodopády,
+zatžení konců i skříňky obou řad) se staví v ZRCADLENÉM rámci, kde jsou
+levý a pravý konec prohozené konzistentně. Obě řady fyzicky leží na
+`x 70–3150`, což sedí s prohozenými zataženími. Změna byla vrácena.
+**Nesahat na to** — a hlavně: rozdílné tloušťky krytu na obou koncích
+(20 vs 50) NEJSOU vada, plynou z různých typů konců (zkosený konec má
+zatažení 70 a tenký kryt).
+
+Ověřeno: `single` beze změny (sokl `z 80–650`, kryty `z 30–900`), SEGMENT se
+staví bez chyby, čistá konzole.
+
 ## 37. Doplnění řady podestaveb pod 100 mm zakázáno — POKYN
 
 **HOTOVO 4. 9. 2026.** Zadavatel: „Doplnění zakázat.“ Navazuje na úkol 36 —

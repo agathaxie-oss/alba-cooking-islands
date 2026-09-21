@@ -23,6 +23,8 @@ import {
   TOP_THICKNESS,
   DEFAULT_PLINTH,
   PLINTH_HEIGHT_DEFAULT_MM,
+  PLINTH_HEIGHT_MIN_MM,
+  PLINTH_HEIGHT_MAX_MM,
   PLINTH_INSET_MM,
   box as boxWithEdges,
 } from './modules.js';
@@ -354,20 +356,38 @@ export function buildBlock(segmentsA, segmentsB, armList, dims, plinth = DEFAULT
   group.add(desk);
 
   // --- boční krycí plechy (20 mm) na obou koncích bloku, s logem ALBA -------
-  const panelHeightM = mm(heightMM) - TOP_THICKNESS;
+  // Plech kryje jen zónu KORPUSU — od horní hrany soklu po spodek desky —
+  // ne od podlahy. Sokl je od úkolu 19 (PREDANI.md, „sokl jen pod
+  // skříňkami") zapuštěný jen pod segmenty, takže plech od y=0 trčel dolů
+  // vedle nožiček/soklu (naměřeno na 3200×850, prac. výška 900, sokl 150:
+  // krycí-plech na x ±1580–1600 zabíral celé y 0–850, tedy i celou soklovou
+  // zónu y 0–150, u všech typů soklu). Shoda s MONO
+  // (mono-geometry.js#buildSideCover), jehož boční kryt začíná stejně až nad
+  // soklem (Y-střed = plinthHeightMM + heightMM/2). Neplatnou/chybějící
+  // výšku soklu ošetřujeme tolerantně stejným vzorcem jako modules.js
+  // (createSegmentMesh/createFillerMesh) — pád na PLINTH_HEIGHT_DEFAULT_MM.
+  const plinthHeightMM = clamp(
+    Number(plinth.heightMM) || PLINTH_HEIGHT_DEFAULT_MM,
+    PLINTH_HEIGHT_MIN_MM,
+    PLINTH_HEIGHT_MAX_MM
+  );
+  const plinthHeightM = mm(plinthHeightMM);
+  const panelHeightM = mm(heightMM) - TOP_THICKNESS - plinthHeightM;
+  const panelCenterYM = plinthHeightM + panelHeightM / 2;
   const panelDepthM = mm(totalDepthMM);
   [-1, 1].forEach((side) => {
     const panel = boxWithEdges(mm(SIDE_PANEL_MM), panelHeightM, panelDepthM, createStainlessMaterial());
     const xCenter = side * (mm(lengthMM) / 2 - mm(SIDE_PANEL_MM) / 2);
-    panel.position.set(xCenter, panelHeightM / 2, panelDepthM / 2);
+    panel.position.set(xCenter, panelCenterYM, panelDepthM / 2);
     panel.name = 'krycí-plech';
     group.add(panel);
 
     // velké logo na vnější (pohledové) straně plechu — cca 60 % výšky plechu
+    // — jde s plechem: stejný Y-střed, velikost dál z (nové) výšky plechu.
     const logoSize = Math.max(Math.min(panelHeightM * 0.6, panelDepthM * 0.9), 0.05);
     const logo = new THREE.Mesh(new THREE.BoxGeometry(0.003, logoSize, logoSize), createLogoMaterial());
     const logoX = side * (mm(lengthMM) / 2 + 0.0016);
-    logo.position.set(logoX, panelHeightM / 2, panelDepthM / 2);
+    logo.position.set(logoX, panelCenterYM, panelDepthM / 2);
     group.add(logo);
   });
 

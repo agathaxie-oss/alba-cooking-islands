@@ -1156,10 +1156,14 @@ function propagateMergeGroupField(list, index, field, value) {
   }
 }
 
+// Návratová hodnota (true/false) říká volajícímu (loadConfigFromFile), jestli
+// se soubor podařilo načíst — jen při úspěchu smí zmizet úvodní obrazovka
+// (viz tam). Proto KAŽDÁ odmítací větev níže (alert + return) musí vracet
+// `false` a úspěšná cesta na konci funkce `true`.
 function applyConfig(config) {
   if (!config || typeof config !== 'object') {
     alert(t('alert.invalidConfig'));
-    return;
+    return false;
   }
 
   // §ÚKOL MONO §0/§10 (balík A5) — SPEC v4 tu měla tvrdé odmítnutí při jiné
@@ -1200,7 +1204,7 @@ function applyConfig(config) {
 
   if (!Array.isArray(rawSegmentsA) && !Array.isArray(rawSegmentsB) && !Array.isArray(config.arms)) {
     alert(t('alert.invalidConfig'));
-    return;
+    return false;
   }
 
   // Kontrola prázdné konfigurace (žádný segment, rameno ani MONO obsah) musí
@@ -1230,7 +1234,7 @@ function applyConfig(config) {
   if (rawSegmentsACount === 0 && rawSegmentsBCount === 0 && rawArmsCount === 0
       && rawMonoHerdblokCount === 0 && rawMonoPodestavbyCount === 0) {
     alert(t('alert.emptyConfig'));
-    return;
+    return false;
   }
 
   // §ÚKOL A — typ bloku (§ROZHRANÍ): tolerantní validace, žádné odmítnutí
@@ -1349,6 +1353,7 @@ function applyConfig(config) {
   // z povolených míst pro přerámování kamery.
   reframeCamera();
   hasUnsavedChanges = false; // §ÚKOL C — čerstvě načtený soubor = žádné neuložené změny
+  return true; // úspěch — volající (loadConfigFromFile) podle toho smí skrýt úvodní obrazovku
 }
 
 function loadConfigFromFile(file) {
@@ -1365,7 +1370,16 @@ function loadConfigFromFile(file) {
       console.error(err);
       return;
     }
-    applyConfig(config);
+    // Úvodní obrazovka (#start-screen-overlay) se při startu aplikace otevírá
+    // NEzavíratelně (viz ui.showStartScreen()/onNewProject) — obecné zavření
+    // (Escape, klik mimo) proto nic neudělá a soubor otevřený z týhle
+    // obrazovky by na ní uživatele nechal uvíznout i po úspěšném načtení.
+    // ui.hideStartScreen() ji schválně skryje BEZ OHLEDU na zavíratelnost —
+    // ale smí se zavolat JEN při úspěchu (`applyConfig` vrací true/false,
+    // viz tam): při neplatném/prázdném souboru musí uživatel zůstat na
+    // úvodní obrazovce a zvolit znovu, jinak by skončil v aplikaci bez
+    // zvoleného typu bloku.
+    if (applyConfig(config)) ui.hideStartScreen();
   };
   reader.readAsText(file);
 }

@@ -233,6 +233,46 @@ aby dokument neodporoval sám sobě.
 
 Seřazeno podle závažnosti. Jde o jediný závazný seznam.
 
+## 40. Boční plech SEGMENTu trčel dolů do soklu a k nožičkám — VADA
+
+**HOTOVO 21. 9. 2026.** Zadavatel: „boční panely přesahují dole do nožiček/soklu."
+
+Krycí plech na obou koncích bloku (`block.js`, blok „boční krycí plechy s logem
+ALBA") měl výšku `heightMM − TOP_THICKNESS` a střed v polovině — šel tedy **od
+podlahy**. Změřeno (3200 × 850, pracovní výška 900, sokl 150): `krycí-plech`
+na `x ±1580–1600` zabíral `y 0–850` u všech tří typů soklu.
+
+Dokud sokl obíhal celý obvod bloku, splývalo to. **Úkol 19 („sokl jen pod
+skříňkami") tuhle vadu odkryl** — sokl je od té doby zapuštěný jen pod
+segmenty a plech od podlahy trčel vedle nožiček. Úkol 19 byl sám o sobě
+správně, jen nikdo nezkontroloval díly, které se o sokl opíraly vizuálně.
+
+Opraveno: plech začíná na horní hraně soklu (`plinth.heightMM`, ošetřené
+stejným `clamp` jako v `modules.js`) a končí pod deskou; logo jde se středem
+plechu. Shodné s MONO `buildSideCover`. Ověřeno: plech `y 150–850`, logo
+`y 290–710` u `construction`, `legs` i `legs_plinth`.
+
+## 39. Otevření souboru z úvodní obrazovky nechalo obrazovku viset — VADA
+
+**HOTOVO 21. 9. 2026.** Zadavatel: „když zvolím otevřít soubor v úvodním menu
+a vyberu nějaký lokální, neotevře se, ale dál zůstanu na uvítací obrazovce."
+
+**Soubor se ve skutečnosti načítal** — jen za overlayem, který nikdo neskryl.
+`onLoadFile` → `loadConfigFromFile` → `applyConfig` úvodní obrazovku vůbec
+neřešily; skrývala ji jen volba karty přes `ui.hideStartScreen()`. Obecné
+`closeStartScreen()` nepomůže: při startu je obrazovka záměrně NEZAVÍRATELNÁ
+(bez zvoleného typu by uživatel uvízl).
+
+Opraveno v `main.js`: `applyConfig` vrací `true`/`false` (tři odmítací větve
+s `alert` → `false`, konec úspěšné cesty → `true`) a `loadConfigFromFile`
+volá `ui.hideStartScreen()` **jen při úspěchu**. Neplatný soubor nechá
+uživatele na úvodní obrazovce, ať může zvolit znovu. `applyConfig` nemá jiného
+volajícího, takže návratová hodnota nic dalšího neovlivní.
+
+Ověřeno v prohlížeči podvrženým souborem přes `DataTransfer`: rozbitý JSON →
+hláška a obrazovka zůstane; platný soubor → obrazovka zmizí, projekt
+(délka 2400, dva segmenty) je načtený.
+
 ## 38. Ostrov MONO — spojený sokl, jeden kryt konce, nerezové díly
 
 **HOTOVO 9. 9. 2026.** Tři požadavky zadavatele k ostrovu MONO, doložené
